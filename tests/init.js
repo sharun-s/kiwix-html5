@@ -2,7 +2,7 @@
  * init.js : Configuration for the library require.js
  * This file handles the dependencies between javascript libraries, for the unit tests
  * 
- * Copyright 2013 Mossroy
+ * Copyright 2013-2014 Mossroy and contributors
  * License GPL v3:
  * 
  * This file is part of Evopedia.
@@ -21,13 +21,13 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 require.config({
-    baseUrl: 'js/lib',
+    baseUrl: 'www/js/lib',
     paths: {
         'zepto': 'zepto',
-        'jquery': 'jquery-2.0.3',
+        'jquery': 'jquery-2.1.0',
         'title': 'title',
         'archive': 'archive'
     }
 });
 
-requirejs(['../../tests/tests']);
+requirejs(['../../../tests/tests']);
