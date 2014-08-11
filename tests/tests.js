@@ -19,13 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
-define(function(require) {
-
-    var $ = require('jquery');
-    var evopediaTitle = require('title');
-    var evopediaArchive = require('archive');
-    var geometry = require('geometry');
-    var util = require('util');
+define(['jquery', 'title', 'archive', 'util', 'geometry'],
+ function($, evopediaTitle, evopediaArchive, util, geometry) {
 
     // Due to security restrictions in the browsers,
     // we can not read directly the files and run the unit tests

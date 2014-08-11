@@ -20,7 +20,8 @@
  * You should have received a copy of the GNU General Public License
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
-define(function(require) {
+'use strict';
+define([], function() {
     
     // Algorithm copied from original application :
     // https://github.com/evopedia/evopedia_qt/blob/master/src/localarchive.cpp

@@ -10,8 +10,8 @@
 //      - use the cartesian coordinate system (x goes right, y goes up)
 //      It might have inverted the clockwise/anticlockwise directions for angles/rotations
 //      but it doesn't matter because they are not used by Evopedia
-
-define(function(require) {
+'use strict';
+define([], function() {
 
 
 

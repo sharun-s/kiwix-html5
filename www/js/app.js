@@ -21,20 +21,13 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 
+'use strict';
+
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(function(require) {
-    
-    var $ = require('jquery');
-
-    // Evopedia javascript dependencies
-    var evopediaTitle = require('title');
-    var evopediaArchive = require('archive');
-    var util = require('util');
-    var cookies = require('cookies');
-    var geometry = require('geometry');
-    var osabstraction = require('osabstraction');
+define(['jquery', 'title', 'archive', 'util', 'cookies','geometry','osabstraction'],
+ function($, evopediaTitle, evopediaArchive, util, cookies, geometry, osabstraction) {
     
     // Maximum number of titles to display in a search
     var MAX_SEARCH_RESULT_SIZE = 50;
@@ -486,7 +479,7 @@ define(function(require) {
                 distanceFromHereHtml = " (" + distanceKm + " km " + cardinalDirection + ")";
             }
             
-            titleListDivHtml += "<a href='#' titleid='" + title.toStringId()
+            titleListDivHtml += "<a href='#' titleid='" + title.toStringId().replace(/'/g,"&apos;")
                     + "' class='list-group-item'>" + title.getReadableName()
                     + distanceFromHereHtml 
                     + "</a>";
@@ -724,7 +717,7 @@ define(function(require) {
             }
         });
     }
-    
+       
     /**
      * Looks for titles located around where the device is geolocated
      */
@@ -742,38 +735,6 @@ define(function(require) {
                     enableHighAccuracy: false,
                     maximumAge: 600000, // 10 minutes
                     timeout: Infinity 
-                };
-
-                function geo_success(pos) {
-                    var crd = pos.coords;
-
-                    if ($('#geolocationProgress').is(":visible")) {
-                        $('#geolocationProgress').prop("step","SearchInTitleIndex");
-                        $('#geolocationProgress').html("Found your location : lat:" + crd.latitude.toFixed(7) + ", long:" + crd.longitude.toFixed(7)
-                                + "<br/>Now looking for articles around this location...");
-                        
-                        currentCoordinates = new geometry.point(crd.longitude, crd.latitude);
-                        
-                        pushBrowserHistoryState(null, null, crd.latitude, crd.longitude, maxDistanceArticlesNearbySearch);
-
-                        searchTitlesNearbyGivenCoordinates(crd.latitude, crd.longitude, maxDistanceArticlesNearbySearch);
-                    }
-                    else {
-                        // If the geolocationProgress div is not visible, it's because it has been canceled
-                        // So we simply ignore the result
-                    }
-                };
-
-                function geo_error(err) {
-                    if ($('#geolocationProgress').is(":visible")) {
-                        alert("Unable to geolocate your device : " + err.code + " : " + err.message);
-                        $('#geolocationProgress').hide();
-                        $('#searchingForTitles').hide();
-                    }
-                    else {
-                        // If the geolocationProgress div is not visible, it's because it has been canceled
-                        // So we simply ignore the result
-                    }
                 };
 
                 $('#geolocationProgress').html("Trying to find your location...");
@@ -811,6 +772,46 @@ define(function(require) {
             $("#searchTitles").focus();
             alert("Archive not set : please select an archive");
             $("#btnConfigure").click();
+        }
+    }
+    
+    /**
+     * Called when a geolocation request succeeds : start looking for titles around the location
+     * @param {type} pos Position given by geolocation
+     */
+    function geo_success(pos) {
+        var crd = pos.coords;
+
+        if ($('#geolocationProgress').is(":visible")) {
+            $('#geolocationProgress').prop("step", "SearchInTitleIndex");
+            $('#geolocationProgress').html("Found your location : lat:" + crd.latitude.toFixed(7) + ", long:" + crd.longitude.toFixed(7)
+                    + "<br/>Now looking for articles around this location...");
+
+            currentCoordinates = new geometry.point(crd.longitude, crd.latitude);
+
+            pushBrowserHistoryState(null, null, crd.latitude, crd.longitude, maxDistanceArticlesNearbySearch);
+
+            searchTitlesNearbyGivenCoordinates(crd.latitude, crd.longitude, maxDistanceArticlesNearbySearch);
+        }
+        else {
+            // If the geolocationProgress div is not visible, it's because it has been canceled
+            // So we simply ignore the result
+        }
+    }
+
+    /**
+     * Called when a geolocation fails
+     * @param {type} err
+     */
+    function geo_error(err) {
+        if ($('#geolocationProgress').is(":visible")) {
+            alert("Unable to geolocate your device : " + err.code + " : " + err.message);
+            $('#geolocationProgress').hide();
+            $('#searchingForTitles').hide();
+        }
+        else {
+            // If the geolocationProgress div is not visible, it's because it has been canceled
+            // So we simply ignore the result
         }
     }
 
