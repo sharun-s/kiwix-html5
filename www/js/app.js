@@ -240,7 +240,7 @@ define(['jquery', 'title', 'archive', 'util', 'cookies','geometry','osabstractio
         });
     }
 
-    if (storages !== null && storages.length > 0) {
+    if (storages !== null && storages.length > 0 && storages[0].storageName && storages[0].storageName.length > 0) {
         // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
         // This way, it is only done once at this moment, instead of being done several times in callbacks
         // After that, we can start looking for archives
@@ -324,7 +324,7 @@ define(['jquery', 'title', 'archive', 'util', 'cookies','geometry','osabstractio
         for (var i = 0; i < archiveDirectories.length; i++) {
             var archiveDirectory = archiveDirectories[i];
             if (archiveDirectory === "/") {
-                alert("It looks like you have put some archive files at the root of your sdcard. Please move them in a subdirectory");
+                alert("It looks like you have put some archive files at the root of your sdcard (or internal storage). Please move them in a subdirectory");
             }
             else {
                 comboArchiveList.options[i] = new Option(archiveDirectory, archiveDirectory);
@@ -346,8 +346,12 @@ define(['jquery', 'title', 'archive', 'util', 'cookies','geometry','osabstractio
             setLocalArchiveFromArchiveList();
         }
         else {
-            alert("Welcome to Evopedia! This application needs a wikipedia archive in your SD-card. Please download one and put it on the SD-card (see About section). Also check that your device is not connected to a computer through USB device storage (which locks the SD-card content)");
+            alert("Welcome to Evopedia! This application needs a wikipedia archive in your SD-card (or internal storage). Please download one and put it on the device (see About section). Also check that your device is not connected to a computer through USB device storage (which often locks the SD-card content)");
             $("#btnAbout").click();
+            var isAndroid = (navigator.userAgent.indexOf("Android") !== -1);
+            if (isAndroid) {
+                alert("You seem to be using an Android device. Be aware that there is a bug on Firefox (at least for versions 34 and 35), that prevents finding wikipedia archives in a SD-card (at least on some devices. See about section). Please put the archive in the internal storage if Evopedia can't find it.");
+            }
         }
     }
 
@@ -356,11 +360,13 @@ define(['jquery', 'title', 'archive', 'util', 'cookies','geometry','osabstractio
      */
     function setLocalArchiveFromArchiveList() {
         var archiveDirectory = $('#archiveList').val();
-        localArchive = new evopediaArchive.LocalArchive();
-        localArchive.initializeFromDeviceStorage(storages, archiveDirectory);
-        cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
-        // The archive is set : go back to home page to start searching
-        $("#btnHome").click();
+        if (archiveDirectory && archiveDirectory.length > 0) {
+            localArchive = new evopediaArchive.LocalArchive();
+            localArchive.initializeFromDeviceStorage(storages, archiveDirectory);
+            cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
+            // The archive is set : go back to home page to start searching
+            $("#btnHome").click();
+        }
     }
 
     /**
