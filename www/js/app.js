@@ -986,8 +986,8 @@ define(['jquery', 'abstractBackend', 'util', 'cookies','geometry','osabstraction
                                 // TODO : add the complete MIME-type of the image (as read from the ZIM file)
                                 image.attr("src", 'data:image;base64,' + util.uint8ArrayToBase64(content));
                             });
-                        }).fail(function () {
-                            console.error("could not find title for image:" + imageMatch[1]);
+                        }).fail(function (e) {
+                            console.error("could not find title for image:" + titleName, e);
                         });
                     }
                 }
@@ -1025,8 +1025,8 @@ define(['jquery', 'abstractBackend', 'util', 'cookies','geometry','osabstraction
                             }
                             link.replaceWith(cssElement);
                         });
-                    }).fail(function () {
-                        console.error("could not find title for CSS : " + hrefMatch[1]);
+                    }).fail(function (e) {
+                        console.error("could not find title for CSS : " + titleName, e);
                     });
                 }
             });
@@ -1045,8 +1045,8 @@ define(['jquery', 'abstractBackend', 'util', 'cookies','geometry','osabstraction
                             // var jsContent = encodeURIComponent(util.uintToString(content));
                             //script.attr("src", 'data:text/javascript;charset=UTF-8,' + jsContent);
                         });
-                    }).fail(function () {
-                        console.error("could not find title for javascript : " + srcMatch[1]);
+                    }).fail(function (e) {
+                        console.error("could not find title for javascript : " + titleName, e);
                     });
                 }
             });
