@@ -1003,7 +1003,7 @@ define(['jquery', 'abstractBackend', 'util', 'cookies','geometry','osabstraction
                 if (m) {
                     // It's a math image (Evopedia archive)
                     selectedArchive.loadMathImage(m[1], function(data) {
-                        image.attr("src", 'data:image/png;base64,' + data);
+                        util.feedNodeWithBlob(image, 'src', data, 'image/png');
                     });
                 } else {
                     // It's a standard image contained in the ZIM file
@@ -1016,8 +1016,8 @@ define(['jquery', 'abstractBackend', 'util', 'cookies','geometry','osabstraction
                         var titleName = decodeURIComponent(imageMatch[1]);
                         selectedArchive.getTitleByName(titleName).then(function(title) {
                             selectedArchive.readBinaryFile(title, function (readableTitleName, content) {
-                                // TODO : add the complete MIME-type of the image (as read from the ZIM file)
-                                image.attr("src", 'data:image;base64,' + util.uint8ArrayToBase64(content));
+                                // TODO : use the complete MIME-type of the image (as read from the ZIM file)
+                                util.feedNodeWithBlob(image, 'src', content, 'image');
                             });
                         }).fail(function (e) {
                             console.error("could not find title for image:" + titleName, e);
