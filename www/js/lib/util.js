@@ -20,12 +20,12 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['jquery'], function(jQuery) {
+define(['q'], function(q) {
 
     /**
      * Utility function : return true if the given string ends with the suffix
-     * @param str
-     * @param suffix
+     * @param {String} str
+     * @param {String} suffix
      * @returns {Boolean}
      */
     function endsWith(str, suffix) {
@@ -33,10 +33,97 @@ define(['jquery'], function(jQuery) {
     }
     
     /**
+     * Returns the same String with the first letter in upper-case
+     * @param {String} string
+     * @returns {String}
+     */
+    function ucFirstLetter(string) {
+        if (string && string.length >= 1) {
+            return string[0].toLocaleUpperCase() + string.slice(1);
+        } else {
+            return string;
+        }
+    }
+    
+    /**
+     * Returns the same String with the first letter in lower-case
+     * @param {String} string
+     * @returns {String}
+     */
+    function lcFirstLetter(string) {
+        if (string) {
+            if (string.length >= 1) {
+                return string.charAt(0).toLocaleLowerCase() + string.slice(1);
+            } else {
+                return string;
+            }
+        } else {
+            return string;
+        }
+    }
+    
+    /**
+     * Returns the same String with the first letter of every word in upper-case
+     * @param {String} string
+     * @returns {String}
+     */
+    function ucEveryFirstLetter(string) {
+        if (string) {
+            return string.replace( /\b\w/g, function (m) {
+                return m.toLocaleUpperCase();
+            });
+        } else {
+            return string;
+        }
+    }
+    
+    /**
+     * Generates an array of Titles, where all duplicates have been removed
+     * (it also sorts the titles)
+     * 
+     * @param {Array.<Title>} array of Titles
+     * @returns {Array.<Title>} same array of Titles, without duplicates
+     */
+    function removeDuplicateTitlesInArray(array) {
+        array.sort(function(titleA, titleB) {
+            if (titleA.title < titleB.title) return -1;
+            if (titleA.title > titleB.title) return 1;
+            return 0;
+        });
+        for(var i = 1; i < array.length; ){
+            if(array[i-1].title === array[i].title){
+                array.splice(i, 1);
+            } else {
+                i++;
+            }
+        }
+        return array;
+    }
+    
+    /**
+     * Generates an array of Strings, where all duplicates have been removed
+     * (without changing the order)
+     * It is optimized for small arrays.
+     * Source : http://codereview.stackexchange.com/questions/60128/removing-duplicates-from-an-array-quickly
+     * 
+     * @param {Array.<Title>} array of String
+     * @returns {Array.<Title>} same array of Strings, without duplicates
+     */
+    function removeDuplicateStringsInSmallArray(array) {
+        var unique = [];
+        for (var i = 0; i < array.length; i++) {
+            var current = array[i];
+            if (unique.indexOf(current) < 0)
+                unique.push(current);
+        }
+        return unique;
+    }
+    
+    /**
      * Read an integer encoded in 4 bytes, little endian
-     * @param {type} byteArray
-     * @param {type} firstIndex
-     * @returns {Number}
+     * @param {Array} byteArray
+     * @param {Integer} firstIndex
+     * @returns {Integer}
      */
     function readIntegerFrom4Bytes(byteArray, firstIndex) {
         var dataView = new DataView(byteArray.buffer, firstIndex, 4);
@@ -46,9 +133,9 @@ define(['jquery'], function(jQuery) {
 
     /**
      * Read an integer encoded in 2 bytes, little endian
-     * @param {type} byteArray
-     * @param {type} firstIndex
-     * @returns {Number}
+     * @param {Array} byteArray
+     * @param {Integer} firstIndex
+     * @returns {Integer}
      */
     function readIntegerFrom2Bytes(byteArray, firstIndex) {
         var dataView = new DataView(byteArray.buffer, firstIndex, 2);
@@ -58,10 +145,10 @@ define(['jquery'], function(jQuery) {
     
     /**
      * Read a float encoded in 2 bytes
-     * @param {type} byteArray
-     * @param {type} firstIndex
-     * @param {bool} littleEndian (optional)
-     * @returns {Number}
+     * @param {Array} byteArray
+     * @param {Integer} firstIndex
+     * @param {Boolean} littleEndian (optional)
+     * @returns {Float}
      */
     function readFloatFrom4Bytes(byteArray, firstIndex, littleEndian) {
         var dataView = new DataView(byteArray.buffer, firstIndex, 4);
@@ -71,7 +158,7 @@ define(['jquery'], function(jQuery) {
 
     /**
      * Convert a Uint8Array to a lowercase hex string
-     * @param {type} byteArray
+     * @param {Array} byteArray
      * @returns {String}
      */
     function uint8ArrayToHex(byteArray) {
@@ -88,7 +175,7 @@ define(['jquery'], function(jQuery) {
     /**
      * Convert a Uint8Array to base64
      * TODO : might be replaced by btoa() built-in function? https://developer.mozilla.org/en-US/docs/Web/API/window.btoa
-     * @param {type} byteArray
+     * @param {Array} byteArray
      * @returns {String}
      */
     function uint8ArrayToBase64(byteArray) {
@@ -116,14 +203,14 @@ define(['jquery'], function(jQuery) {
 
     /**
      * Reads a Uint8Array from the given file starting at byte offset begin and
-     * not including byte offset end.
-     * @param file
-     * @param begin
-     * @param end
-     * @returns jQuery promise
+     * for given size.
+     * @param {File} file
+     * @param {Integer} begin
+     * @param {Integer} size
+     * @returns {Promise} Promise
      */
-    function readFileSlice(file, begin, end) {
-        var deferred = jQuery.Deferred();
+    function readFileSlice(file, begin, size) {
+        var deferred = q.defer();
         var reader = new FileReader();
         reader.onload = function(e) {
             deferred.resolve(new Uint8Array(e.target.result));
@@ -131,21 +218,115 @@ define(['jquery'], function(jQuery) {
         reader.onerror = reader.onabort = function(e) {
             deferred.reject(e);
         };
-        reader.readAsArrayBuffer(file.slice(begin, end));
-        return deferred.promise();
+        reader.readAsArrayBuffer(file.slice(begin, begin + size));
+        return deferred.promise;
     }
 
+    /**
+     * Performs a binary search on indices begin <= i < end, utilizing query(i) to return where to
+     * continue the search.
+     * If lowerBound is not set, returns only indices where query returns 0 and null otherwise.
+     * If lowerBound is set, returns the smallest index where query does not return > 0.
+     * @param {Integer} begin
+     * @param {Integer} end
+     * @param query Function
+     * @param {Boolean} lowerBound
+     */
+    function binarySearch(begin, end, query, lowerBound) {
+        if (end <= begin)
+            return lowerBound ? begin : null;
+        var mid = Math.floor((begin + end) / 2);
+        return query(mid).then(function(decision)
+        {
+            if (decision < 0)
+                return binarySearch(begin, mid, query, lowerBound);
+            else if (decision > 0)
+                return binarySearch(mid + 1, end, query, lowerBound);
+            else
+                return mid;
+        });
+    };
     
+    /**
+     * Converts a Base64 Content to a Blob
+     * From https://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
+     * 
+     * @param {String} b64Data Base64-encoded data
+     * @param {String} contentType
+     * @param {Integer} sliceSize
+     * @returns {Blob}
+     */
+    function b64toBlob(b64Data, contentType, sliceSize) {
+        contentType = contentType || '';
+        sliceSize = sliceSize || 512;
+
+        var byteCharacters = atob(b64Data);
+        var byteArrays = [];
+
+        for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+            var slice = byteCharacters.slice(offset, offset + sliceSize);
+
+            var byteNumbers = new Array(slice.length);
+            for (var i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+
+            var byteArray = new Uint8Array(byteNumbers);
+
+            byteArrays.push(byteArray);
+        }
+
+        var blob = new Blob(byteArrays, {type: contentType});
+        return blob;
+    }
+    
+    /**
+     * Converts a UInt Array to a UTF-8 encoded string
+     * source : http://michael-rushanan.blogspot.de/2014/03/javascript-uint8array-hacks-and-cheat.html
+     * 
+     * @param {UIntArray} uintArray
+     * @returns {String}
+     */
+    function uintToString(uintArray) {
+        var s = '';
+        for (var i = 0; i < uintArray.length; i++) {
+            s += String.fromCharCode(uintArray[i]);
+        }
+        return s;
+    }
+    
+    /**
+     * Does a "left shift" on an integer.
+     * It is equivalent to int << bits (which works only on 32-bit integers),
+     * but compatible with 64-bit integers.
+     * 
+     * @param {Integer} int
+     * @param {Integer} bits
+     * @returns {Integer}
+     */
+    function leftShift(int, bits) {
+        return int * Math.pow(2, bits);
+    }
+
     /**
      * Functions and classes exposed by this module
      */
     return {
         endsWith: endsWith,
+        ucFirstLetter: ucFirstLetter,
+        lcFirstLetter: lcFirstLetter,
+        ucEveryFirstLetter: ucEveryFirstLetter,
+        removeDuplicateTitlesInArray: removeDuplicateTitlesInArray,
+        removeDuplicateStringsInSmallArray: removeDuplicateStringsInSmallArray,
         readIntegerFrom4Bytes: readIntegerFrom4Bytes,
         readIntegerFrom2Bytes : readIntegerFrom2Bytes,
         readFloatFrom4Bytes : readFloatFrom4Bytes,
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
-        readFileSlice : readFileSlice
+        readFileSlice : readFileSlice,
+        binarySearch: binarySearch,
+        b64toBlob: b64toBlob,
+        uintToString: uintToString,
+        leftShift: leftShift
     };
 });

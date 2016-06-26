@@ -21,27 +21,31 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jquery'],
- function(normalize_string, geometry, evopediaTitle, util, titleIterators, jQuery) {
-        
+define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'q'],
+ function(normalize_string, geometry, evopediaTitle, util, titleIterators, q) {
+     
     // Declare the webworker that can uncompress with bzip2 algorithm
-    var webworkerBzip2;
-    try {
-        // When using the application normally
-        webworkerBzip2 = new Worker("js/lib/webworker_bzip2.js");
-    }
-    catch(e) {
-        // When using unit tests
-        webworkerBzip2 = new Worker("www/js/lib/webworker_bzip2.js");
-    }
+    // When using the application normally, there's no prefix
+    // But the prefix www is needed when using unit tests
+    var webworkerBzip2 = new Worker(PREFIX_PATH_WEBWORKER_BZIP2 + "js/lib/webworker_bzip2.js");
     
     // Size of chunks read in the dump files : 128 KB
     var CHUNK_SIZE = 131072;
     // A rectangle representing all the earth globe
     var GLOBE_RECTANGLE = new geometry.rect(-181, -91, 362, 182);
-    
+        
     /**
-     * LocalArchive class : defines a wikipedia dump on the filesystem
+     * LocalArchive class : defines an Evopedia dump on the filesystem
+     * 
+     * @typedef LocalArchive
+     * @property {Array.<File>} _dataFiles Array of the data files
+     * @property {Array.<File>} _coordinateFiles Array of the coordinate files
+     * @property {File} _titleFile File that list all the titles
+     * @property {File} _mathIndexFile File that indexes the math images
+     * @property {Date} _date When the archive as been built
+     * @property {String} _language Language used by the archive
+     * @property {File} _titleSearchFile File that allows infix search
+     * @property {Boolean} _normalizedTitles Are the titles normalized in the archive?
      */
     function LocalArchive() {
         this._dataFiles = new Array();
@@ -55,12 +59,27 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
         this._normalizedTitles = true;
     };
 
+    LocalArchive.prototype.isReady = function() {
+        return this._titleFile !== null && this._dataFiles && this._dataFiles.length > 0;
+    };
+    
+    LocalArchive.prototype.needsWikimediaCSS = function() {
+        return true;
+    };
+
+    LocalArchive.prototype.hasCoordinates = function() {
+        return (this._coordinateFiles !== null && this._coordinateFiles.length > 0);
+    };
+
+    LocalArchive.prototype.parseTitleId = function(titleId) {
+        return evopediaTitle.Title.parseTitleId(this, titleId);
+    };
 
     /**
      * Read the title Files in the given directory, and assign them to the
      * current LocalArchive
      * 
-     * @param storage
+     * @param {StorageFirefoxOS|StoragePhoneGap} storage
      * @param directory
      */
     LocalArchive.prototype.readTitleFilesFromStorage = function(storage, directory) {
@@ -159,17 +178,23 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     };
     
     /**
+     * @callback callbackLocalArchive
+     * @param {LocalArchive} localArchive Ready-to-use LocalArchive instance
+     */
+    
+    /**
      * Read the metadata file, in order to populate its values in the current
      * instance
      * @param {File} file metadata.txt file
+     * @param {callbackLocalArchive} callback Callback called when the metadata file is read
      */
-    LocalArchive.prototype.readMetadataFile = function(file) {
+    LocalArchive.prototype.readMetadataFile = function(file, callback) {
         var currentLocalArchiveInstance = this;
         var reader = new FileReader();
         reader.onload = function(e) {
             var metadata = e.target.result;
-            currentLocalArchiveInstance.language = /\nlanguage ?\= ?([^ \n]+)/.exec(metadata)[1];
-            currentLocalArchiveInstance.date = /\ndate ?\= ?([^ \n]+)/.exec(metadata)[1];
+            currentLocalArchiveInstance._language = /\nlanguage ?\= ?([^ \n]+)/.exec(metadata)[1];
+            currentLocalArchiveInstance._date = /\ndate ?\= ?([^ \n]+)/.exec(metadata)[1];
             var normalizedTitlesRegex = /\nnormalized_titles ?\= ?([^ \n]+)/;
             if (normalizedTitlesRegex.exec(metadata)) {
                 var normalizedTitlesInt = normalizedTitlesRegex.exec(metadata)[1];
@@ -183,6 +208,9 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             else {
                 currentLocalArchiveInstance._normalizedTitles = true;
             }
+            if (callback) {
+                callback(currentLocalArchiveInstance);
+            }
         };
         reader.readAsText(file);
     };
@@ -190,8 +218,9 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     /**
      * Initialize the localArchive from given archive files
      * @param {type} archiveFiles
+     * @param {callbackLocalArchive} callback Callback called when the LocalArchive is initialized
      */
-    LocalArchive.prototype.initializeFromArchiveFiles = function(archiveFiles) {
+    LocalArchive.prototype.initializeFromArchiveFiles = function(archiveFiles, callback) {
         var dataFileRegex = /^wikipedia_(\d\d).dat$/;
         var coordinateFileRegex = /^coordinates_(\d\d).idx$/;
         this._dataFiles = new Array();
@@ -200,7 +229,7 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             var file = archiveFiles[i];
             if (file) {
                 if (file.name === "metadata.txt") {
-                    this.readMetadataFile(file);
+                    this.readMetadataFile(file, callback);
                 }
                 else if (file.name === "titles.idx") {
                     this._titleFile = file;
@@ -235,80 +264,54 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     
     /**
      * Initialize the localArchive from given directory, using DeviceStorage
-     * @param {type} storages List of DeviceStorages available
-     * @param {type} archiveDirectory
+     * @param {DeviceStorage} storage the directory resides in
+     * @param {String} archiveDirectory
      */
-    LocalArchive.prototype.initializeFromDeviceStorage = function(storages, archiveDirectory) {
-        // First, we have to find which DeviceStorage has been selected by the user
-        // It is the prefix of the archive directory
-        var storageNameRegex = /^\/([^\/]+)\//;
-        var regexResults = storageNameRegex.exec(archiveDirectory);
-        var selectedStorage = null;
-        if (regexResults && regexResults.length>0) {
-            var selectedStorageName = regexResults[1];
-            for (var i=0; i<storages.length; i++) {
-                var storage = storages[i];
-                if (selectedStorageName === storage.storageName) {
-                    // We found the selected storage
-                    selectedStorage = storage;
-                }
-            }
-            if (selectedStorage === null) {
-                alert("Unable to find which device storage corresponds to directory " + archiveDirectory);
-            }
-        }
-        else {
-            // This happens when the archiveDirectory is not prefixed by the name of the storage
-            // (in the Simulator, or with FxOs 1.0, or probably on devices that only have one device storage)
-            // In this case, we use the first storage of the list (there should be only one)
-            if (storages.length === 1) {
-                selectedStorage = storages[0];
-            }
-            else {
-                alert("Something weird happened with the DeviceStorage API : found a directory without prefix : "
-                    + archiveDirectory + ", but there were " + storages.length
-                    + " storages found with getDeviceStorages instead of 1");
-            }
-        }
-        this.readTitleFilesFromStorage(selectedStorage, archiveDirectory);
-        this.readDataFilesFromStorage(selectedStorage, archiveDirectory, 0);
-        this.readMathFilesFromStorage(selectedStorage, archiveDirectory);
-        this.readMetadataFileFromStorage(selectedStorage, archiveDirectory);
-        this.readCoordinateFilesFromStorage(selectedStorage, archiveDirectory, 1);
+    LocalArchive.prototype.initializeFromDeviceStorage = function(storage, archiveDirectory) {
+        this.readTitleFilesFromStorage(storage, archiveDirectory);
+        this.readDataFilesFromStorage(storage, archiveDirectory, 0);
+        this.readMathFilesFromStorage(storage, archiveDirectory);
+        this.readMetadataFileFromStorage(storage, archiveDirectory);
+        this.readCoordinateFilesFromStorage(storage, archiveDirectory, 1);
     };
 
     /**
      * Read the math files (math.idx and math.dat) in the given directory, and assign it to the
      * current LocalArchive
      * 
-     * @param storage
-     * @param directory
+     * @param {DeviceStorage} storage
+     * @param {String} directory
      */
     LocalArchive.prototype.readMathFilesFromStorage = function(storage, directory) {
         var currentLocalArchiveInstance = this;
         storage.get(directory + 'math.idx').then(function(file) {
-            currentLocalArchiveInstance.mathIndexFile = file;
+            currentLocalArchiveInstance._mathIndexFile = file;
         }, function(error) {
             alert("Error reading math index file in directory " + directory + " : " + error);
         });
         storage.get(directory + 'math.dat').then(function(file) {
-            currentLocalArchiveInstance.mathDataFile = file;
+            currentLocalArchiveInstance._mathDataFile = file;
         }, function(error) {
             alert("Error reading math data file in directory " + directory + " : " + error);
         });
     };
+    
+    /**
+     * @callback callbackTitleList
+     * @param {Array.<Title>} titleArray Array of Titles found
+     */
 
     /**
      * Read the titles in the title file starting at the given offset (maximum titleCount), and call the callbackFunction with this list of Title instances
-     * @param titleOffset offset into the title file - it has to point excatly
+     * @param {Integer} titleOffset offset into the title file - it has to point exactly
      *                    to the start of a title entry
-     * @param titleCount maximum number of titles to retrieve
-     * @param callbackFunction
+     * @param {Integer} titleCount maximum number of titles to retrieve
+     * @param {callbackTitleList} callbackFunction
      */
     LocalArchive.prototype.getTitlesStartingAtOffset = function(titleOffset, titleCount, callbackFunction) {
         var titles = [];
         var currentLocalArchiveInstance = this;
-        jQuery.when().then(function() {
+        q.when().then(function() {
             var iterator = new titleIterators.SequentialTitleIterator(currentLocalArchiveInstance, titleOffset);
             function addNext() {
                 if (titles.length >= titleCount) {
@@ -324,19 +327,19 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             return addNext();
         }).then(callbackFunction, errorHandler);
     };
-
+    
     /**
      * Look for a title by its name, and call the callbackFunction with this Title
      * If the title is not found, the callbackFunction is called with parameter null
-     * @param titleName
-     * @param callbackFunction
+     * @param {String} titleName
+     * @return {Promise} resolving to the title object or null if not found.
      */
-    LocalArchive.prototype.getTitleByName = function(titleName, callbackFunction) {
+    LocalArchive.prototype.getTitleByName = function(titleName) {
         var that = this;
         var normalize = this.getNormalizeFunction();
         var normalizedTitleName = normalize(titleName);
 
-        titleIterators.findPrefixOffset(this._titleFile, titleName, normalize).then(function(offset) {
+        return titleIterators.findPrefixOffset(this._titleFile, titleName, normalize).then(function(offset) {
             var iterator = new titleIterators.SequentialTitleIterator(that, offset);
             function check(title) {
                 if (title === null || normalize(title._name) !== normalizedTitleName) {
@@ -348,19 +351,19 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
                 }
             }
             return iterator.advance().then(check);
-        }).then(callbackFunction, errorHandler);
+        });
     };
 
     /**
      * Get a random title, and call the callbackFunction with this Title
-     * @param callbackFunction
+     * @param {callbackTitle} callbackFunction
      */
     LocalArchive.prototype.getRandomTitle = function(callbackFunction) {
         var that = this;
         var offset = Math.floor(Math.random() * this._titleFile.size);
-        jQuery.when().then(function() {
+        q.when().then(function() {
             return util.readFileSlice(that._titleFile, offset,
-                                  offset + titleIterators.MAX_TITLE_LENGTH).then(function(byteArray) {
+                                  titleIterators.MAX_TITLE_LENGTH).then(function(byteArray) {
                 // Let's find the next newLine
                 var newLineIndex = 0;
                 while (newLineIndex < byteArray.length && byteArray[newLineIndex] !== 10) {
@@ -374,9 +377,9 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
 
     /**
      * Find titles that start with the given prefix, and call the callbackFunction with this list of Titles
-     * @param prefix
-     * @param maxSize Maximum number of titles to read
-     * @param callbackFunction
+     * @param {String} prefix
+     * @param {Integer} maxSize Maximum number of titles to read
+     * @param {callbackTitleList} callbackFunction
      */
     LocalArchive.prototype.findTitlesWithPrefix = function(prefix, maxSize, callbackFunction) {
         var that = this;
@@ -388,30 +391,45 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             var iterator = new titleIterators.SequentialTitleIterator(that, offset);
             function addNext() {
                 if (titles.length >= maxSize) {
-                    return jQuery.Deferred().resolve(titles, maxSize);
+                    callbackFunction(titles, maxSize);
+                    return 1;
                 }
                 return iterator.advance().then(function(title) {
-                    if (title === null)
-                        return jQuery.Deferred().resolve(titles, maxSize);
+                    if (title === null) {
+                        callbackFunction(titles, maxSize);
+                        return 1;
+                    }
                     // check whether this title really starts with the prefix
                     var name = normalize(title._name);
-                    if (name.length < prefix.length || name.substring(0, prefix.length) !== prefix)
-                        return jQuery.Deferred().resolve(titles, maxSize);
+                    if (name.length < prefix.length || name.substring(0, prefix.length) !== prefix) {
+                        callbackFunction(titles, maxSize);
+                        return 1;
+                    }
                     titles.push(title);
                     return addNext();
                 });
             }
             return addNext();
-        }).then(callbackFunction, errorHandler);
+        }).then(function(){}, errorHandler);
     };
+    
+    /**
+     * @callback callbackStringContent
+     * @param {String} content String content
+     */
+    
+    /**
+     * @callback callbackUint8ArrayContent
+     * @param {Uint8Array} content String content
+     */
 
 
     /**
      * Read an article from the title instance, and call the
      * callbackFunction with the article HTML String
      * 
-     * @param title
-     * @param callbackFunction
+     * @param {Title} title
+     * @param {callbackStringContent} callbackFunction
      */
     LocalArchive.prototype.readArticle = function(title, callbackFunction) {
         var dataFile = null;
@@ -430,7 +448,8 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             // Check if the fileName ends with the expected file name (in case
             // of DeviceStorage usage, the fileName is prefixed by the
             // directory)
-            if (fileName.match(expectedFileName + "$") == expectedFileName) {
+            var regexpEndsWithExpectedFileName = new RegExp(expectedFileName + "$");
+            if (regexpEndsWithExpectedFileName.test(fileName)) {
                 dataFile = this._dataFiles[i];
             }
         }
@@ -454,11 +473,11 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
      * call the callbackFunction with the article HTML String.
      * Else, recursively call this function with readLength + CHUNK_SIZE
      * 
-     * @param title
-     * @param dataFile
-     * @param reader
-     * @param readLength
-     * @param callbackFunction
+     * @param {Title} title
+     * @param {File} dataFile
+     * @param {FileReader} reader
+     * @param {Integer} readLength
+     * @param {callbackStringContent} callbackFunction
      */
     LocalArchive.prototype.readArticleChunk = function(title, dataFile, reader,
             readLength, callbackFunction) {
@@ -525,10 +544,10 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
 
     /**
      * Load the math image specified by the hex string and call the
-     * callbackFunction with a base64 encoding of its data.
+     * callbackFunction with its Uint8Array data.
      * 
-     * @param hexString
-     * @param callbackFunction
+     * @param {String} hexString
+     * @param {callbackUint8ArrayContent} callbackFunction
      */
     LocalArchive.prototype.loadMathImage = function(hexString, callbackFunction) {
         var entrySize = 16 + 4 + 4;
@@ -546,19 +565,25 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
             var blob = mathDataFile.slice(pos, pos + length);
             reader.onload = function(e) {
                 var byteArray = new Uint8Array(e.target.result);
-                callbackFunction(util.uint8ArrayToBase64(byteArray));
+                callbackFunction(byteArray);
             };
             reader.readAsArrayBuffer(blob);
         });
     };
+    
+    /**
+     * @callback callbackPositionLength
+     * @param {Integer} pos Position
+     * @param {Integer} len Length
+     */
 
 
     /**
      * Recursive algorithm to find the position of the Math image in the data file
-     * @param {type} hexString
-     * @param {type} lo
-     * @param {type} hi
-     * @param {type} callbackFunction
+     * @param {String} hexString
+     * @param {Integer} lo
+     * @param {Integer} hi
+     * @param {callbackPositionLength} callbackFunction
      */
     LocalArchive.prototype.findMathDataPosition = function(hexString, lo, hi, callbackFunction) {
         var entrySize = 16 + 4 + 4;
@@ -597,8 +622,8 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
 
     /**
      * Resolve the redirect of the given title instance, and call the callbackFunction with the redirected Title instance
-     * @param title
-     * @param callbackFunction
+     * @param {Title} title
+     * @param {callbackTitle} callbackFunction
      */
     LocalArchive.prototype.resolveRedirect = function(title, callbackFunction) {
         var reader = new FileReader();
@@ -638,9 +663,9 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
      * Finds titles that are located inside the given rectangle
      * This is the main function, that has to be called from the application
      * 
-     * @param {type} rect Rectangle where to look for titles
-     * @param {type} maxTitles Maximum number of titles to find
-     * @param callbackFunction Function to call with the list of titles found
+     * @param {rect} rect Rectangle where to look for titles
+     * @param {Integer} maxTitles Maximum number of titles to find
+     * @param {callbackTitleList} callbackFunction Function to call with the list of titles found
      */
     LocalArchive.prototype.getTitlesInCoords = function(rect, maxTitles, callbackFunction) {
         if (callbackCounterForTitlesInCoordsSearch > 0) {
@@ -664,11 +689,12 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
      * found, another function is called to convert the title positions found
      * into Title instances (asynchronously)
      * 
-     * @param {type} localArchive
-     * @param {type} targetRect
+     * @callback callbackGetTitlesInCoordsInt
+     * @param {LocalArchive} localArchive
+     * @param {rect} targetRect
      * @param {type} titlePositionsFound
-     * @param {type} maxTitles
-     * @param {type} callbackFunction
+     * @param {Integer} maxTitles
+     * @param {callbackTitleList} callbackFunction
      */
     LocalArchive.callbackGetTitlesInCoordsInt = function(localArchive, targetRect, titlePositionsFound, maxTitles, callbackFunction) {
         // Search is over : now let's convert the title positions into Title instances
@@ -686,13 +712,13 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
      * It handles index i, then recursively calls itself for index i+1
      * When all the list is processed, the callbackFunction is called with the Title list
      * 
-     * @param {type} localArchive
-     * @param {type} targetRect
-     * @param {type} titlePositionsFound
-     * @param {type} i
-     * @param {type} titlesFound
-     * @param maxTitles
-     * @param {type} callbackFunction
+     * @param {LocalArchive} localArchive
+     * @param {rect} targetRect
+     * @param {Array.<Title>} titlePositionsFound
+     * @param {Integer} i
+     * @param {Array.<Title>} titlesFound
+     * @param {Integer} maxTitles
+     * @param {callbackTitleList} callbackFunction
      */
     LocalArchive.readTitlesFromTitleCoordsInTitleFile = function (localArchive, targetRect, titlePositionsFound, i, titlesFound, maxTitles, callbackFunction) {
         var titleOffset = titlePositionsFound[i]._titleOffset;
@@ -727,9 +753,9 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     /**
      * Reads 8 bytes in given byteArray, starting at startIndex, and convert
      * these 8 bytes into latitude and longitude (each uses 4 bytes, little endian)
-     * @param {type} byteArray
-     * @param {type} startIndex
-     * @returns {_L23.geometry.point}
+     * @param {Array} byteArray
+     * @param {Integer} startIndex
+     * @returns {point}
      */
     var readCoordinates = function(byteArray, startIndex) {
       var lat = util.readFloatFrom4Bytes(byteArray, startIndex, true);
@@ -741,15 +767,15 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     /**
      * Searches in a coordinate file some titles in a target rectangle.
      * This function recursively calls itself, in order to browse all the quadtree
-     * @param {type} localArchive
-     * @param {type} coordinateFileIndex
-     * @param {type} coordFilePos
-     * @param {type} targetRect
-     * @param {type} thisRect
-     * @param {type} maxTitles
-     * @param {type} titlePositionsFound
-     * @param {type} callbackFunction
-     * @param {type} callbackGetTitlesInCoordsInt
+     * @param {LocalArchive} localArchive
+     * @param {Integer} coordinateFileIndex
+     * @param {Integer} coordFilePos
+     * @param {rect} targetRect
+     * @param {rect} thisRect
+     * @param {Integer} maxTitles
+     * @param {Array.<Title>} titlePositionsFound
+     * @param {callbackTitleList} callbackFunction
+     * @param {callbackGetTitlesInCoordsInt} callbackGetTitlesInCoordsInt
      */
     LocalArchive.getTitlesInCoordsInt = function(localArchive, coordinateFileIndex, coordFilePos, targetRect, thisRect, maxTitles, titlePositionsFound, callbackFunction, callbackGetTitlesInCoordsInt) {
         var reader = new FileReader();
@@ -844,37 +870,10 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     };
 
     /**
-     *  Scans the DeviceStorage for archives
-     * 
-     * @param storages List of DeviceStorage instances
-     * @param callbackFunction Function to call with the list of directories where archives are found
-     */
-    LocalArchive.scanForArchives = function(storages, callbackFunction) {
-        var directories = [];
-        var promises = jQuery.map(storages, function(storage) {
-            return storage.scanForDirectoriesContainingFile('titles.idx')
-                .then(function(dirs) {
-                    jQuery.merge(directories, dirs);
-                    return true;
-                });
-        });
-        jQuery.when.apply(null, promises).then(function() {
-            callbackFunction(directories);
-        }, function(error) {
-            alert("Error scanning your SD card : " + error
-                    + ". If you're using the Firefox OS Simulator, please put the archives in "
-                    + "a 'fake-sdcard' directory inside your Firefox profile "
-                    + "(ex : ~/.mozilla/firefox/xxxx.default/extensions/fxos_1_x_simulator@mozilla.org/"
-                    + "profile/fake-sdcard/wikipedia_small_2010-08-14)");
-            callbackFunction(null);
-        });
-    };
-    
-    /**
      * Normalize the given String, if the current Archive is compatible.
      * If it's not, return the given String, as is.
-     * @param string : string to normalized
-     * @returns normalized string, or same string if archive is not compatible
+     * @param {String} string String to normalized
+     * @returns {String} normalized string, or same string if archive is not compatible
      */
     LocalArchive.prototype.normalizeStringIfCompatibleArchive = function(string) {
         if (this._normalizedTitles === true) {
@@ -899,8 +898,7 @@ define(['normalize_string', 'geometry', 'title', 'util', 'titleIterators', 'jque
     
     /**
      * ErrorHandler for FileReader
-     * @param {type} evt
-     * @returns {undefined}
+     * @param {Event} evt
      */
     function errorHandler(evt) {
         switch (evt.target.error.code) {

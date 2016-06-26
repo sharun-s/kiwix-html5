@@ -19,16 +19,90 @@
  * You should have received a copy of the GNU General Public License
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
-define(['jquery', 'title', 'archive', 'util', 'geometry'],
- function($, evopediaTitle, evopediaArchive, util, geometry) {
+define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geometry', 'utf8'],
+ function($, evopediaTitle, evopediaArchive, zimArchive, zimDirEntry, util, geometry, utf8) {
+    
+    var localEvopediaArchive;
+    var localZimArchive;
 
-    // Due to security restrictions in the browsers,
-    // we can not read directly the files and run the unit tests
-    // The user has to select them manually, then launch the tests
-    $('#runTests').on('click', function(e) {
-        runTests();
+    
+    /**
+     * Make an HTTP request for a Blob and return a Promise
+     * 
+     * @param {String} url URL to download from
+     * @param {String} name Name to give to the Blob instance
+     * @returns {Promise}
+     */
+    function makeBlobRequest(url, name) {
+        return new Promise(function (resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.onload = function () {
+                if (this.status >= 200 && this.status < 300) {
+                    var blob = new Blob([xhr.response], {type: 'application/octet-stream'});
+                    blob.name = name;
+                    resolve(blob);
+                } else {
+                    reject({
+                        status: this.status,
+                        statusText: xhr.statusText
+                    });
+                }
+            };
+            xhr.onerror = function () {
+                reject({
+                    status: this.status,
+                    statusText: xhr.statusText
+                });
+            };
+            xhr.responseType = 'blob';
+            xhr.send();
+        });
+    }
+    
+    // Let's try to download the Evopedia and ZIM files
+    var evopediaArchiveFiles = new Array();
+    var zimArchiveFiles = new Array();
+    
+    var blob1 = makeBlobRequest('tests/wikipedia_small_2010-08-14/wikipedia_00.dat', 'wikipedia_00.dat');
+    var blob2 = makeBlobRequest('tests/wikipedia_small_2010-08-14/titles.idx', 'titles.idx');
+    var blob3 = makeBlobRequest('tests/wikipedia_small_2010-08-14/metadata.txt', 'metadata.txt');
+    var blob4 = makeBlobRequest('tests/wikipedia_small_2010-08-14/math.idx', 'math.idx');
+    var blob5 = makeBlobRequest('tests/wikipedia_small_2010-08-14/math.dat', 'math.dat');
+    var blob6 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_01.idx', 'coordinates_01.idx');
+    var blob7 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_02.idx', 'coordinates_02.idx');
+    var blob8 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_03.idx', 'coordinates_03.idx');
+    var blob9 = makeBlobRequest('tests/wikipedia_en_ray_charles_2015-06.zim', 'wikipedia_en_ray_charles_2015-06.zim');
+    Promise.all([blob1, blob2, blob3, blob4, blob5, blob6, blob7, blob8, blob9])
+        .then(function(values) {
+            evopediaArchiveFiles.push(values[0]);
+            evopediaArchiveFiles.push(values[1]);
+            evopediaArchiveFiles.push(values[2]);
+            evopediaArchiveFiles.push(values[3]);
+            evopediaArchiveFiles.push(values[4]);
+            evopediaArchiveFiles.push(values[5]);
+            evopediaArchiveFiles.push(values[6]);
+            evopediaArchiveFiles.push(values[7]);
+            zimArchiveFiles.push(values[8]);
+    }).then(function() {
+        // Create a localEvopediaArchive and a localZimArchive from selected files, in order to run the following tests
+        localEvopediaArchive = new evopediaArchive.LocalArchive();
+        localEvopediaArchive.initializeFromArchiveFiles(evopediaArchiveFiles, function(archive) {
+            localZimArchive = new zimArchive.ZIMArchive(zimArchiveFiles, null, function (zimArchive) {
+                runTests();
+            });
+        });
     });
-
+    
+    /**
+     * Function to use in .fail() of an async test
+     * @param e Error
+     */
+    function errorHandlerAsyncTest(e) {
+        ok(false, "Error in async call", e);
+        start();
+    }
+ 
     var runTests = function() {
 
         module("environment");
@@ -36,15 +110,11 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
             equal("test", "test", "QUnit is properly configured");
         });
 
-        test("check archive files are selected", function() {
-            var archiveFiles = document.getElementById('archiveFiles').files;
-            ok(archiveFiles && archiveFiles[0] && archiveFiles[0].size > 0, "First archive file set and not empty");
-            ok(archiveFiles.length >= 5, "At least 5 files are selected");
+        test("check archive files are read", function() {
+            ok(evopediaArchiveFiles && evopediaArchiveFiles[0] && evopediaArchiveFiles[0].size > 0, "First archive file set and not empty");
+            ok(evopediaArchiveFiles.length >= 5, "At least 5 files are read");
+            ok(zimArchiveFiles && zimArchiveFiles[0] && zimArchiveFiles[0].size > 0, "ZIM file read and not empty");
         });
-
-        // Create a localArchive from selected files, in order to run the following tests
-        var localArchive = new evopediaArchive.LocalArchive();
-        localArchive.initializeFromArchiveFiles(document.getElementById('archiveFiles').files);
 
         module("evopedia_title_search_and_read");
         asyncTest("check getTitlesStartingAtOffset 0", function() {
@@ -70,7 +140,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 equal(secondTitleName, "Abortion", "Second article name is 'Abortion'");
                 start();
             };
-            localArchive.getTitlesStartingAtOffset(0, 4, callbackFunction);
+            localEvopediaArchive.getTitlesStartingAtOffset(0, 4, callbackFunction);
         });
 
         asyncTest("check findTitlesWithPrefix Am", function() {
@@ -90,12 +160,12 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 equal(titleList.length, 4, "4 titles should be found");
                 start();
             };
-            localArchive.findTitlesWithPrefix("Am", 10, callbackFunction);
+            localEvopediaArchive.findTitlesWithPrefix("Am", 10, callbackFunction);
         });
 
         // Create a title instance for the Article 'Abraham'
         var titleAbraham = new evopediaTitle.Title();
-        titleAbraham._archive = localArchive;
+        titleAbraham._archive = localEvopediaArchive;
         titleAbraham._articleLength = 10071;
         titleAbraham._blockOffset = 127640;
         titleAbraham._blockStart = 2364940;
@@ -110,7 +180,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 equal(title._name, "Diego_Velázquez", "Name of the title is correct");
                 start();
             };
-            localArchive.getTitleByName("Diego_Velázquez", callbackFunction);
+            localEvopediaArchive.getTitleByName("Diego_Velázquez").then(callbackFunction).fail(errorHandlerAsyncTest);
         });
         asyncTest("check getTitleByName with quote : Hundred Years' War", function() {
             expect(2);
@@ -119,12 +189,12 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 equal(title._name, "Hundred_Years'_War", "Name of the title is correct");
                 start();
             };
-            localArchive.getTitleByName("Hundred_Years'_War", callbackFunction);
+            localEvopediaArchive.getTitleByName("Hundred_Years'_War").then(callbackFunction).fail(errorHandlerAsyncTest);
         });
 
         test("check parseTitleFromId", function() {
             var titleId = "small|2010-08-14|0|57|Abraham|2364940|127640|10071";
-            var title = evopediaTitle.Title.parseTitleId(localArchive, titleId);
+            var title = evopediaTitle.Title.parseTitleId(localEvopediaArchive, titleId);
             ok(title, "Title instance created");
             deepEqual(title, titleAbraham, "Parsing from titleId gives Abraham title");
         });
@@ -139,7 +209,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 ok(htmlArticle.match("</div>[ \t]$"), "</div> at the end");
                 start();
             };
-            localArchive.readArticle(titleAbraham, callbackFunction);
+            localEvopediaArchive.readArticle(titleAbraham, callbackFunction);
         });
 
         asyncTest("check getTitleByName and readArticle with escape bytes", function() {
@@ -155,9 +225,9 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
             var callbackTitleFound = function(title) {
                 ok(title !== null, "Title found");
                 equal(title._name, "AIDS", "Name of the title is correct");
-                localArchive.readArticle(title, callbackArticleRead);
+                localEvopediaArchive.readArticle(title, callbackArticleRead);
             };
-            localArchive.getTitleByName("AIDS", callbackTitleFound);
+            localEvopediaArchive.getTitleByName("AIDS").then(callbackTitleFound).fail(errorHandlerAsyncTest);
         });
         
         asyncTest("check getTitleByName with a title name that does not exist in the archive", function() {
@@ -166,7 +236,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 ok(title === null, "No title found because it does not exist in the archive");
                 start();
             };
-            localArchive.getTitleByName("abcdef", callbackTitleFound);
+            localEvopediaArchive.getTitleByName("abcdef").then(callbackTitleFound).fail(errorHandlerAsyncTest);
         });
 
         asyncTest("check loading a math image", function() {
@@ -174,13 +244,13 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
             var callbackFunction = function(data) {
                 ok(data && data.length > 0, "Image not empty");
                 // edb3069b82c68d270f6642c171cc6293.png should give a "1 1/2" formula (can be found in "Rational_number" article)
-                equal(data,
+                equal(util.uint8ArrayToBase64(data),
                         "iVBORw0KGgoAAAANSUhEUgAAABUAAAApBAMAAAAogX9zAAAAMFBMVEX///8AAADm5uZAQEDMzMwWFhYiIiIwMDBQUFCenp62trZiYmIMDAwEBASKiop0dHRvDVFEAAAAb0lEQVQY02NggAAmAwY4cE2AM9VNEWwG9oFhcxgKN9HJhYyCQCBApgs5jYMVYCKrGdgOwNgGDCzSMLYwA4MYjH2cgeEawjgWCQSbQwjBdpyAYMch2f4Awd7HwAVj8n1g4Iaxl+7e3Q1jXxQUlGMAAJkfGS29Qu04AAAAAElFTkSuQmCC",
                         "Math image corresponds to '1 1/2' png");
                 start();
             };
 
-            localArchive.loadMathImage("edb3069b82c68d270f6642c171cc6293", callbackFunction);
+            localEvopediaArchive.loadMathImage("edb3069b82c68d270f6642c171cc6293", callbackFunction);
         });
         
         module("geometry");
@@ -306,6 +376,21 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
            var float = util.readFloatFrom4Bytes(byteArray, 0);
            equal(float, -118.625, "the IEEE_754 float should be converted as -118.625");
         });
+        test("check upper/lower case variations", function() {
+            var testString1 = "téléphone";
+            var testString2 = "Paris";
+            var testString3 = "le Couvre-chef Est sur le porte-manteaux";
+            var testString4 = "épée";
+            equal(util.ucFirstLetter(testString1), "Téléphone", "The first letter should be upper-case");
+            equal(util.lcFirstLetter(testString2), "paris", "The first letter should be lower-case");
+            equal(util.ucEveryFirstLetter(testString3), "Le Couvre-Chef Est Sur Le Porte-Manteaux", "The first letter of every word should be upper-case");
+            equal(util.ucFirstLetter(testString4), "Épée", "The first letter should be upper-case (with accent)");
+        });
+        test("check remove duplicates of an array of title objects", function() {
+            var array = [{title:"a"}, {title:"b"}, {title:"c"}, {title:"a"}, {title:"c"}, {title:"d"}];
+            var expectedArray = [{title:"a"}, {title:"b"}, {title:"c"}, {title:"d"}];
+            deepEqual(util.removeDuplicateTitlesInArray(array), expectedArray, "Duplicates should be removed from the array");
+        });
         
         module("evopedia_articles_nearby");
         asyncTest("check articles found nearby France and Germany", function() {
@@ -335,7 +420,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 start();
             };
             var rectFranceGermany = new geometry.rect(0,40,10,10);
-            localArchive.getTitlesInCoords(rectFranceGermany, 10, callbackTitlesNearbyFound);
+            localEvopediaArchive.getTitlesInCoords(rectFranceGermany, 10, callbackTitlesNearbyFound);
         });
         
         asyncTest("check articles found nearby France and Germany, with a maximum", function() {
@@ -347,7 +432,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                 start();
             };
             var rectFranceGermany = new geometry.rect(0,40,10,10);
-            localArchive.getTitlesInCoords(rectFranceGermany, 2, callbackTitlesNearbyMaximumFound);
+            localEvopediaArchive.getTitlesInCoords(rectFranceGermany, 2, callbackTitlesNearbyMaximumFound);
         });
         
         asyncTest("check articles found nearby London", function() {
@@ -379,7 +464,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                     pointLondon.y - maxDistance,
                     maxDistance * 2,
                     maxDistance * 2);
-            localArchive.getTitlesInCoords(rectLondon, 10, callbackTitlesNearbyLondonFound);
+            localEvopediaArchive.getTitlesInCoords(rectLondon, 10, callbackTitlesNearbyLondonFound);
         });
         
         asyncTest("check articles found nearby Amsterdam", function() {
@@ -405,7 +490,7 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                     pointAmsterdam.y - maxDistance,
                     maxDistance * 2,
                     maxDistance * 2);
-            localArchive.getTitlesInCoords(rectAmsterdam, 10, callbackTitlesNearbyAmsterdamFound);
+            localEvopediaArchive.getTitlesInCoords(rectAmsterdam, 10, callbackTitlesNearbyAmsterdamFound);
         });
         
         module("evopedia_random_title");
@@ -417,7 +502,184 @@ define(['jquery', 'title', 'archive', 'util', 'geometry'],
                
                 start();
             };
-            localArchive.getRandomTitle(callbackRandomTitleFound);
+            localEvopediaArchive.getRandomTitle(callbackRandomTitleFound);
+        });
+        
+        module("ZIM initialisation");
+        test("ZIM archive is ready", function() {
+            ok(localZimArchive.isReady() === true, "ZIM archive should be set as ready");
+        });
+                
+        module("zim_title_search_and_read");
+        asyncTest("check DirEntry.fromStringId 'A Fool for You'", function() {
+            var aFoolForYouDirEntry = zimDirEntry.DirEntry.fromStringId(localZimArchive._file, "5856|7|A|0|2|A_Fool_for_You.html|A Fool for You|false|undefined");
+
+            expect(2);
+            var callbackFunction = function(title, htmlArticle) {
+                ok(htmlArticle && htmlArticle.length > 0, "Article not empty");
+                // Remove new lines
+                htmlArticle = htmlArticle.replace(/[\r\n]/g, " ");
+                ok(htmlArticle.match("^.*<h1[^>]*>A Fool for You</h1>"), "'A Fool for You' title somewhere in the article");
+                start();
+            };
+            localZimArchive.readArticle(aFoolForYouDirEntry, callbackFunction);
+        });
+        asyncTest("check findTitlesWithPrefix 'A'", function() {
+            expect(2);
+            var callbackFunction = function(titleList) {
+                ok(titleList && titleList.length === 5, "Article list with 5 results");
+                var firstTitle = titleList[0];
+                equal(firstTitle.title , 'A Fool for You', 'First result should be "A Fool for You"');
+                start();
+            };
+            localZimArchive.findTitlesWithPrefix('A', 5, callbackFunction);
+        });
+        asyncTest("check findTitlesWithPrefix 'a'", function() {
+            expect(2);
+            var callbackFunction = function(titleList) {
+                ok(titleList && titleList.length === 5, "Article list with 5 results");
+                var firstTitle = titleList[0];
+                equal(firstTitle.title , 'A Fool for You', 'First result should be "A Fool for You"');
+                start();
+            };
+            localZimArchive.findTitlesWithPrefix('a', 5, callbackFunction);
+        });
+        asyncTest("check findTitlesWithPrefix 'blues brothers'", function() {
+            expect(2);
+            var callbackFunction = function(titleList) {
+                ok(titleList && titleList.length === 3, "Article list with 3 result");
+                var firstTitle = titleList[0];
+                equal(firstTitle.title , 'Blues Brothers (film)', 'First result should be "Blues Brothers (film)"');
+                start();
+            };
+            localZimArchive.findTitlesWithPrefix('blues brothers', 5, callbackFunction);
+        });
+        asyncTest("article '(The Night Time Is) The Right Time' correctly redirects to 'Night Time Is the Right Time'", function() {
+            expect(6);
+            localZimArchive.getTitleByName("A/(The_Night_Time_Is)_The_Right_Time.html").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    ok(title.isRedirect(), "Title is a redirect.");
+                    equal(title.name(), "(The Night Time Is) The Right Time", "Correct redirect title name.");
+                    localZimArchive.resolveRedirect(title, function(title) {
+                        ok(title !== null, "Title found");
+                        ok(!title.isRedirect(), "Title is not a redirect.");
+                        equal(title.name(), "Night Time Is the Right Time", "Correct redirected title name.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("article 'Raelettes' correctly redirects to 'The Raelettes'", function() {
+            expect(6);
+            localZimArchive.getTitleByName("A/Raelettes.html").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    ok(title.isRedirect(), "Title is a redirect.");
+                    equal(title.name(), "Raelettes", "Correct redirect title name.");
+                    localZimArchive.resolveRedirect(title, function(title) {
+                        ok(title !== null, "Title found");
+                        ok(!title.isRedirect(), "Title is not a redirect.");
+                        equal(title.name(), "The Raelettes", "Correct redirected title name.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("article 'Bein Green' correctly redirects to 'Bein' Green", function() {
+            expect(6);
+            localZimArchive.getTitleByName("A/Bein_Green.html").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    ok(title.isRedirect(), "Title is a redirect.");
+                    equal(title.name(), "Bein Green", "Correct redirect title name.");
+                    localZimArchive.resolveRedirect(title, function(title) {
+                        ok(title !== null, "Title found");
+                        ok(!title.isRedirect(), "Title is not a redirect.");
+                        equal(title.name(), "Bein' Green", "Correct redirected title name.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("article 'America, the Beautiful' correctly redirects to 'America the Beautiful'", function() {
+            expect(6);
+            localZimArchive.getTitleByName("A/America,_the_Beautiful.html").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    ok(title.isRedirect(), "Title is a redirect.");
+                    equal(title.name(), "America, the Beautiful", "Correct redirect title name.");
+                    localZimArchive.resolveRedirect(title, function(title) {
+                        ok(title !== null, "Title found");
+                        ok(!title.isRedirect(), "Title is not a redirect.");
+                        equal(title.name(), "America the Beautiful", "Correct redirected title name.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("Image 'm/RayCharles_AManAndHisSoul.jpg' can be loaded", function() {
+            expect(4);
+            localZimArchive.getTitleByName("I/m/RayCharles_AManAndHisSoul.jpg").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    equal(title.url, "I/m/RayCharles_AManAndHisSoul.jpg", "URL is correct.");
+                    localZimArchive.readBinaryFile(title, function(title, data) {
+                        equal(data.length, 4951, "Data length is correct.");
+                        var beginning = new Uint8Array([255, 216, 255, 224, 0, 16, 74, 70,
+                                                         73, 70, 0, 1, 1, 0, 0, 1]);
+                        equal(data.slice(0, beginning.length).toSource(), beginning.toSource(), "Data beginning is correct.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("Stylesheet '-/s/style.css' can be loaded", function() {
+            expect(4);
+            localZimArchive.getTitleByName("-/s/style.css").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    equal(title.url, "-/s/style.css", "URL is correct.");
+                    localZimArchive.readBinaryFile(title, function(title, data) {
+                        equal(data.length, 104495, "Data length is correct.");
+                        data = utf8.parse(data);
+                        var beginning = "\n/* start http://en.wikipedia.org/w/load.php?debug=false&lang=en&modules=site&only=styles&skin=vector";
+                        equal(data.slice(0, beginning.length), beginning, "Content starts correctly.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("Javascript '-/j/local.js' can be loaded", function() {
+            expect(4);
+            localZimArchive.getTitleByName("-/j/local.js").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    equal(title.url, "-/j/local.js", "URL is correct.");
+                    localZimArchive.readBinaryFile(title, function(title, data) {
+                        equal(data.length, 41, "Data length is correct.");
+                        data = utf8.parse(data);
+                        var beginning = "console.log( \"mw.loader";
+                        equal(data.slice(0, beginning.length), beginning, "Content starts correctly.");
+                        start();
+                    });
+                }   
+                else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
         });
     };
 });

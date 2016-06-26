@@ -21,18 +21,25 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['utf8', 'title', 'util', 'jquery'], function(utf8, evopediaTitle, util, jQuery) {
+define(['utf8', 'title', 'util', 'q'], function(utf8, evopediaTitle, util, q) {
     // Maximum length of a title
     // 300 bytes is arbitrary : we actually do not really know how long the titles will be
     // But mediawiki titles seem to be limited to ~200 bytes, so 300 should be more than enough
     var MAX_TITLE_LENGTH = 300;
-
+    
     /**
      * Iterates over all titles starting at the given offset.
      * The asynchronous method advance has to be called before this.title is
      * valid.
-     * @param archive
-     * @param offset
+     * 
+     * @typedef SequentialTitleIterator
+     * @property {File} _titleFile Title File
+     * @property {LocalArchive} _archive Archive
+     * @property {Integer} _offset
+     * @property {Title} _title
+     * 
+     * @param {LocalArchive} archive
+     * @param {Integer} offset
      */
     function SequentialTitleIterator(archive, offset) {
         this._titleFile = archive._titleFile;
@@ -42,17 +49,17 @@ define(['utf8', 'title', 'util', 'jquery'], function(utf8, evopediaTitle, util, 
     };
     /**
      * Advances to the next title (or the first), if possible.
-     * @returns jQuery promise containing the next title or null if there is no
+     * @returns {Promise} Promise containing the next title or null if there is no
      * next title
      */
     SequentialTitleIterator.prototype.advance = function() {
         if (this._offset >= this._titleFile.size) {
             this._title = null;
-            return jQuery.when(this._title);
+            return q.when(this._title);
         }
         var that = this;
         return util.readFileSlice(this._titleFile, this._offset,
-                                  this._offset + MAX_TITLE_LENGTH).then(function(byteArray) {
+                                  MAX_TITLE_LENGTH).then(function(byteArray) {
             var newLineIndex = 15;
             while (newLineIndex < byteArray.length && byteArray[newLineIndex] !== 10) {
                 newLineIndex++;
@@ -68,10 +75,10 @@ define(['utf8', 'title', 'util', 'jquery'], function(utf8, evopediaTitle, util, 
      * Searches for the offset into the given title file where the first title
      * with the given prefix (or lexicographically larger) is located.
      * The given function normalize is applied to every title before comparison.
-     * @param titleFile
-     * @param prefix
+     * @param {File} titleFile
+     * @param {String} prefix
      * @param normalize function to be applied to every title before comparison
-     * @returns jQuery promise giving the offset
+     * @returns Promise giving the offset
      */
     function findPrefixOffset(titleFile, prefix, normalize) {
         prefix = normalize(prefix);
@@ -81,10 +88,10 @@ define(['utf8', 'title', 'util', 'jquery'], function(utf8, evopediaTitle, util, 
             if (lo >= hi - 1) {
                 if (lo > 0)
                     lo += 2; // Let lo point to the start of an entry
-                return jQuery.when(lo);
+                return q.when(lo);
             } else {
                 var mid = Math.floor((lo + hi) / 2);
-                return util.readFileSlice(titleFile, mid, mid + MAX_TITLE_LENGTH).then(function(byteArray) {
+                return util.readFileSlice(titleFile, mid, MAX_TITLE_LENGTH).then(function(byteArray) {
                     // Look for the index of the next NewLine
                     var newLineIndex = 0;
                     while (newLineIndex < byteArray.length && byteArray[newLineIndex] !== 10) {
