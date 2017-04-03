@@ -20,7 +20,7 @@
  * along with Evopedia (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['q'], function(q) {
+define(['q','xregexp'], function(q, XRegExp) {
 
     /**
      * Utility function : return true if the given string ends with the suffix
@@ -62,6 +62,8 @@ define(['q'], function(q) {
         }
     }
     
+    var XRegExpWordBoundary = new XRegExp("(?:^|[^\\p{L}]).","g");
+    
     /**
      * Returns the same String with the first letter of every word in upper-case
      * @param {String} string
@@ -69,8 +71,12 @@ define(['q'], function(q) {
      */
     function ucEveryFirstLetter(string) {
         if (string) {
-            return string.replace( /\b\w/g, function (m) {
-                return m.toLocaleUpperCase();
+//            return string.replace( /\b\w/g, function (m) {
+//                return m.toLocaleUpperCase();
+//            });
+
+            return XRegExp.replace(string, XRegExpWordBoundary, function(match) {
+                return match.toLocaleUpperCase();
             });
         } else {
             return string;

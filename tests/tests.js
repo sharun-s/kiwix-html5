@@ -384,10 +384,16 @@ define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geom
             var testString2 = "Paris";
             var testString3 = "le Couvre-chef Est sur le porte-manteaux";
             var testString4 = "épée";
+            var testString5 = "écrevisse américaine";
+            var testString6 = "une épée éfilée";
+            var testString7 = " épée";
             equal(util.ucFirstLetter(testString1), "Téléphone", "The first letter should be upper-case");
             equal(util.lcFirstLetter(testString2), "paris", "The first letter should be lower-case");
             equal(util.ucEveryFirstLetter(testString3), "Le Couvre-Chef Est Sur Le Porte-Manteaux", "The first letter of every word should be upper-case");
             equal(util.ucFirstLetter(testString4), "Épée", "The first letter should be upper-case (with accent)");
+            equal(util.ucEveryFirstLetter(testString5), "Écrevisse Américaine", "The first letter of every word should be upper-case (with accents inside the words)");
+            equal(util.ucEveryFirstLetter(testString6), "Une Épée Éfilée", "The first letter of every word should be upper-case (with accents at the beginning of the words)");
+            equal(util.ucEveryFirstLetter(testString7), " Épée", "The first letter of every word should be upper-case (with a string starting with a space)");
         });
         test("check remove duplicates of an array of title objects", function() {
             var array = [{title:"a"}, {title:"b"}, {title:"c"}, {title:"a"}, {title:"c"}, {title:"d"}];

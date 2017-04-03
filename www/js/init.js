@@ -32,7 +32,8 @@ require.config({
         'jquery': 'jquery-2.1.4',
         'bootstrap': 'bootstrap',
         'title': 'title',
-        'archive': 'archive'
+        'archive': 'archive',
+        'xregexp': 'xregexp-all'
     },
     shim: {
         'jquery' : {
