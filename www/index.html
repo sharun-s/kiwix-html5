@@ -209,9 +209,9 @@
                     <div id="contentInjectionModeDiv">
                         Do not touch unless you know what you're doing. <br />
                         Content injection mode : <br/>
-                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">JQuery</label> (slow and memory hungry, but safer)
+                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">JQuery</label> (slow, memory hungry, and not compatible with all ZIM files, but compatible with all devices)
                         <br>
-                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">ServiceWorker</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
+                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">ServiceWorker</label> (faster and compatible with more ZIM files, but not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
                     </div>
                     <div id="serviceWorkerStatus"></div>
                     <div id="messageChannelStatus"></div>
