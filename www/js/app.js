@@ -310,9 +310,10 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
      * to initialize it, or to keep it alive.
      * This MessageChannel allows a 2-way communication between the ServiceWorker
      * and the application
+     * @param {Boolean} isInit
      */
-    function initOrKeepAliveServiceWorker() {
-        if (contentInjectionMode === 'serviceworker') {
+    function initOrKeepAliveServiceWorker(isInit) {
+        if (isInit || contentInjectionMode === 'serviceworker') {
             // Create a new messageChannel
             var tmpMessageChannel = new MessageChannel();
             tmpMessageChannel.port1.onmessage = handleMessageChannelMessage;
@@ -322,7 +323,7 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
             console.log("init message sent to ServiceWorker");
             // Schedule to do it again regularly to keep the 2-way communication alive.
             // See https://github.com/kiwix/kiwix-html5/issues/145 to understand why
-            setTimeout(initOrKeepAliveServiceWorker, DELAY_BETWEEN_KEEPALIVE_SERVICEWORKER);
+            setTimeout(initOrKeepAliveServiceWorker, DELAY_BETWEEN_KEEPALIVE_SERVICEWORKER, false);
         }
     }
     
@@ -370,7 +371,7 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
                         if (statechangeevent.target.state === 'activated') {
                             // Create the MessageChannel
                             // and send the 'init' message to the ServiceWorker
-                            initOrKeepAliveServiceWorker();
+                            initOrKeepAliveServiceWorker(true);
                         }
                     });
                     if (serviceWorker.state === 'activated') {
@@ -378,16 +379,14 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
                         // We need to re-create the MessageChannel
                         // and send the 'init' message to the ServiceWorker
                         // in case it has been stopped and lost its context
-                        initOrKeepAliveServiceWorker();
+                        initOrKeepAliveServiceWorker(true);
                     }
                 }, function (err) {
                     console.error('error while registering serviceWorker', err);
                     refreshAPIStatus();
                 });
             } else {
-                console.log("try to re-post an init message to ServiceWorker, to re-enable it in case it was disabled");
-                navigator.serviceWorker.controller.postMessage({'action': 'init'}, [messageChannel.port2]);
-                console.log("init message sent to ServiceWorker");
+                initOrKeepAliveServiceWorker(true);
             }
         }
         $('input:radio[name=contentInjectionMode]').prop('checked', false);
