@@ -72,8 +72,11 @@ define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geom
     var blob6 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_01.idx', 'coordinates_01.idx');
     var blob7 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_02.idx', 'coordinates_02.idx');
     var blob8 = makeBlobRequest('tests/wikipedia_small_2010-08-14/coordinates_03.idx', 'coordinates_03.idx');
-    var blob9 = makeBlobRequest('tests/wikipedia_en_ray_charles_2015-06.zim', 'wikipedia_en_ray_charles_2015-06.zim');
-    Promise.all([blob1, blob2, blob3, blob4, blob5, blob6, blob7, blob8, blob9])
+    var splitBlobs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o'].map(function(c) {
+        var filename = 'wikipedia_en_ray_charles_2015-06.zima' + c;
+        return makeBlobRequest('tests/' + filename, filename);
+    });
+    Promise.all([blob1, blob2, blob3, blob4, blob5, blob6, blob7, blob8].concat(splitBlobs))
         .then(function(values) {
             evopediaArchiveFiles.push(values[0]);
             evopediaArchiveFiles.push(values[1]);
@@ -83,7 +86,7 @@ define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geom
             evopediaArchiveFiles.push(values[5]);
             evopediaArchiveFiles.push(values[6]);
             evopediaArchiveFiles.push(values[7]);
-            zimArchiveFiles.push(values[8]);
+            zimArchiveFiles = values.slice(8);
     }).then(function() {
         // Create a localEvopediaArchive and a localZimArchive from selected files, in order to run the following tests
         localEvopediaArchive = new evopediaArchive.LocalArchive();
@@ -498,7 +501,7 @@ define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geom
             expect(2);
             var callbackRandomTitleFound = function(title) {
                 ok(title !== null, "One title should be found");
-                ok(title._name !== null, "The random title should have a name" );
+                ok(title.name() !== null, "The random title should have a name" );
                
                 start();
             };
@@ -680,6 +683,46 @@ define(['jquery', 'title', 'archive', 'zimArchive', 'zimDirEntry', 'util', 'geom
                     start();
                 }
             }).fail(errorHandlerAsyncTest);
+        });
+        asyncTest("Split article 'A/Ray_Charles.html' can be loaded", function() {
+            expect(6);
+            localZimArchive.getTitleByName("A/Ray_Charles.html").then(function(title) {
+                ok(title !== null, "Title found");
+                if (title !== null) {
+                    equal(title.url, "A/Ray_Charles.html", "URL is correct.");
+                    localZimArchive.readArticle(title, function(titleName, data) {
+                        equal(titleName, "Ray Charles", "Title is correct.");
+                        equal(data.length, 157186, "Data length is correct.");
+                        equal(data.indexOf("the only true genius in show business"), 5535, "Specific substring at beginning found.");
+                        equal(data.indexOf("Random Access Memories"), 154107, "Specific substring at end found.");
+                        start();
+                    });
+                } else {
+                    start();
+                }
+            }).fail(errorHandlerAsyncTest);
+        });
+        
+        module("zim_random_and_main_title");
+        asyncTest("check that a random title is found", function() {
+            expect(2);
+            var callbackRandomTitleFound = function(title) {
+                ok(title !== null, "One title should be found");
+                ok(title.name() !== null, "The random title should have a name" );
+               
+                start();
+            };
+            localZimArchive.getRandomTitle(callbackRandomTitleFound);
+        });
+        asyncTest("check that the main title is found", function() {
+            expect(2);
+            var callbackMainPageTitleFound = function(title) {
+                ok(title !== null, "Main title should be found");
+                equal(title.name(), "Summary", "The main title should be called Summary" );
+               
+                start();
+            };
+            localZimArchive.getMainPageTitle(callbackMainPageTitleFound);
         });
     };
 });

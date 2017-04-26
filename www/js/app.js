@@ -116,7 +116,7 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
             }
         }
         else {
-            alert("There is no coordinate file in this archive. This feature is only available on archives that have coordinate files (coordinates_xx.idx)");
+            alert("There are no usable coordinates in this archive. This feature is only available on deprecated Evopedia archives for now");
         }
     });
     $("#btnEnlargeMaxDistance").on("click", function(e) {
@@ -203,6 +203,10 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
         $('#geolocationProgress').hide();
         $("#articleContent").contents().empty();
         $('#searchingForTitles').hide();
+        if (selectedArchive !== null && selectedArchive.isReady()) {
+            $("#welcomeText").hide();
+            goToMainArticle();
+        }
         return false;
     });
     $('#btnConfigure').on('click', function(e) {
@@ -646,12 +650,14 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
                         + " storages found with getDeviceStorages instead of 1");
                 }
             }
-            selectedArchive = backend.loadArchiveFromDeviceStorage(selectedStorage, archiveDirectory);
-            cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
-            if (checkSelectedArchiveCompatibilityWithInjectionMode()) {
-                // The archive is set : go back to home page to start searching
-                $("#btnHome").click();
-            }
+            selectedArchive = backend.loadArchiveFromDeviceStorage(selectedStorage, archiveDirectory, function (archive) {
+                cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
+                if (checkSelectedArchiveCompatibilityWithInjectionMode()) {
+                    // The archive is set : go back to home page to start searching
+                    $("#btnHome").click();
+                }
+            });
+            
         }
     }
 
@@ -663,16 +669,38 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
         $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
     }
 
+    function setLocalArchiveFromFileList(files) {
+        selectedArchive = backend.loadArchiveFromFiles(files, function(archive){
+            if (checkSelectedArchiveCompatibilityWithInjectionMode()) {
+                // The archive is set : go back to home page to start searching
+                $("#btnHome").click();
+            }
+        });
+        
+    }
     /**
      * Sets the localArchive from the File selects populated by user
      */
     function setLocalArchiveFromFileSelect() {
-        selectedArchive = backend.loadArchiveFromFiles(document.getElementById('archiveFiles').files);
-        if (checkSelectedArchiveCompatibilityWithInjectionMode()) {
-            // The archive is set : go back to home page to start searching
-            $("#btnHome").click();
-        }
+        setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
+
+    /**
+     * This is used in the testing interface to inject a remote archive.
+     */
+    window.setRemoteArchive = function(url) {
+        var request = new XMLHttpRequest();
+        request.open("GET", url, true);
+        request.responseType = "blob";
+        request.onload = function (e) {
+            if (request.response) {
+                // Hack to make this look similar to a file
+                request.response.name = url;
+                setLocalArchiveFromFileList([request.response]);
+            }
+        };
+        request.send(null);
+    };
 
     /**
      * Handle key input in the prefix input zone
@@ -907,14 +935,13 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
     };
     
     // Compile some regular expressions needed to modify links
-    var regexpOtherLanguage = /^\.?\/?\.\.\/([^\/]+)\/(.*)/;
     var regexpImageLink = /^.?\/?[^:]+:(.*)/;
     var regexpMathImageUrl = /^\/math.*\/([0-9a-f]{32})\.png$/;
     var regexpPath = /^(.*\/)[^\/]+$/;
     // These regular expressions match both relative and absolute URLs
     // Since late 2014, all ZIM files should use relative URLs
-    var regexpImageUrl = /^(?:\.\.\/|\/)(I\/.*)$/;
-    var regexpMetadataUrl = /^(?:\.\.\/|\/)(-\/.*)$/;
+    var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
+    var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
 
     /**
      * Display the the given HTML article in the web page,
@@ -967,14 +994,6 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
                 }
                 else if (url.substring(0, 4) === "http") {
                     // It's an external link : open in a new tab
-                    $(this).attr("target", "_blank");
-                }
-                else if (url.match(regexpOtherLanguage)) {
-                    // It's a link to another language : change the URL to the online version of wikipedia
-                    // The regular expression extracts $1 as the language, and $2 as the title name
-                    var onlineWikipediaUrl = url.replace(regexpOtherLanguage, "https://$1.wikipedia.org/wiki/$2");
-                    $(this).attr("href", onlineWikipediaUrl);
-                    // Open in a new tab
                     $(this).attr("target", "_blank");
                 }
                 else if (url.match(regexpImageLink)
@@ -1273,6 +1292,26 @@ define(['jquery', 'abstractBackend', 'util', 'uiUtil', 'cookies','geometry','osa
                     // If the random title search did not end up on an article,
                     // we try again, until we find one
                     goToRandomArticle();
+                }
+            }
+        });
+    }
+    
+    function goToMainArticle() {
+        selectedArchive.getMainPageTitle(function(title) {
+            if (title === null || title === undefined) {
+                console.error("Error finding main article.");
+            }
+            else {
+                if (title.namespace === 'A') {
+                    $("#articleName").html(title.name());
+                    pushBrowserHistoryState(title.name());
+                    $("#readingArticle").show();
+                    $('#articleContent').contents().find('body').html("");
+                    readArticle(title);
+                }
+                else {
+                    console.error("The main page of this archive does not seem to be an article");
                 }
             }
         });
