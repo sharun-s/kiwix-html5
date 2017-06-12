@@ -48,7 +48,61 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @type ZIMArchive
      */
     var selectedArchive = null;
-    
+    var contentInjectionMode;
+    var serviceWorkerRegistration = null;
+    var messageChannel;
+    /**
+     * 
+     * @type Array.<StorageFirefoxOS>
+     */
+    var storages = [];
+    // Compile some regular expressions needed to modify links
+    var regexpImageLink = /^.?\/?[^:]+:(.*)/;
+    var regexpPath = /^(.*\/)[^\/]+$/;
+    // These regular expressions match both relative and absolute URLs
+    // Since late 2014, all ZIM files should use relative URLs
+    var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
+    var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
+    var lastContentInjectionMode;
+
+    function initKiwix(){
+        setupHandlers();
+
+        // At launch, we try to set the last content injection mode (stored in a cookie)
+        lastContentInjectionMode = cookies.getItem('lastContentInjectionMode');
+        if (lastContentInjectionMode) {
+            setContentInjectionMode(lastContentInjectionMode);
+        }
+        else {
+            setContentInjectionMode('jquery');
+        }
+        if ($.isFunction(navigator.getDeviceStorages)) {
+            // The method getDeviceStorages is available (FxOS>=1.1)
+            storages = $.map(navigator.getDeviceStorages("sdcard"), function(s) {
+                return new abstractFilesystemAccess.StorageFirefoxOS(s);
+            });
+        }
+
+        if (storages !== null && storages.length > 0) {
+            // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
+            // This way, it is only done once at this moment, instead of being done several times in callbacks
+            // After that, we can start looking for archives
+            storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
+                                                      searchForArchivesInPreferencesOrStorage);
+        }
+        else {
+            // If DeviceStorage is not available, we display the file select components
+            displayFileSelect();
+            if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+                // Archive files are already selected, 
+                setLocalArchiveFromFileSelect();
+            }
+            else {
+                $("#btnConfigure").click();
+            }
+        }
+    }
+
     /**
      * Resize the IFrame height, so that it fills the whole available height in the window
      */
@@ -60,149 +114,195 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 - 5;
         $(".articleIFrame").css("height", height + "px");
     }
-    $(document).ready(resizeIFrame);
-    $(window).resize(resizeIFrame);
     
-    // Define behavior of HTML elements
-    $('#searchArticles').on('click', function(e) {
-        pushBrowserHistoryState(null, $('#prefix').val());
-        searchDirEntriesFromPrefix($('#prefix').val());
-        $("#welcomeText").hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-    });
-    $('#formArticleSearch').on('submit', function(e) {
-        document.getElementById("searchArticles").click();
-        return false;
-    });
-    $('#prefix').on('keyup', function(e) {
-        if (selectedArchive !== null && selectedArchive.isReady()) {
-            onKeyUpPrefix(e);
-        }
-    });
-    $("#btnRandomArticle").on("click", function(e) {
-        $('#prefix').val("");
-        goToRandomArticle();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $('#searchingForArticles').hide();
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-    });
-    
-    $('#btnRescanDeviceStorage').on("click", function(e) {
-        searchForArchivesInStorage();
-    });
-    // Bottom bar :
-    $('#btnBack').on('click', function(e) {
-        history.back();
-        return false;
-    });
-    $('#btnForward').on('click', function(e) {
-        history.forward();
-        return false;
-    });
-    $('#btnHomeBottom').on('click', function(e) {
-        $('#btnHome').click();
-        return false;
-    });
-    $('#btnTop').on('click', function(e) {
-        $("#articleContent").contents().scrollTop(0);
-        // We return true, so that the link to #top is still triggered (useful in the About section)
-        return true;
-    });
-    // Top menu :
-    $('#btnHome').on('click', function(e) {
-        // Highlight the selected section in the navbar
-        $('#liHomeNav').attr("class","active");
-        $('#liConfigureNav').attr("class","");
-        $('#liAboutNav').attr("class","");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-        // Show the selected content in the page
-        $('#about').hide();
-        $('#configuration').hide();
-        $('#formArticleSearch').show();
-        $("#welcomeText").show();
-        $('#articleList').show();
-        $('#articleListHeaderMessage').show();
-        $('#articleContent').show();
-        // Give the focus to the search field, and clean up the page contents
-        $("#prefix").val("");
-        $('#prefix').focus();
-        $("#articleList").empty();
-        $('#articleListHeaderMessage').empty();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $("#articleContent").contents().empty();
-        $('#searchingForArticles').hide();
-        if (selectedArchive !== null && selectedArchive.isReady()) {
+    function setupHandlers() {
+        $(document).ready(resizeIFrame);
+        $(window).resize(resizeIFrame);
+
+        // Define behavior of HTML elements
+        $('#searchArticles').on('click', function(e) {
+            pushBrowserHistoryState(null, $('#prefix').val());
+            searchDirEntriesFromPrefix($('#prefix').val());
             $("#welcomeText").hide();
-            goToMainArticle();
-        }
-        return false;
-    });
-    $('#btnConfigure').on('click', function(e) {
-        // Highlight the selected section in the navbar
-        $('#liHomeNav').attr("class","");
-        $('#liConfigureNav').attr("class","active");
-        $('#liAboutNav').attr("class","");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-        // Show the selected content in the page
-        $('#about').hide();
-        $('#configuration').show();
-        $('#formArticleSearch').hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $('#articleContent').hide();
-        $('#searchingForArticles').hide();
-        refreshAPIStatus();
-        return false;
-    });
-    $('#btnAbout').on('click', function(e) {
-        // Highlight the selected section in the navbar
-        $('#liHomeNav').attr("class","");
-        $('#liConfigureNav').attr("class","");
-        $('#liAboutNav').attr("class","active");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-        // Show the selected content in the page
-        $('#about').show();
-        $('#configuration').hide();
-        $('#formArticleSearch').hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $('#articleContent').hide();
-        $('#searchingForArticles').hide();
-        return false;
-    });
-    $('input:radio[name=contentInjectionMode]').on('change', function(e) {
-        if (checkWarnServiceWorkerMode(this.value)) {
-            // Do the necessary to enable or disable the Service Worker
-            setContentInjectionMode(this.value);
-        }
-        else {
-            setContentInjectionMode('jquery');
-        }
+            $("#readingArticle").hide();
+            $("#articleContent").hide();
+            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                $('#navbarToggle').click();
+            }
+        });
+        $('#formArticleSearch').on('submit', function(e) {
+            document.getElementById("searchArticles").click();
+            return false;
+        });
+        $('#prefix').on('keyup', function(e) {
+            if (selectedArchive !== null && selectedArchive.isReady()) {
+                onKeyUpPrefix(e);
+            }
+        });
+        $("#btnRandomArticle").on("click", function(e) {
+            $('#prefix').val("");
+            goToRandomArticle();
+            $("#welcomeText").hide();
+            $('#articleList').hide();
+            $('#articleListHeaderMessage').hide();
+            $("#readingArticle").hide();
+            $('#searchingForArticles').hide();
+            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                $('#navbarToggle').click();
+            }
+        });
         
-    });
-    
+        $('#btnRescanDeviceStorage').on("click", function(e) {
+            searchForArchivesInStorage();
+        });
+        // Bottom bar :
+        $('#btnBack').on('click', function(e) {
+            history.back();
+            return false;
+        });
+        $('#btnForward').on('click', function(e) {
+            history.forward();
+            return false;
+        });
+        $('#btnHomeBottom').on('click', function(e) {
+            $('#btnHome').click();
+            return false;
+        });
+        $('#btnTop').on('click', function(e) {
+            $("#articleContent").contents().scrollTop(0);
+            // We return true, so that the link to #top is still triggered (useful in the About section)
+            return true;
+        });
+        // Top menu :
+        $('#btnHome').on('click', function(e) {
+            // Highlight the selected section in the navbar
+            $('#liHomeNav').attr("class","active");
+            $('#liConfigureNav').attr("class","");
+            $('#liAboutNav').attr("class","");
+            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                $('#navbarToggle').click();
+            }
+            // Show the selected content in the page
+            $('#about').hide();
+            $('#configuration').hide();
+            $('#formArticleSearch').show();
+            $("#welcomeText").show();
+            $('#articleList').show();
+            $('#articleListHeaderMessage').show();
+            $('#articleContent').show();
+            // Give the focus to the search field, and clean up the page contents
+            $("#prefix").val("");
+            $('#prefix').focus();
+            $("#articleList").empty();
+            $('#articleListHeaderMessage').empty();
+            $("#readingArticle").hide();
+            $("#articleContent").hide();
+            $("#articleContent").contents().empty();
+            $('#searchingForArticles').hide();
+            if (selectedArchive !== null && selectedArchive.isReady()) {
+                $("#welcomeText").hide();
+                goToMainArticle();
+            }
+            return false;
+        });
+        $('#btnConfigure').on('click', function(e) {
+            // Highlight the selected section in the navbar
+            $('#liHomeNav').attr("class","");
+            $('#liConfigureNav').attr("class","active");
+            $('#liAboutNav').attr("class","");
+            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                $('#navbarToggle').click();
+            }
+            // Show the selected content in the page
+            $('#about').hide();
+            $('#configuration').show();
+            $('#formArticleSearch').hide();
+            $("#welcomeText").hide();
+            $('#articleList').hide();
+            $('#articleListHeaderMessage').hide();
+            $("#readingArticle").hide();
+            $("#articleContent").hide();
+            $('#articleContent').hide();
+            $('#searchingForArticles').hide();
+            refreshAPIStatus();
+            return false;
+        });
+        $('#btnAbout').on('click', function(e) {
+            // Highlight the selected section in the navbar
+            $('#liHomeNav').attr("class","");
+            $('#liConfigureNav').attr("class","");
+            $('#liAboutNav').attr("class","active");
+            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                $('#navbarToggle').click();
+            }
+            // Show the selected content in the page
+            $('#about').show();
+            $('#configuration').hide();
+            $('#formArticleSearch').hide();
+            $("#welcomeText").hide();
+            $('#articleList').hide();
+            $('#articleListHeaderMessage').hide();
+            $("#readingArticle").hide();
+            $("#articleContent").hide();
+            $('#articleContent').hide();
+            $('#searchingForArticles').hide();
+            return false;
+        });
+        $('input:radio[name=contentInjectionMode]').on('change', function(e) {
+            if (checkWarnServiceWorkerMode(this.value)) {
+                // Do the necessary to enable or disable the Service Worker
+                setContentInjectionMode(this.value);
+            }
+            else {
+                setContentInjectionMode('jquery');
+            }
+            
+        });
+            // Display the article when the user goes back in the browser history
+        window.onpopstate = function(event) {
+            if (event.state) {
+                var title = event.state.title;
+                var titleSearch = event.state.titleSearch;
+                
+                $('#prefix').val("");
+                $("#welcomeText").hide();
+                $("#readingArticle").hide();
+                if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+                    $('#navbarToggle').click();
+                }
+                $('#searchingForArticles').hide();
+                $('#configuration').hide();
+                $('#articleList').hide();
+                $('#articleListHeaderMessage').hide();
+                $('#articleContent').contents().empty();
+                
+                if (title && !(""===title)) {
+                    goToArticle(title);
+                }
+                else if (titleSearch && !(""===titleSearch)) {
+                    $('#prefix').val(titleSearch);
+                    searchDirEntriesFromPrefix($('#prefix').val());
+                }
+            }
+        };
+        /**
+         * This is used in the testing interface to inject a remote archive.
+        */
+        window.setRemoteArchive = function(url) {
+            var request = new XMLHttpRequest();
+            request.open("GET", url, true);
+            request.responseType = "blob";
+            request.onload = function (e) {
+                if (request.response) {
+                    // Hack to make this look similar to a file
+                    request.response.name = url;
+                    setLocalArchiveFromFileList([request.response]);
+                }
+            };
+            request.send(null);
+        };
+
+    }    
     /**
      * Displays of refreshes the API status shown to the user
      */
@@ -232,9 +332,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     .addClass("apiUnavailable");
         }
     }
-    
-    var contentInjectionMode;
-    
+        
     /**
      * Sets the given injection mode.
      * This involves registering (or re-enabling) the Service Worker if necessary
@@ -333,18 +431,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         return true;
     }
-    
-    // At launch, we try to set the last content injection mode (stored in a cookie)
-    var lastContentInjectionMode = cookies.getItem('lastContentInjectionMode');
-    if (lastContentInjectionMode) {
-        setContentInjectionMode(lastContentInjectionMode);
-    }
-    else {
-        setContentInjectionMode('jquery');
-    }
-    
-    var serviceWorkerRegistration = null;
-    
+            
     /**
      * Tells if the ServiceWorker API is available
      * https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorker
@@ -380,11 +467,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         return (serviceWorkerRegistration);
     }
     
-    /**
-     * 
-     * @type Array.<StorageFirefoxOS>
-     */
-    var storages = [];
     function searchForArchivesInPreferencesOrStorage() {
         // First see if the list of archives is stored in the cookie
         var listOfArchivesFromCookie = cookies.getItem("listOfArchives");
@@ -402,62 +484,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $('#scanningForArchives').show();
         zimArchiveLoader.scanForArchives(storages, populateDropDownListOfArchives);
     }
-
-    if ($.isFunction(navigator.getDeviceStorages)) {
-        // The method getDeviceStorages is available (FxOS>=1.1)
-        storages = $.map(navigator.getDeviceStorages("sdcard"), function(s) {
-            return new abstractFilesystemAccess.StorageFirefoxOS(s);
-        });
-    }
-
-    if (storages !== null && storages.length > 0) {
-        // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
-        // This way, it is only done once at this moment, instead of being done several times in callbacks
-        // After that, we can start looking for archives
-        storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
-                                                  searchForArchivesInPreferencesOrStorage);
-    }
-    else {
-        // If DeviceStorage is not available, we display the file select components
-        displayFileSelect();
-        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
-            // Archive files are already selected, 
-            setLocalArchiveFromFileSelect();
-        }
-        else {
-            $("#btnConfigure").click();
-        }
-    }
-
-
-    // Display the article when the user goes back in the browser history
-    window.onpopstate = function(event) {
-        if (event.state) {
-            var title = event.state.title;
-            var titleSearch = event.state.titleSearch;
-            
-            $('#prefix').val("");
-            $("#welcomeText").hide();
-            $("#readingArticle").hide();
-            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-                $('#navbarToggle').click();
-            }
-            $('#searchingForArticles').hide();
-            $('#configuration').hide();
-            $('#articleList').hide();
-            $('#articleListHeaderMessage').hide();
-            $('#articleContent').contents().empty();
-            
-            if (title && !(""===title)) {
-                goToArticle(title);
-            }
-            else if (titleSearch && !(""===titleSearch)) {
-                $('#prefix').val(titleSearch);
-                searchDirEntriesFromPrefix($('#prefix').val());
-            }
-        }
-    };
-    
+        
     /**
      * Populate the drop-down list of archives with the given list
      * @param {Array.<String>} archiveDirectories
@@ -569,23 +596,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     /**
-     * This is used in the testing interface to inject a remote archive.
-     */
-    window.setRemoteArchive = function(url) {
-        var request = new XMLHttpRequest();
-        request.open("GET", url, true);
-        request.responseType = "blob";
-        request.onload = function (e) {
-            if (request.response) {
-                // Hack to make this look similar to a file
-                request.response.name = url;
-                setLocalArchiveFromFileList([request.response]);
-            }
-        };
-        request.send(null);
-    };
-
-    /**
      * Handle key input in the prefix input zone
      * @param {Event} evt
      */
@@ -603,7 +613,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         ,500);
     }
-
 
     /**
      * Search the index for DirEntries with title that start with the given prefix (implemented
@@ -625,8 +634,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
-
-  
+ 
     /**
      * Display the list of articles with the given array of DirEntry
      * @param {Array.<DirEntry>} dirEntryArray
@@ -684,7 +692,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         return false;
     }
     
-
     /**
      * Creates an instance of DirEntry from given dirEntryId (including resolving redirects),
      * and call the function to read the corresponding article
@@ -720,9 +727,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             selectedArchive.readArticle(dirEntry, displayArticleInForm);
         }
     }
-    
-    var messageChannel;
-    
+        
     /**
      * Function that handles a message of the messageChannel.
      * It tries to read the content in the backend, and sends it back to the ServiceWorker
@@ -761,14 +766,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
         }
     };
-    
-    // Compile some regular expressions needed to modify links
-    var regexpImageLink = /^.?\/?[^:]+:(.*)/;
-    var regexpPath = /^(.*\/)[^\/]+$/;
-    // These regular expressions match both relative and absolute URLs
-    // Since late 2014, all ZIM files should use relative URLs
-    var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
-    var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
 
     /**
      * Display the the given HTML article in the web page,
