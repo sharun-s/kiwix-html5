@@ -222,6 +222,24 @@ define(['q'], function(q) {
         return deferred.promise;
     }
 
+    function readXHRSlice(file, begin, size) {
+        var deferred = q.defer();
+        var req = new XMLHttpRequest();
+        req.onload = function(e){            
+            deferred.resolve(new Uint8Array(e.target.response));
+        };
+        req.onerror = req.onabort = function(e) {
+            deferred.reject(e);
+        }; 
+        req.open('GET', file.name, true); 
+        req.responseType = "arraybuffer";
+        var end = begin + size;
+        req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
+        req.send(null);
+
+        return deferred.promise;
+    }
+
     /**
      * Performs a binary search on indices begin <= i < end, utilizing query(i) to return where to
      * continue the search.
@@ -324,6 +342,7 @@ define(['q'], function(q) {
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
         readFileSlice : readFileSlice,
+        readXHRSlice : readXHRSlice,
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,
