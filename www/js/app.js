@@ -772,6 +772,18 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
     var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
 
+    function makeIterator(array) {
+        var nextIndex = 0;
+        
+        return {
+           next: function() {
+               return nextIndex < array.length ?
+                   {value: array[nextIndex++], done: false} :
+                   {done: true};
+           }
+        };
+    }
+
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -780,13 +792,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} htmlArticle
      */
     function displayArticleInForm(dirEntry, htmlArticle) {
+        console.time("displayArticleInForm");
         $("#readingArticle").hide();
         $("#articleContent").show();
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
 
         // Display the article inside the web page.
-        $('#articleContent').contents().find('body').html(htmlArticle);
+        //$('#articleContent').contents().find('body').html(htmlArticle);
+        var body = '<div id="body-mock">' + htmlArticle.replace(/^[\s\S]*<body.*?>|<\/body>[\s\S]*$/ig, '') + '</div>';
+        var $body = $(body);
+        $body.find('img').each(function(){
+            var image = $(this);
+            $(image).attr("data-src", $(image).attr("src"));
+            $(image).removeAttr("src");
+        });
+        $('#articleContent #body').html($body);
         
         
         // If the ServiceWorker is not useable, we need to fallback to parse the DOM
@@ -794,7 +815,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (contentInjectionMode === 'jquery') {
 
             // Convert links into javascript calls
-            $('#articleContent').contents().find('body').find('a').each(function() {
+            $('#articleContent #body').find('a').each(function() {
                 // Store current link's url
                 var url = $(this).attr("href");
                 if (url === null || url === undefined) {
@@ -849,23 +870,69 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            $('#articleContent').contents().find('body').find('img').each(function() {
-                var image = $(this);
+            var images = makeIterator($('#articleContent img'));//.each(
+            
+            function readImageDirEnt(img) {
+                var image = $(img.value);//$(this);
                 // It's a standard image contained in the ZIM file
                 // We try to find its name (from an absolute or relative URL)
-                var imageMatch = image.attr("src").match(regexpImageUrl);
+                var imageMatch = image.attr("data-src").match(regexpImageUrl);
                 if (imageMatch) {
                     var title = decodeURIComponent(imageMatch[1]);
-                    selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
+                    //each time this is causing a binary search
+                    var p = selectedArchive.getDirEntryByTitle(title, sessionCache);
+                    return p;/*.then(function(dirEntry) {
+                        
                         selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                             // TODO : use the complete MIME-type of the image (as read from the ZIM file)
                             uiUtil.feedNodeWithBlob(image, 'src', content, 'image');
+                            //console.timeEnd(title);
+                            //loadImages(imageIterator.next());
                         });
+                        //console.time(title);
+                    
                     }).fail(function (e) {
                         console.error("could not find DirEntry for image:" + title, e);
-                    });
+                    });*/
+                }else{
+                    console.count("image_unmatched_url");
+                    console.log(image.attr('data-src'));
+                    return image.attr('data-src');
                 }
-            });
+            };
+            
+            function startChain(id) {
+              var cnt = 0;
+              return Promise.resolve().then(function next() {
+                    var image = images.next();
+                    if (!image.done) {
+                        cnt++;
+                        var p = readImageDirEnt(image);
+                        return p.then(next); // continue the chain
+                    }else{
+                        console.timeEnd("chain"+id);
+                        return cnt; //resolve and stop chain
+                    }
+                });
+            }
+            
+            var imagePromises = [];
+            var sessionCache = new Map();
+            var N = 5, k;
+            //console.profile("completePageLoad")
+            console.time("loadImages");
+            for (k = 0; k < N; k += 1) {
+                var id = k +1;
+                console.time("chain"+id)
+                imagePromises.push(startChain(id));
+            }
+            // Obviously this doesn't work as imagePromises 
+            // doesn't capture all the promises produced 
+            Promise.all(imagePromises).then(function(val){
+                console.log(val);
+                console.log(sessionCache.size);
+                //console.profileEnd("completePageLoad")
+                console.timeEnd("loadImages");});
 
             // Load CSS content
             $('#articleContent').contents().find('link[rel=stylesheet]').each(function() {
@@ -931,6 +998,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
         }  
+        console.timeEnd("displayArticleInForm");  
     }
 
     /**

@@ -226,8 +226,11 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      * @param {callbackStringContent} callback
      */
     ZIMArchive.prototype.readArticle = function(dirEntry, callback) {
+        console.time("HTMLloadedNotAssets")
         dirEntry.readData().then(function(data) {
+            // This generates many asset loads all async
             callback(dirEntry.title, utf8.parse(data));
+            console.timeEnd("HTMLloadedNotAssets");
         });
     };
 
@@ -254,14 +257,18 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      * @param {String} title
      * @return {Promise} resolving to the DirEntry object or null if not found.
      */
-    ZIMArchive.prototype.getDirEntryByTitle = function(title) {
+    ZIMArchive.prototype.getDirEntryByTitle = function(title, cache) {
         var that = this;
+
         // If no namespace is mentioned, it's an article, and we have to add it
         if (regexpTitleWithoutNameSpace.test(title)) {
             title= "A/" + title;
         }
+        if (cache && cache.has(title)){
+            return Promise.resolve().then(() => cache.get(title));
+        }
         return util.binarySearch(0, this._file.articleCount, function(i) {
-            return that._file.dirEntryByUrlIndex(i).then(function(dirEntry) {
+            return that._file.dirEntryByUrlIndex(i, cache).then(function(dirEntry) {
                 var url = dirEntry.namespace + "/" + dirEntry.url;
                 if (title < url)
                     return -1;
@@ -274,6 +281,8 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
             if (index === null) return null;
             return that._file.dirEntryByUrlIndex(index);
         }).then(function(dirEntry) {
+            if(cache)
+                cache.set(title, dirEntry);
             return dirEntry;
         });
     };
