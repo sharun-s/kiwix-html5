@@ -875,20 +875,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 if (imageMatch) {
                     var title = decodeURIComponent(imageMatch[1]);
                     //each time this is causing a binary search
-                    var p = selectedArchive.getDirEntryByTitle(title, sessionCache);
-                    return p;/*.then(function(dirEntry) {
+                    return selectedArchive.getDirEntryByTitle(title, sessionCache).then(
+                        function (dirEntry) {
                         
                         selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                             // TODO : use the complete MIME-type of the image (as read from the ZIM file)
                             uiUtil.feedNodeWithBlob(image, 'src', content, 'image');
-                            //console.timeEnd(title);
-                            //loadImages(imageIterator.next());
+                            return Promise.resolve();
                         });
-                        //console.time(title);
-                    
-                    }).fail(function (e) {
+                        }, function (e) {
                         console.error("could not find DirEntry for image:" + title, e);
-                    });*/
+                    });
                 }else{
                     console.count("image_unmatched_url");
                     console.log(image.attr('data-src'));
