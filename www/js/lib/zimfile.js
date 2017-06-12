@@ -148,12 +148,19 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
      * @param {Integer} index
      * @returns {DirEntry} DirEntry
      */
-    ZIMFile.prototype.dirEntryByUrlIndex = function(index)
+    ZIMFile.prototype.dirEntryByUrlIndex = function(index, cache)
     {
         var that = this;
+        if (cache && cache.has(index)){
+            return Promise.resolve().then(() => cache.get(index));
+        }
+        //console.count("readURLIndex");
         return this._readInteger(this.urlPtrPos + index * 8, 8).then(function(dirEntryPos)
         {
-            return that.dirEntry(dirEntryPos);
+            var temp = that.dirEntry(dirEntryPos);
+            if(cache)
+                cache.set(index, temp);
+            return temp;
         });
     };
 
