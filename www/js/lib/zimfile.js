@@ -88,8 +88,8 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
             if (offset < currentOffset + currentSize && currentOffset < offset + size) {
                 var readStart = Math.max(0, offset - currentOffset);
                 var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
-                readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
-                //    readRequests.push(util.readFileSlice(this._files[i], readStart, readSize));
+                //readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
+                readRequests.push(util.readFileSlice(this._files[i], readStart, readSize));
             }
         }
         if (readRequests.length == 0) {

@@ -792,7 +792,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} htmlArticle
      */
     function displayArticleInForm(dirEntry, htmlArticle) {
-        console.time("displayArticleInForm");
         $("#readingArticle").hide();
         $("#articleContent").show();
         // Scroll the iframe to its top
@@ -870,67 +869,57 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            var images = makeIterator($('#articleContent img'));//.each(
+            var imgtrack =0;
+            var imageLoadCompletions = [];
+            var workerCompletions = 0;
+            var imgNodes = $('#articleContent img');
+            var imageArray = [].slice.call(imgNodes)
+                               .map(el => decodeURIComponent(el.getAttribute('data-src')
+                                            .match(regexpImageUrl)[1]));
             
-            function readImageDirEnt(img) {
-                var image = $(img.value);//$(this);
-                // It's a standard image contained in the ZIM file
-                // We try to find its name (from an absolute or relative URL)
-                var imageMatch = image.attr("data-src").match(regexpImageUrl);
-                if (imageMatch) {
-                    var title = decodeURIComponent(imageMatch[1]);
-                    //each time this is causing a binary search
-                    return selectedArchive.getDirEntryByTitle(title, sessionCache).then(
-                        function (dirEntry) {
-                        
-                        selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
-                            // TODO : use the complete MIME-type of the image (as read from the ZIM file)
-                            uiUtil.feedNodeWithBlob(image, 'src', content, 'image');
-                            return Promise.resolve();
-                        });
-                        }, function (e) {
-                        console.error("could not find DirEntry for image:" + title, e);
-                    });
-                }else{
-                    console.count("image_unmatched_url");
-                    console.log(image.attr('data-src'));
-                    return image.attr('data-src');
-                }
-            };
-            
-            function startChain(id) {
-              var cnt = 0;
-              return Promise.resolve().then(function next() {
-                    var image = images.next();
-                    if (!image.done) {
-                        cnt++;
-                        var p = readImageDirEnt(image);
-                        return p.then(next); // continue the chain
-                    }else{
-                        console.timeEnd("chain"+id);
-                        return cnt; //resolve and stop chain
-                    }
-                });
-            }
-            
-            var imagePromises = [];
-            var sessionCache = new Map();
-            var N = 5, k;
-            //console.profile("completePageLoad")
-            console.time("loadImages");
-            for (k = 0; k < N; k += 1) {
-                var id = k +1;
-                console.time("chain"+id)
-                imagePromises.push(startChain(id));
-            }
-            // Obviously this doesn't work as imagePromises 
-            // doesn't capture all the promises produced 
-            Promise.all(imagePromises).then(function(val){
-                console.log(val);
-                console.log(sessionCache.size);
-                //console.profileEnd("completePageLoad")
-                console.timeEnd("loadImages");});
+            function workerStart(N){
+                var step = imageArray.length/N;
+                console.time("All Image Lookup+Read Time");
+                for (var k = 0; k < N; k += 1) {
+                    var start = k*step;
+                    var end = start+step;
+                    //console.log(start +" "+ end);
+                    var def = new Worker("dirEntryFinder.js");
+                    def.onmessage = function(e) {
+                        if(e.data[0] == "done" ){
+                            workerCompletions++;
+                            if(workerCompletions == N)
+                                Promise.all(imageLoadCompletions).then(function (){
+                                    console.log("images in document:" + imgNodes.length);
+                                    console.log("images loaded:" + imgtrack);
+                                    console.timeEnd("All Image Lookup+Read Time");
+                                });
+                        }else{
+                            var index = e.data[0];                          
+                            var dirEntry = e.data[1];   
+                            var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                            p.then(function (content) {
+                                //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                                imgtrack++;
 
+                            },function (){
+                                console.error("Failed loading " + index );
+                            }).then(() => Promise.resolve());
+                            imageLoadCompletions.push(p);                            
+                        }
+                    };
+                    //def.postMessage( [ selectedArchive._file._files[0].name,
+                    def.postMessage( [ selectedArchive._file._files[0], 
+                        selectedArchive._file.articleCount, 
+                        selectedArchive._file.urlPtrPos,
+                        start,
+                        end,
+                        imageArray.slice( start, end)]);
+                }    
+            }
+            workerStart(2);
+  
             // Load CSS content
             $('#articleContent').contents().find('link[rel=stylesheet]').each(function() {
                 var link = $(this);
