@@ -798,15 +798,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("#articleContent").contents().scrollTop(0);
 
         // Display the article inside the web page.
-        //$('#articleContent').contents().find('body').html(htmlArticle);
-        var body = '<div id="body-mock">' + htmlArticle.replace(/^[\s\S]*<body.*?>|<\/body>[\s\S]*$/ig, '') + '</div>';
-        var $body = $(body);
+	// Prevents unnecessary 404's being produced when iframe loads images
+        var $body = $(htmlArticle);
         $body.find('img').each(function(){
             var image = $(this);
             $(image).attr("data-src", $(image).attr("src"));
             $(image).removeAttr("src");
         });
-        $('#articleContent #body').html($body);
+        // 404's should now only be produced on loading css and js
+        $('#articleContent').contents().find('body').html($body);
+       
         
         
         // If the ServiceWorker is not useable, we need to fallback to parse the DOM
@@ -814,7 +815,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (contentInjectionMode === 'jquery') {
 
             // Convert links into javascript calls
-            $('#articleContent #body').find('a').each(function() {
+            $('#articleContent').contents().find("body").find('a').each(function() {    
                 // Store current link's url
                 var url = $(this).attr("href");
                 if (url === null || url === undefined) {
@@ -872,7 +873,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var imgtrack =0;
             var imageLoadCompletions = [];
             var workerCompletions = 0;
-            var imgNodes = $('#articleContent img');
+            var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
             var imageArray = [].slice.call(imgNodes)
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
@@ -921,7 +922,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             workerStart(2);
   
             // Load CSS content
-            $('#articleContent').contents().find('link[rel=stylesheet]').each(function() {
+            $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
                 var link = $(this);
                 // We try to find its name (from an absolute or relative URL)
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);
@@ -983,8 +984,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
             });
 
-        }  
-        console.timeEnd("displayArticleInForm");  
+        }
     }
 
     /**
@@ -1012,7 +1012,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         window.history.pushState(stateObj, stateLabel, urlParameters);
     }
-
 
     /**
      * Replace article content with the one of the given title
