@@ -42,7 +42,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Maximum number of articles to display in a search
      * @type Integer
      */
-    var MAX_SEARCH_RESULT_SIZE = 50;
+    var MAX_SEARCH_RESULT_SIZE = 20;
 
     /**
      * @type ZIMArchive
@@ -870,7 +870,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            var imgtrack =0;
+            var imgtrack=0,N=2, firstpaint=0;
             var imageLoadCompletions = [];
             var workerCompletions = 0;
             var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
@@ -878,22 +878,19 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
             
-            function workerStart(N){
-                var step = imageArray.length/N;
-                console.time("All Image Lookup+Read Time");
-                for (var k = 0; k < N; k += 1) {
-                    var start = k*step;
-                    var end = start+step;
-                    //console.log(start +" "+ end);
+            function createDirEntryFinder(startImageIndex, endImageIndex){
+                return new Promise(function (resolve,reject){
                     var def = new Worker("dirEntryFinder.js");
-                    def.onmessage = function(e) {
+                    def.onmessage = function (e) {
                         if(e.data[0] == "done" ){
+                            resolve();
                             workerCompletions++;
+                            //console.log("recvd done" + workerCompletions +" " + N);
                             if(workerCompletions == N)
                                 Promise.all(imageLoadCompletions).then(function (){
-                                    console.log("images in document:" + imgNodes.length);
+                                    //console.log("images in document:" + imgNodes.length);
                                     console.log("images loaded:" + imgtrack);
-                                    console.timeEnd("All Image Lookup+Read Time");
+                                    //console.timeEnd("All Image Lookup+Read Time");
                                 });
                         }else{
                             var index = e.data[0];                          
@@ -903,34 +900,76 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
                                 uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
                                 imgtrack++;
-
                             },function (){
                                 console.error("Failed loading " + index );
                             }).then(() => Promise.resolve());
                             imageLoadCompletions.push(p);                            
                         }
                     };
-                    //def.postMessage( [ selectedArchive._file._files[0].name,
                     def.postMessage( [ selectedArchive._file._files[0], 
                         selectedArchive._file.articleCount, 
                         selectedArchive._file.urlPtrPos,
-                        start,
-                        end,
-                        imageArray.slice( start, end)]);
-                }    
+                        startImageIndex,
+                        endImageIndex,
+                        imageArray.slice( startImageIndex, endImageIndex)]);
+                });
             }
-            workerStart(2);
-  
+
+            function workerStartwithFold(){
+                //console.time("All Image Lookup+Read Time");
+                var AboveTheFold = 1;
+                var step = imageArray.length/N;
+                if (step > 0){                    
+                    var p = createDirEntryFinder(0, AboveTheFold);
+                    p.then(Promise.all([cssLoaded,imageLoadCompletions[0]]))
+                        .then(
+                            function firstPaintDone(){
+                            console.timeEnd("TimeToFirstPaint");                
+                            createDirEntryFinder(AboveTheFold, step);
+                            for (var k = 1; k < N; k += 1) {
+                                var start = k*step;
+                                var end = start+step;
+                                createDirEntryFinder(start, end);
+                                //console.log(start +" "+ end);
+                            }
+                            N++;
+                        });    
+                }else{
+                    N=1;
+                    createDirEntryFinder(0, imageArray.length);
+                }                
+            }
+
+            function workerStart(){
+                //console.time("All Image Lookup+Read Time");
+                var step = imageArray.length/N;
+                if (imageArray.length > 10){                    
+                    for (var k = 0; k < N; k += 1){
+                        var start = k*step;
+                        var end = start+step;
+                        createDirEntryFinder(start, end);
+                        //console.log(start +" "+ end);
+                    }    
+                }else{
+                    N=1;
+                    createDirEntryFinder(0, imageArray.length);
+                }                
+            }
+            console.time("TimeToFirstPaint");
+            workerStartwithFold();
+            //createDirEntryFinder(0, 10);
             // Load CSS content
+            var cssLoaded;
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
+                console.log("loading css");
                 var link = $(this);
                 // We try to find its name (from an absolute or relative URL)
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);
                 if (hrefMatch) {
                     // It's a CSS file contained in the ZIM file
                     var title = uiUtil.removeUrlParameters(decodeURIComponent(hrefMatch[1]));
-                    selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
-                        selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
+                    cssLoaded = selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
+                        return selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                             var cssContent = util.uintToString(content);
                             // For some reason, Firefox OS does not accept the syntax <link rel="stylesheet" href="data:text/css,...">
                             // So we replace the tag with a <style type="text/css">...</style>
@@ -953,13 +992,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 cssElement.disabled = disabledAttributeValue;
                             }
                             link.replaceWith(cssElement);
+                            return Promise.resolve();
                         });
                     }).fail(function (e) {
                         console.error("could not find DirEntry for CSS : " + title, e);
                     });
                 }
-            });
-
+            });                
+            
+            
+/*
             // Load Javascript content
             $('#articleContent').contents().find('script').each(function() {
                 var script = $(this);
@@ -983,7 +1025,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     });
                 }
             });
-
+*/
         }
     }
 
