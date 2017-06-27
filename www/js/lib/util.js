@@ -20,8 +20,8 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['q'], function(q) {
-
+define(['q', 'module'], function(q, module) {
+    console.log("util being run");
     /**
      * Utility function : return true if the given string ends with the suffix
      * @param {String} str
@@ -341,8 +341,7 @@ define(['q'], function(q) {
         readFloatFrom4Bytes : readFloatFrom4Bytes,
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
-        readFileSlice : readFileSlice,
-        readXHRSlice : readXHRSlice,
+        readSlice : module.config().mode == "file" ? readFileSlice : readXHRSlice,
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,
