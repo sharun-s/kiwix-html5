@@ -246,6 +246,19 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
                 zf.layoutPage = readInt(header, 68, 4);
                 return zf;
             });
+        },
+        create: function(fromString){
+            var temp = JSON.parse(fromString);
+            var zf = new ZIMFile(temp._file._files);
+            zf.articleCount = temp._file.articleCount;
+            zf.clusterCount = temp._file.clusterCount;
+            zf.urlPtrPos = temp._file.urlPtrPos;
+            zf.titlePtrPos = temp._file.titlePtrPos;
+            zf.clusterPtrPos = temp._file.clusterPtrPos;
+            zf.mimeListPos = temp._file.mimeListPos;
+            zf.mainPage = temp._file.mainPage;
+            zf.layoutPage = temp._file.layoutPage;
+            return zf;
         }
     };
 });

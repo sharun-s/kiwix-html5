@@ -31,6 +31,10 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      * @property {ZIMFile} _file The ZIM file (instance of ZIMFile, that might physically be splitted into several actual files)
      * @property {String} _language Language of the content
      */
+    ZIMArchive.prototype = {
+        _file:null,
+        _language:""
+    }    
     
     /**
      * @callback callbackZIMArchive
@@ -50,6 +54,10 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         var that = this;
         that._file = null;
         that._language = ""; //@TODO
+        // required to support creation from string using set()
+        if (!storage && !path && !callbackReady)
+            return;
+
         var createZimfile = function(fileArray) {
             zimfile.fromFileArray(fileArray).then(function(file) {
                 that._file = file;
@@ -81,6 +89,15 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
             }
         }
     };
+
+    /* As js doesn't have constructor overloading and a 3 arg constructor is already exposed
+       Eg: new zimArchive.ZIMArchive().create(fromString) creates the object from a String  
+    */
+
+    ZIMArchive.prototype.set = function(fromString){
+        this._file = zimfile.create(fromString);
+        return this;
+    }
 
     /**
      * Searches the directory for all parts of a splitted archive.
