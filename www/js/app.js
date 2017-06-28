@@ -1116,4 +1116,21 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         });
     }
 
+    // Converts selectedArchive object to string. The string can be saved and used later to recreate the object  
+    // eg: on console > var a;require({baseUrl:'js/lib'},['../app'], function(z){a=z.stringifyArchive()};
+    function stringifyArchive(){
+        if (selectedArchive !== null && selectedArchive.isReady()) {
+            var filenames = []; 
+            selectedArchive._file._files.forEach((c) => filenames.push({name:c.name, size:c.size})); 
+            var f = JSON.stringify(selectedArchive._file); 
+            var fp = JSON.parse(f); 
+            fp._files = filenames; 
+            return JSON.stringify({_file:fp, _language:""});                 
+        }
+        return "";
+    }
+
+    return { 
+        stringifyArchive: stringifyArchive
+    };
 });
