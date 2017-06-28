@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess) {
+define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module'],
+ function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module) {
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -418,15 +418,26 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                                   searchForArchivesInPreferencesOrStorage);
     }
     else {
-        // If DeviceStorage is not available, we display the file select components
-        displayFileSelect();
-        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
-            // Archive files are already selected, 
-            setLocalArchiveFromFileSelect();
-        }
-        else {
-            $("#btnConfigure").click();
-        }
+            var params={};
+            location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+            if(params["title"] && params["archive"]){
+                console.log("loading " + params["title"] + " from" + params["archive"] );
+                $("#welcomeText").hide();
+                $("#articleListWithHeader").hide();
+                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+                goToArticle(params["title"]);
+                
+            }else{
+	        // If DeviceStorage is not available, we display the file select components
+	        displayFileSelect();
+	        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+	            // Archive files are already selected, 
+	            setLocalArchiveFromFileSelect();
+	        }
+	        else {
+	            $("#btnConfigure").click();
+	        }
+	    }
     }
 
 
@@ -911,7 +922,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         selectedArchive._file.urlPtrPos,
                         startImageIndex,
                         endImageIndex,
-                        imageArray.slice( startImageIndex, endImageIndex)]);
+                        imageArray.slice( startImageIndex, endImageIndex), 
+                        module.config().mode]);
                 });
             }
 

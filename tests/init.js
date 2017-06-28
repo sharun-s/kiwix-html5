@@ -21,9 +21,12 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-
+var params={};
+location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+var mode = params['mode'] || "file";
 require.config({
     baseUrl: 'www/js/lib',
+    config: {'util': { mode: mode},'../app': { mode: mode}},
     paths: {
         'jquery': 'jquery-2.1.4'
     }
