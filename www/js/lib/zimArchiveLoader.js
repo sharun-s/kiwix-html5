@@ -44,6 +44,10 @@ define(['zimArchive', 'jquery'],
             return new zimArchive.ZIMArchive(files, null, callback);
         }
     };
+
+    function loadArchiveFromString(s) {
+        return new zimArchive.ZIMArchive().set(s);
+    };
     
     /**
      * @callback callbackPathList
@@ -84,6 +88,7 @@ define(['zimArchive', 'jquery'],
     return {
         loadArchiveFromDeviceStorage: loadArchiveFromDeviceStorage,
         loadArchiveFromFiles: loadArchiveFromFiles,
+        loadArchiveFromString: loadArchiveFromString,
         scanForArchives: scanForArchives
     };
 });

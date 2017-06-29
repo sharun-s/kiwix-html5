@@ -89,7 +89,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
                 var readStart = Math.max(0, offset - currentOffset);
                 var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
                 //readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
-                readRequests.push(util.readFileSlice(this._files[i], readStart, readSize));
+                readRequests.push(util.readSlice(this._files[i], readStart, readSize));
             }
         }
         if (readRequests.length == 0) {
@@ -233,7 +233,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
                   }
                   return 0;
             });
-            return util.readFileSlice(fileArray[0], 0, 80).then(function(header)
+            return util.readSlice(fileArray[0], 0, 80).then(function(header)
             {
                 var zf = new ZIMFile(fileArray);
                 zf.articleCount = readInt(header, 24, 4);
@@ -246,6 +246,19 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
                 zf.layoutPage = readInt(header, 68, 4);
                 return zf;
             });
+        },
+        create: function(fromString){
+            var temp = JSON.parse(fromString);
+            var zf = new ZIMFile(temp._file._files);
+            zf.articleCount = temp._file.articleCount;
+            zf.clusterCount = temp._file.clusterCount;
+            zf.urlPtrPos = temp._file.urlPtrPos;
+            zf.titlePtrPos = temp._file.titlePtrPos;
+            zf.clusterPtrPos = temp._file.clusterPtrPos;
+            zf.mimeListPos = temp._file.mimeListPos;
+            zf.mainPage = temp._file.mainPage;
+            zf.layoutPage = temp._file.layoutPage;
+            return zf;
         }
     };
 });

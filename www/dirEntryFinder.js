@@ -1,4 +1,4 @@
-var params={}, articleCount, urlPtrPos, wid, nodestart;
+var params={}, articleCount, urlPtrPos, wid, nodestart, readSlice;
 
 function readInt(data, offset, size)
 {
@@ -93,7 +93,7 @@ function readFileSlice(file, begin, size) {
 }
 
 
-function readXHRSlice(begin, size) {
+function readXHRSlice(file, begin, size) {
     return new Promise(function (resolve, reject){
         var req = new XMLHttpRequest();
         req.onload = function(e){            
@@ -102,7 +102,7 @@ function readXHRSlice(begin, size) {
         req.onerror = req.onabort = function(e) {
             reject(e);
         }; 
-        req.open('GET', params['archive'], true); 
+        req.open('GET', file.name, true); 
         req.responseType = "arraybuffer";
         var end = begin + size;
         req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
@@ -118,7 +118,7 @@ function dirEntryByUrlIndex(index, cache)
     }
     //console.count("readURLIndex");
     //return readXHRSlice(urlPtrPos + index * 8, 8).then(function(data)
-    return readFileSlice(params['archive'], urlPtrPos + index * 8, 8).then(function(data)
+    return readSlice(params['archive'], urlPtrPos + index * 8, 8).then(function(data)
         {
             return readInt(data, 0, 8);
         }).then(function(dirEntryPos)
@@ -149,7 +149,7 @@ function dirEntryByOffset(offset)
 {
     var that = this;
     //return readXHRSlice(offset, 2048).then(function(data)
-    return readFileSlice(params['archive'], offset, 2048).then(function(data)    
+    return readSlice(params['archive'], offset, 2048).then(function(data)    
     {
         var dirEntry =
         {
@@ -325,6 +325,7 @@ onmessage = function(e) {
   wid = Math.floor(e.data[3])+"-"+Math.floor(e.data[4]);
   nodestart= Math.floor(e.data[3]);
   imageArray = e.data[5]; //Array.from(new Set(e.data[5])); // don't look up dups
+  readSlice = e.data[6] == "file" ? readFileSlice : readXHRSlice;
   //debugger;
   init();
 }
