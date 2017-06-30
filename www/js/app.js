@@ -42,7 +42,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Maximum number of articles to display in a search
      * @type Integer
      */
-    var MAX_SEARCH_RESULT_SIZE = 20;
+    var MAX_SEARCH_RESULT_SIZE = module.config().results;
 
     /**
      * @type ZIMArchive
@@ -421,12 +421,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var params={};
             location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
             if(params["title"] && params["archive"]){
-                console.log("loading " + params["title"] + " from" + params["archive"] );
+                console.log("loading " + params["title"] + " from " + params["archive"] );
                 $("#welcomeText").hide();
                 $("#articleListWithHeader").hide();
                 selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
-                goToArticle(params["title"]);
-                
+                goToArticle(params["title"]);                
+            }else if(params["titleSearch"] && params["archive"]){
+                console.log("searching for " + params["titleSearch"] + " from " + params["archive"] );
+                $("#welcomeText").hide();
+                //$("#articleListWithHeader").hide();
+                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+                searchDirEntriesFromPrefix(params["titleSearch"]);
             }else{
 	        // If DeviceStorage is not available, we display the file select components
 	        displayFileSelect();

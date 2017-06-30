@@ -24,9 +24,10 @@
 var params={};
 location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
 var mode = params['mode'] || "file";
+var results = params['results'] || 10;
 require.config({
     baseUrl: 'js/lib',
-    config: {'util': { mode: mode},'../app': { mode: mode}},
+    config: {'util': { mode: mode},'../app': { mode: mode, results: results}},
     paths: {
         'jquery': 'jquery-2.1.4',
         'bootstrap': 'bootstrap'
