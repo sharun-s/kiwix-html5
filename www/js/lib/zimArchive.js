@@ -169,9 +169,12 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         var that = this;
         var prefixVariants = util.removeDuplicateStringsInSmallArray([prefix, util.ucFirstLetter(prefix), util.lcFirstLetter(prefix), util.ucEveryFirstLetter(prefix)]);
         var dirEntries = [];
+        console.time("search");
+        console.log(prefixVariants);
         function searchNextVariant() {
             if (prefixVariants.length === 0 || dirEntries.length >= resultSize) {
                 callback(dirEntries);
+                console.timeEnd("search");
                 return;
             }
             var prefix = prefixVariants[0];
@@ -183,7 +186,88 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         }
         searchNextVariant();
     };
+
+    // rewrite of findDirEntriesWithPrefix
+    // Callback is called for each Result found.
+    // Previously it was called after all results were found which slows things down.
+    ZIMArchive.prototype.findDirEntriesAndContent = function(prefix, resultSize, callback) {
+        var that = this;
+        var prefixVariants = util.removeDuplicateStringsInSmallArray([prefix, util.ucFirstLetter(prefix), util.lcFirstLetter(prefix), util.ucEveryFirstLetter(prefix)]);
+        var dirEntries = [];
+        console.time("search");
+        console.log(prefixVariants);
+        function searchNextVariant() {
+            if (prefixVariants.length === 0 || dirEntries.length >= resultSize) {
+                //callback(dirEntries);
+                console.timeEnd("search");
+                return;
+            }
+            var prefix = prefixVariants[0];
+            prefixVariants = prefixVariants.slice(1);
+            that.findDirEntriesWithPrefixCaseSensitive(prefix, resultSize - dirEntries.length, 
+                function getImagesFromArticles(newDirEntries) {
+                    //dirEntries.push.apply(dirEntries, newDirEntries);
+                    console.log(prefix +" found "+ newDirEntries.length);
+                    // if redirects exist resolve
+                    if( newDirEntries.length > 0 ){
+                        var articleIterator = util.makeIterator(newDirEntries);
+                        (function next(){
+                            var article = articleIterator.next();
+                            if(!article.done){
+                                var p= article.value.readData();
+                                p.then(function(data) {
+                                    callback(article.value, utf8.parse(data));
+                                });
+                                p.then(next);
+                            }
+                        })();                        
+                    }
+                    searchNextVariant();
+                });
+                
+        }
+        searchNextVariant();
+    };
+
+
+    ZIMArchive.prototype.findUniqDirEntriesWithPrefixCaseSensitive = function(prefix, resultSize, callback) {
+        var that = this;
+        //console.count(prefix);
+        util.binarySearch(0, this._file.articleCount, function(i) {
+            //console.count("binsearchsteps")
+            return that._file.dirEntryByTitleIndex(i).then(function(dirEntry) {
+                if (dirEntry.title === "")
+                    return -1; // ZIM sorts empty titles (assets) to the end
+                else if (dirEntry.namespace < "A")
+                    return 1;
+                else if (dirEntry.namespace > "A")
+                    return -1;
+                return prefix <= dirEntry.title ? -1 : 1;
+            });
+        }, true).then(getNextN).then(callback);
+    };
+
+    function getNextN(firstIndex) {
+        var dirEntries = [];
+        var next = function(index) {
+            //console.count("addDE");    
+            if (index >= firstIndex + resultSize || index >= that._file.articleCount)
+                return dirEntries;
+            return that._file.dirEntryByTitleIndex(index).then((dirEntry)=>addDEOnPrefixMatch(dirEntry, prefix, index));
+        };
+        return next(firstIndex);
+    }
     
+    function addDEOnPrefixMatch(dirEntry, prefix, index) {
+        if (dirEntry.title.slice(0, prefix.length) === prefix && dirEntry.namespace === "A"){
+            console.log(dirEntry.title + " added");
+            dirEntries.push(dirEntry);
+        }else{
+            console.log(dirEntry.title);
+        }
+        return addDirEntries(index + 1);
+    }
+
     /**
      * Look for DirEntries with title starting with the given prefix (case-sensitive)
      * 
@@ -193,7 +277,9 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      */
     ZIMArchive.prototype.findDirEntriesWithPrefixCaseSensitive = function(prefix, resultSize, callback) {
         var that = this;
+        //console.count(prefix);
         util.binarySearch(0, this._file.articleCount, function(i) {
+            //console.count("binsearchsteps")
             return that._file.dirEntryByTitleIndex(i).then(function(dirEntry) {
                 if (dirEntry.title === "")
                     return -1; // ZIM sorts empty titles (assets) to the end
@@ -206,11 +292,16 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         }, true).then(function(firstIndex) {
             var dirEntries = [];
             var addDirEntries = function(index) {
+                //console.count("addDE");    
                 if (index >= firstIndex + resultSize || index >= that._file.articleCount)
                     return dirEntries;
                 return that._file.dirEntryByTitleIndex(index).then(function(dirEntry) {
-                    if (dirEntry.title.slice(0, prefix.length) === prefix && dirEntry.namespace === "A")
+                    if (dirEntry.title.slice(0, prefix.length) === prefix && dirEntry.namespace === "A"){
+                        console.log(dirEntry.title + " added");
                         dirEntries.push(dirEntry);
+                    }else{
+                        console.log(dirEntry.title);
+                    }
                     return addDirEntries(index + 1);
                 });
             };
@@ -243,11 +334,11 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      * @param {callbackStringContent} callback
      */
     ZIMArchive.prototype.readArticle = function(dirEntry, callback) {
-        console.time("HTMLloadedNotAssets")
+        console.time("HTMLReadNotAssets:"+dirEntry.title)
         dirEntry.readData().then(function(data) {
             // This generates many asset loads all async
             callback(dirEntry.title, utf8.parse(data));
-            console.timeEnd("HTMLloadedNotAssets");
+            console.timeEnd("HTMLloadedNotAssets:"+dirEntry.title);
         });
     };
 

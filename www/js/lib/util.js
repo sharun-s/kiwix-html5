@@ -326,6 +326,21 @@ define(['q', 'module'], function(q, module) {
         return int * Math.pow(2, bits);
     }
 
+    function makeIterator(array) {
+        var nextIndex = 0;
+        
+        return {
+           next: function() {
+               return nextIndex < array.length ?
+                   {value: array[nextIndex++], done: false} :
+                   {done: true}; 
+            },
+            append: function(newElement) {
+                array.push(newElement);
+            }
+        };
+    }
+
     /**
      * Functions and classes exposed by this module
      */
@@ -345,6 +360,7 @@ define(['q', 'module'], function(q, module) {
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,
-        leftShift: leftShift
+        leftShift: leftShift,
+        makeIterator: makeIterator
     };
 });

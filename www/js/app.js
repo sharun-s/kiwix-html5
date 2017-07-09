@@ -74,6 +74,18 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $('#navbarToggle').click();
         }
     });
+    $('#searchImages').on('click', function(e) {
+        pushBrowserHistoryState(null, null, $('#prefix').val());
+        searchDirEntriesFromImagePrefix($('#prefix').val());
+        $("#welcomeText").hide();
+        $("#readingArticle").hide();
+        //$("#articleContent").hide();
+        $("#articleList").hide();
+        $('#articleListHeaderMessage').hide();
+        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
+            $('#navbarToggle').click();
+        }
+    });
     $('#formArticleSearch').on('submit', function(e) {
         document.getElementById("searchArticles").click();
         return false;
@@ -431,14 +443,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 $("#welcomeText").hide();
                 //$("#articleListWithHeader").hide();
                 selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
-                searchDirEntriesFromPrefix(params["titleSearch"]);
+                var keyword = decodeURIComponent(params["titleSearch"]);
+                searchDirEntriesFromPrefix(keyword);
+            }else if(params["imageSearch"] && params["archive"]){
+                console.log("searching for " + params["imageSearch"] + " from " + params["archive"] );
+                $("#welcomeText").hide();
+                //$("#articleListWithHeader").hide();
+                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+                var keyword = decodeURIComponent(params["imageSearch"]);
+                searchDirEntriesFromImagePrefix(keyword);
             }else{
-	        // If DeviceStorage is not available, we display the file select components
-	        displayFileSelect();
-	        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
-	            // Archive files are already selected, 
-	            setLocalArchiveFromFileSelect();
-	        }
+    	        // If DeviceStorage is not available, we display the file select components
+    	        displayFileSelect();
+    	        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+    	            // Archive files are already selected, 
+    	            setLocalArchiveFromFileSelect();
+    	        }
 	        else {
 	            $("#btnConfigure").click();
 	        }
@@ -451,6 +471,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (event.state) {
             var title = event.state.title;
             var titleSearch = event.state.titleSearch;
+            var imageSearch = event.state.imageSearch;
             
             $('#prefix').val("");
             $("#welcomeText").hide();
@@ -470,6 +491,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             else if (titleSearch && !(""===titleSearch)) {
                 $('#prefix').val(titleSearch);
                 searchDirEntriesFromPrefix($('#prefix').val());
+            }else if(imageSearch && !(""===imageSearch)){
+                //disable prefix change handler
+                //$('#prefix').val(imageSearch);
+                //enable prefix change handler
+                searchDirEntriesFromImagePrefix(imageSearch);
             }
         }
     };
@@ -644,6 +670,30 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
     }
 
+    function searchDirEntriesFromImagePrefix(keyword) {
+        //var keyword = decodeURIComponent(prefix); 
+        /* TODO Show Progress
+        $('#searchingForArticles').show();
+        $('#searchingForArticles').hide();*/
+        $('#configuration').hide();
+        $('#articleContent').contents().empty();
+        $("#readingArticle").hide();
+        $("#articleContent").show();
+        // Scroll the iframe to its top
+        $("#articleContent").attr('src', "A/imageResults.html")
+        $("#articleContent").contents().scrollTop(0);            
+
+        if (selectedArchive !== null && selectedArchive.isReady()) {
+            selectedArchive.findDirEntriesAndContent(keyword, MAX_SEARCH_RESULT_SIZE, 
+                displayImagesInFrame);
+        } else {
+            // We have to remove the focus from the search field,
+            // so that the keyboard does not stay above the message
+            $("#searchArticles").focus();
+            alert("Archive not set : please select an archive");
+            $("#btnConfigure").click();
+        }
+    }
   
     /**
      * Display the list of articles with the given array of DirEntry
@@ -788,18 +838,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
     var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
 
-    function makeIterator(array) {
-        var nextIndex = 0;
-        
-        return {
-           next: function() {
-               return nextIndex < array.length ?
-                   {value: array[nextIndex++], done: false} :
-                   {done: true};
-           }
-        };
-    }
-
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -814,7 +852,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("#articleContent").contents().scrollTop(0);
 
         // Display the article inside the web page.
-	// Prevents unnecessary 404's being produced when iframe loads images
+	    // Prevents unnecessary 404's being produced when iframe loads images
         var $body = $(htmlArticle);
         $body.find('img').each(function(){
             var image = $(this);
@@ -914,7 +952,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                             p.then(function (content) {
                                 //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                                if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                                    console.log(dirEntry.title +" "+ dirEntry.url);
+                                    uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                                }else{
+                                    uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                                }
+                                //uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
                                 imgtrack++;
                             },function (){
                                 console.error("Failed loading " + index );
@@ -1016,34 +1060,126 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     });
                 }
             });                
-            
-            
-/*
-            // Load Javascript content
-            $('#articleContent').contents().find('script').each(function() {
-                var script = $(this);
-                // We try to find its name (from an absolute or relative URL)
-                var srcMatch = script.attr("src").match(regexpMetadataUrl);
-                // TODO check that the type of the script is text/javascript or application/javascript
-                if (srcMatch) {
-                    // It's a Javascript file contained in the ZIM file
-                    var title = uiUtil.removeUrlParameters(decodeURIComponent(srcMatch[1]));
-                    selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
-                        if (dirEntry === null)
-                            console.log("Error: js file not found: " + title);
-                        else
-                            selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
-                                // TODO : I have to disable javascript for now
-                                // var jsContent = encodeURIComponent(util.uintToString(content));
-                                //script.attr("src", 'data:text/javascript;charset=UTF-8,' + jsContent);
-                            });
-                    }).fail(function (e) {
-                        console.error("could not find DirEntry for javascript : " + title, e);
-                    });
-                }
-            });
-*/
         }
+    }
+
+    function displayImagesInFrame(dirEntry, htmlArticle) {
+        var foundDirEntry = dirEntry;
+
+        // Display the article inside the web page.
+        // Prevents unnecessary 404's being produced when iframe loads images
+        var $body = $(htmlArticle);
+        $body.find('img').each(function(){
+            var image = $(this);
+            $(image).attr("data-src", $(image).attr("src"));
+            $(image).removeAttr("src");
+        });
+        // 404's should now only be produced on loading css and js
+        //$body = $('#articleContent').contents().find('body');//.html($body);
+        // Load images
+        var imgtrack=0,N=2, firstpaint=0;
+        var imageLoadCompletions = [];
+        var workerCompletions = 0;
+        var imgNodes = $body.contents().find('img').filter(function(index){
+            return $(this).attr('width') > 50
+        } );//$('#articleContent img');
+        if(imgNodes.length==0)
+            return;
+        var imageArray = [].slice.call(imgNodes)
+                           .map(el => decodeURIComponent(el.getAttribute('data-src')
+                                        .match(regexpImageUrl)[1]));
+        
+        function createDirEntryFinder(startImageIndex, endImageIndex){
+            return new Promise(function (resolve,reject){
+                var def = new Worker("dirEntryFinder.js");
+                def.onmessage = function (e) {
+                    if(e.data[0] == "done" ){
+                        resolve();
+                        workerCompletions++;
+                        //console.log("recvd done" + workerCompletions +" " + N);
+                        if(workerCompletions == N)
+                            Promise.all(imageLoadCompletions).then(function (){
+                                //console.log("images in document:" + imgNodes.length);
+                                console.log("Images loaded:" + imgtrack);
+                                console.timeEnd("Total Image Lookup+Read Time");
+                            });
+                    }else{
+                        var index = e.data[0];                          
+                        var dirEntry = e.data[1];   
+                        var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                        p.then(function (content) {
+                            //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
+                            //console.log(dirEntry.title +" "+ dirEntry.url);
+                            if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                            }else{
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                            }
+                                
+                            //var w = $(imgNodes[index]).attr("width");
+                            //var h = $(imgNodes[index]).attr("height");
+                            var tmpnode = $('<span>', {class:"grid-item"});
+                            tmpnode.on('click', function(e) {
+                                var decodedURL = decodeURIComponent(foundDirEntry.url);
+                                pushBrowserHistoryState(decodedURL);
+                                //goToArticle($(imgNodes[index]).attr('data-src'));
+                                //goToArticle($body.filter('title')[0].innerText+".html");
+                                goToArticle(decodedURL);
+                                return false;
+                            });
+                            //tmpnode.css("width", w);
+                            //tmpnode.css("height", h);
+                            $("#articleContent").contents().find('.grid').append(
+                                    tmpnode.append(
+                                        $(imgNodes[index])
+                                        )
+                                );
+                            imgtrack++;
+                        },function (){
+                            console.error("Failed loading " + index );
+                        }).then(() => Promise.resolve());
+                        imageLoadCompletions.push(p);                            
+                    }
+                };
+                def.postMessage( [ selectedArchive._file._files[0], 
+                    selectedArchive._file.articleCount, 
+                    selectedArchive._file.urlPtrPos,
+                    startImageIndex,
+                    endImageIndex,
+                    imageArray.slice( startImageIndex, endImageIndex), 
+                    module.config().mode]);
+            });
+        }
+
+        function workerStartwithFold(){
+            console.time("Total Image Lookup+Read Time");
+            var AboveTheFold = 5;
+            var step = imageArray.length/N;
+            if (step > 0){                    
+                var p = createDirEntryFinder(0, AboveTheFold);
+                var waitForImagesAboveTheFold = imageLoadCompletions.length > 0 ? 
+                    Promise.all(imageLoadCompletions[AboveTheFold]) : Promise.resolve();
+                p.then(waitForImagesAboveTheFold)
+                    .then(
+                        function firstPaintDone(){
+                        console.timeEnd("TimeToFirstPaint");                
+                        createDirEntryFinder(AboveTheFold, step);
+                        for (var k = 1; k < N; k += 1) {
+                            var start = k*step;
+                            var end = start+step;
+                            createDirEntryFinder(start, end);
+                            //console.log(start +" "+ end);
+                        }
+                        N++;
+                    });    
+            }else{
+                N=1;
+                createDirEntryFinder(0, imageArray.length);
+            }                
+        }
+
+        console.time("TimeToFirstPaint");
+        workerStartwithFold();
     }
 
     /**
@@ -1052,19 +1188,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} title
      * @param {String} titleSearch
      */
-    function pushBrowserHistoryState(title, titleSearch) {
+    function pushBrowserHistoryState(title, titleSearch, imageSearch) {
         var stateObj = {};
         var urlParameters;
         var stateLabel;
         if (title && !(""===title)) {
             stateObj.title = title;
             urlParameters = "?title=" + title;
-            stateLabel = "Wikipedia Article : " + title;
+            stateLabel = "Article : " + title;
         }
         else if (titleSearch && !(""===titleSearch)) {
             stateObj.titleSearch = titleSearch;
             urlParameters = "?titleSearch=" + titleSearch;
-            stateLabel = "Wikipedia search : " + titleSearch;
+            stateLabel = "Keyword search : " + titleSearch;
+        }
+        else if (imageSearch && !(""===imageSearch)) {
+            stateObj.imageSearch = imageSearch;
+            urlParameters = "?imageSearch=" + imageSearch;
+            stateLabel = "Image search : " + imageSearch;
         }
         else {
             return;

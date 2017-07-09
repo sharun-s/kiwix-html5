@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script src="../js/lib/jquery-2.1.4.js"></script>
+        <script src="masonry.pkgd.min.js"></script>
+        <script src="imagesloaded.pkgd.min.js"></script>
+        <style>
+        
+
+		img {
+		  max-height: 200px;
+		}
+
+
+        </style>
+
+        <title>dummy Article</title>
+        <script>
+        	function init(){
+        		var $grid = $('.grid').masonry({
+				  // options
+				  itemSelector: '.grid-item',
+				  columnWidth: 50
+				});
+				$grid.imagesLoaded().progress( 
+					function( instance, image ) {
+    					var result = image.isLoaded ? 'loaded' : 'broken';
+    					console.log( 'image is ' + result + ' for ' + image.img.src );
+  						$grid.masonry('layout');
+					}
+				);
+        	}
+        </script>
+    </head>
+    <body onload="init();">
+    	<div class="grid">
+    	</div>
+    </body>
+</html>
