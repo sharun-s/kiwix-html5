@@ -430,6 +430,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                                   searchForArchivesInPreferencesOrStorage);
     }
     else {
+            if(!util.isChrome()){
+                $("#welcomeText").html("<h3>Setting Archive Object via URL currently works only on Google Chrome</h3>");
+                $("#welcomeText").show();
+                console.log("Setting Archive Object require XHR access on local LARGE files -https://bugzilla.mozilla.org/show_bug.cgi?id=1378228 ");
+                return;
+            }            
+                
             var params={};
             location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
             if(params["title"] && params["archive"]){
