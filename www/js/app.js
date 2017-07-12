@@ -676,9 +676,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
-
+    var foundArticles;
     function searchDirEntriesFromImagePrefix(keyword) {
         //var keyword = decodeURIComponent(prefix); 
+        foundArticles = new Map();
         /* TODO Show Progress
         $('#searchingForArticles').show();
         $('#searchingForArticles').hide();*/
@@ -1072,6 +1073,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
     function displayImagesInFrame(dirEntry, htmlArticle) {
         var foundDirEntry = dirEntry;
+        if (foundArticles.has(dirEntry.title)){
+            console.log(dirEntry.title + " already processed, skipping...")
+            return;
+        }else{
+            foundArticles.set(dirEntry.title, dirEntry);
+        }
 
         // Display the article inside the web page.
         // Prevents unnecessary 404's being produced when iframe loads images
@@ -1108,7 +1115,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             Promise.all(imageLoadCompletions).then(function (){
                                 //console.log("images in document:" + imgNodes.length);
                                 console.log("Images loaded:" + imgtrack);
-                                console.timeEnd("Total Image Lookup+Read Time");
+                                console.timeEnd(foundDirEntry.title +" Total Image Lookup+Read Time");
                             });
                     }else{
                         var index = e.data[0];                          
@@ -1159,9 +1166,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
 
         function workerStartwithFold(){
-            console.time("Total Image Lookup+Read Time");
+            console.time(foundDirEntry.title +" Total Image Lookup+Read Time");
             var AboveTheFold = 5;
             var step = imageArray.length/N;
+            console.log(foundDirEntry.title + " #img dirents to be processed: " + imageArray.length );
             if (step > 0){                    
                 var p = createDirEntryFinder(0, AboveTheFold);
                 var waitForImagesAboveTheFold = imageLoadCompletions.length > 0 ? 
@@ -1169,7 +1177,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 p.then(waitForImagesAboveTheFold)
                     .then(
                         function firstPaintDone(){
-                        console.timeEnd("TimeToFirstPaint");                
+                        console.timeEnd(foundDirEntry.title + " TimeToFirstPaint");                
                         createDirEntryFinder(AboveTheFold, step);
                         for (var k = 1; k < N; k += 1) {
                             var start = k*step;
@@ -1185,7 +1193,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }                
         }
 
-        console.time("TimeToFirstPaint");
+        console.time(foundDirEntry.title + " TimeToFirstPaint");
         workerStartwithFold();
     }
 

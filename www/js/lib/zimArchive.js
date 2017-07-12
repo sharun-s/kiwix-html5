@@ -192,47 +192,95 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
     // Previously it was called after all results were found which slows things down.
     ZIMArchive.prototype.findDirEntriesAndContent = function(prefix, resultSize, callback) {
         var that = this;
-        var prefixVariants = util.removeDuplicateStringsInSmallArray([prefix, util.ucFirstLetter(prefix), util.lcFirstLetter(prefix), util.ucEveryFirstLetter(prefix)]);
-        var dirEntries = [];
+        //var dupCache, redirectCache = new Map();
+        // The order in which variants are processed can seriosly effect performance
+        // Proccessing is done one at a time, when the time to find first match increases, time to first paint increase       
+        // So current approach - first variant processed is a exact match of what user typed
+        var prefixVariants = util.removeDuplicateStringsInSmallArray([ 
+            util.ucFirstLetter(prefix), 
+            util.lcFirstLetter(prefix), 
+            util.ucEveryFirstLetter(prefix),
+            prefix]);
+        var articlesWithTitleMatchingKeyword = 0;
         console.time("search");
         console.log(prefixVariants);
-        function searchNextVariant() {
-            if (prefixVariants.length === 0 || dirEntries.length >= resultSize) {
-                //callback(dirEntries);
-                console.timeEnd("search");
-                return;
+        
+        // Initiate search for dirent of first variant
+        // This callback is called everytime an article with titleis matched  
+        function onFoundGetContentUpdateUI(articleDirEntry) {
+            if (articleDirEntry){
+                articlesWithTitleMatchingKeyword++;
+                var p= articleDirEntry.readData();
+                p.then(function(data) {
+                    // so as soon as first article is read 
+                    // this will initiate a worker start
+                    console.log("read html of " + articleDirEntry.title);
+                    callback(articleDirEntry, utf8.parse(data));
+                });
+            }else{
+                //debugger;
+                if (prefixVariants.length === 0 || articlesWithTitleMatchingKeyword >= resultSize) {
+                    console.log("Matched Articles Found Across Variants:" + articlesWithTitleMatchingKeyword);
+                    console.timeEnd("search");
+                }else{
+                    searchNextVariant();
+                }                
             }
+        }
+        function searchNextVariant() {
             var prefix = prefixVariants[0];
             prefixVariants = prefixVariants.slice(1);
-            that.findDirEntriesWithPrefixCaseSensitive(prefix, resultSize - dirEntries.length, 
-                function getImagesFromArticles(newDirEntries) {
-                    //dirEntries.push.apply(dirEntries, newDirEntries);
-                    console.log(prefix +" found "+ newDirEntries.length);
-                    // if redirects exist resolve
-                    if( newDirEntries.length > 0 ){
-                        var articleIterator = util.makeIterator(newDirEntries);
-                        (function next(){
-                            var article = articleIterator.next();
-                            if(!article.done){
-                                var p= article.value.readData();
-                                p.then(function(data) {
-                                    callback(article.value, utf8.parse(data));
-                                });
-                                p.then(next);
-                            }
-                        })();                        
-                    }
-                    searchNextVariant();
-                });
-                
+            that.findUniqDirEntriesWithPrefixCaseSensitive(prefix, 
+                resultSize - articlesWithTitleMatchingKeyword,
+                onFoundGetContentUpdateUI
+                );                
         }
         searchNextVariant();
+        
     };
 
 
     ZIMArchive.prototype.findUniqDirEntriesWithPrefixCaseSensitive = function(prefix, resultSize, callback) {
         var that = this;
+        function getNextN(firstIndex) {
+            //console.count(prefix);
+            var next = function(index) {
+                if (index >= firstIndex + resultSize || index >= that._file.articleCount){
+                    callback(null);//signals end of search for this prefix variant
+                    return;
+                }
+                return that._file.dirEntryByTitleIndex(index)
+                .then(function resolveRedirects(de){
+                    if(de.redirect){
+                        var p = new Promise(function (resolve, reject){
+                            that.resolveRedirect(de, function(targetde){
+                                console.log(de.title +" redirected to " + targetde.title);
+                                resolve(addDEOnPrefixMatch(targetde, prefix, index));                    
+                            });    
+                        });
+                        return p;
+                    }else{
+                        return addDEOnPrefixMatch(de, prefix, index);   
+                    }
+                })
+                .then(next);
+            };
+            return next(firstIndex);
+        }
+        
+        function addDEOnPrefixMatch(dirEntry, prefix, index) {
+            // added prefix.toLowerCase to normalize the comparision
+            // eg Game of thrones gets redirected to Game of Thrones but fails here without normalization
+            if (dirEntry.title.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase() && dirEntry.namespace === "A"){
+                console.log(dirEntry.title + " added, retrieving html...");
+                callback(dirEntry);
+            }else{
+                console.log(dirEntry.title);
+            }
+            return index + 1;
+        }
         //console.count(prefix);
+        // why is lowerbound true? If nothing found getN will run?
         util.binarySearch(0, this._file.articleCount, function(i) {
             //console.count("binsearchsteps")
             return that._file.dirEntryByTitleIndex(i).then(function(dirEntry) {
@@ -244,29 +292,11 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
                     return -1;
                 return prefix <= dirEntry.title ? -1 : 1;
             });
-        }, true).then(getNextN).then(callback);
+        }, true)
+        .then(getNextN);
+        
     };
 
-    function getNextN(firstIndex) {
-        var dirEntries = [];
-        var next = function(index) {
-            //console.count("addDE");    
-            if (index >= firstIndex + resultSize || index >= that._file.articleCount)
-                return dirEntries;
-            return that._file.dirEntryByTitleIndex(index).then((dirEntry)=>addDEOnPrefixMatch(dirEntry, prefix, index));
-        };
-        return next(firstIndex);
-    }
-    
-    function addDEOnPrefixMatch(dirEntry, prefix, index) {
-        if (dirEntry.title.slice(0, prefix.length) === prefix && dirEntry.namespace === "A"){
-            console.log(dirEntry.title + " added");
-            dirEntries.push(dirEntry);
-        }else{
-            console.log(dirEntry.title);
-        }
-        return addDirEntries(index + 1);
-    }
 
     /**
      * Look for DirEntries with title starting with the given prefix (case-sensitive)
