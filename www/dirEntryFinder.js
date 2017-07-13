@@ -1,4 +1,8 @@
 var params={}, articleCount, urlPtrPos, wid, nodestart, readSlice;
+// Remove to debug    
+//console.log = function(){}     
+//console.time = function(){};
+//console.timeEnd =function(){};
 
 function readInt(data, offset, size)
 {

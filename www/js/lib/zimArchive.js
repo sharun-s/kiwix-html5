@@ -187,11 +187,13 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         searchNextVariant();
     };
 
+    var waitForArticleReadCompletion = null;
     // rewrite of findDirEntriesWithPrefix
     // Callback is called for each Result found.
     // Previously it was called after all results were found which slows things down.
     ZIMArchive.prototype.findDirEntriesAndContent = function(prefix, resultSize, callback) {
         var that = this;
+        var matchedArticles = [];
         //var dupCache, redirectCache = new Map();
         // The order in which variants are processed can seriosly effect performance
         // Proccessing is done one at a time, when the time to find first match increases, time to first paint increase       
@@ -210,13 +212,30 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         function onFoundGetContentUpdateUI(articleDirEntry) {
             if (articleDirEntry){
                 articlesWithTitleMatchingKeyword++;
-                var p= articleDirEntry.readData();
-                p.then(function(data) {
-                    // so as soon as first article is read 
-                    // this will initiate a worker start
-                    console.log("read html of " + articleDirEntry.title);
-                    callback(articleDirEntry, utf8.parse(data));
-                });
+                // This is mainly to save dirents found while a readArticle is happening
+                if(waitForArticleReadCompletion){
+                    console.log(articleDirEntry.title + " saved for later");
+                    matchedArticles.push(articleDirEntry);
+                }else{
+                    function read(articleDirEntry){
+                        console.log(articleDirEntry.title + " reading...");
+                        waitForArticleReadCompletion = articleDirEntry.readData();
+                        waitForArticleReadCompletion.then(function(data) {
+                            // start image loader process for this article
+                            console.log(articleDirEntry.title + " read done");
+                            callback(articleDirEntry, utf8.parse(data));
+                        }).then(function readNext(){
+                            var articleDirEntry = matchedArticles.pop();
+                            if(articleDirEntry){
+                                read(articleDirEntry);    
+                            }else{
+                                // all articles in matchedArticles have been read
+                                waitForArticleReadCompletion = null;
+                            }
+                        });
+                    };
+                    read(articleDirEntry);
+                }                
             }else{
                 //debugger;
                 if (prefixVariants.length === 0 || articlesWithTitleMatchingKeyword >= resultSize) {
@@ -230,7 +249,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         function searchNextVariant() {
             var prefix = prefixVariants[0];
             prefixVariants = prefixVariants.slice(1);
-            that.findUniqDirEntriesWithPrefixCaseSensitive(prefix, 
+            that.findDirEntries(prefix, 
                 resultSize - articlesWithTitleMatchingKeyword,
                 onFoundGetContentUpdateUI
                 );                
@@ -240,7 +259,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
     };
 
 
-    ZIMArchive.prototype.findUniqDirEntriesWithPrefixCaseSensitive = function(prefix, resultSize, callback) {
+    ZIMArchive.prototype.findDirEntries = function(prefix, resultSize, callback) {
         var that = this;
         function getNextN(firstIndex) {
             //console.count(prefix);
@@ -260,10 +279,12 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
                         });
                         return p;
                     }else{
-                        return addDEOnPrefixMatch(de, prefix, index);   
+                        if(waitForArticleReadCompletion)
+                            return waitForArticleReadCompletion.then(()=>addDEOnPrefixMatch(de, prefix, index));
+                        else
+                            return addDEOnPrefixMatch(de, prefix, index);   
                     }
-                })
-                .then(next);
+                }).then(next);
             };
             return next(firstIndex);
         }
@@ -272,7 +293,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
             // added prefix.toLowerCase to normalize the comparision
             // eg Game of thrones gets redirected to Game of Thrones but fails here without normalization
             if (dirEntry.title.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase() && dirEntry.namespace === "A"){
-                console.log(dirEntry.title + " added, retrieving html...");
+                console.log(dirEntry.title + " matched");
                 callback(dirEntry);
             }else{
                 console.log(dirEntry.title);
