@@ -429,15 +429,15 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
                                                   searchForArchivesInPreferencesOrStorage);
     }
-    else {
-            if(!util.isChrome()){
-                $("#welcomeText").html("<h3>Setting Archive Object via URL currently works only on Google Chrome</h3>");
+    else {    
+            var params={};
+            if(!util.isChrome() && params["archive"]){
+                $("#welcomeText").html("<h3>Setting Archive Object via URL currently works only on Google Chrome.</h3> <h5>Use Configure To Select A File</h5>");
                 $("#welcomeText").show();
                 console.log("Setting Archive Object require XHR access on local LARGE files -https://bugzilla.mozilla.org/show_bug.cgi?id=1378228 ");
+                displayFileSelect();
                 return;
-            }            
-                
-            var params={};
+            }
             location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
             if(params["title"] && params["archive"]){
                 console.log("loading " + params["title"] + " from " + params["archive"] );
@@ -676,10 +676,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
-    var foundArticles;
+    var ResultSet;
+    window.getSearchResults = function getSearchResults(){
+        return ResultSet;
+    }
     function searchDirEntriesFromImagePrefix(keyword) {
         //var keyword = decodeURIComponent(prefix); 
-        foundArticles = new Map();
+        ResultSet = new Map();
         /* TODO Show Progress
         $('#searchingForArticles').show();
         $('#searchingForArticles').hide();*/
@@ -1073,11 +1076,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
     function displayImagesInFrame(dirEntry, htmlArticle) {
         var foundDirEntry = dirEntry;
-        if (foundArticles.has(dirEntry.title)){
+        if (ResultSet.has(dirEntry.title)){
+            ResultSet.set(foundDirEntry.title, {images:[], redirectedFrom:"", dup:"skipped"});
             console.log(dirEntry.title + " already processed, skipping...")
             return;
         }else{
-            foundArticles.set(dirEntry.title, dirEntry);
+            ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:"", dup:""});
         }
 
         // Display the article inside the web page.
@@ -1098,11 +1102,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             return $(this).attr('width') > 50
         } );//$('#articleContent img');
         if(imgNodes.length==0)
+        {
+            console.log(foundDirEntry.title +" no images found");
             return;
+        }    
         var imageArray = [].slice.call(imgNodes)
                            .map(el => decodeURIComponent(el.getAttribute('data-src')
                                         .match(regexpImageUrl)[1]));
-        
         function createDirEntryFinder(startImageIndex, endImageIndex){
             return new Promise(function (resolve,reject){
                 var def = new Worker("dirEntryFinder.js");
@@ -1114,13 +1120,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         if(workerCompletions == N)
                             Promise.all(imageLoadCompletions).then(function (){
                                 //console.log("images in document:" + imgNodes.length);
-                                console.log("Images loaded:" + imgtrack);
-                                console.timeEnd(foundDirEntry.title +" Total Image Lookup+Read Time");
+                                //console.log("Images loaded:" + imgtrack);
+                                console.timeEnd(foundDirEntry.title + " "+imgtrack+" Image Lookup+Read Time");
                             });
                     }else{
                         var index = e.data[0];                          
                         var dirEntry = e.data[1];   
                         var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                        ResultSet.get(foundDirEntry.title).images.push(dirEntry.url);
                         p.then(function (content) {
                             //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
                             //console.log(dirEntry.title +" "+ dirEntry.url);
@@ -1149,6 +1156,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                         )
                                 );
                             imgtrack++;
+                            console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
                         },function (){
                             console.error("Failed loading " + index );
                         }).then(() => Promise.resolve());
@@ -1166,11 +1174,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
 
         function workerStartwithFold(){
-            console.time(foundDirEntry.title +" Total Image Lookup+Read Time");
+            console.time(foundDirEntry.title + " "+imageArray.length+" Image Lookup+Read Time");
             var AboveTheFold = 5;
             var step = imageArray.length/N;
-            console.log(foundDirEntry.title + " #img dirents to be processed: " + imageArray.length );
-            if (step > 0){                    
+            //console.log(foundDirEntry.title + " #img dirents to be processed: " + imageArray.length );
+            // No point running multiple workers for low image counts
+            if (step > 0 && imageArray.length >= AboveTheFold){                    
                 var p = createDirEntryFinder(0, AboveTheFold);
                 var waitForImagesAboveTheFold = imageLoadCompletions.length > 0 ? 
                     Promise.all(imageLoadCompletions[AboveTheFold]) : Promise.resolve();
