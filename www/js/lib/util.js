@@ -240,6 +240,36 @@ define(['q', 'module'], function(q, module) {
         return deferred.promise;
     }
 
+    function readFFXHRSlice(file, begin, size){
+        var deferred = q.defer()  
+        var req = new XMLHttpRequest();
+        req.open('GET', file.name, true); 
+        if (location.protocol == 'file:') {
+            //console.log("blobloader");
+            req.responseType = "blob";
+            req.onload = function(e) {
+                var sliced = e.target.response.slice(begin, begin+size);
+                var fr = new FileReader();
+                fr.readAsArrayBuffer(sliced);
+                fr.addEventListener("load", function() {
+                    deferred.resolve(new Uint8Array(fr.result));
+                });
+            };
+        } else {
+            req.responseType = "arraybuffer";
+            var end = begin + size;
+            req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
+            req.onload = function(e) {
+                deferred.resolve(new Uint8Array(e.target.response));
+            };
+        }
+        req.onerror = req.onabort = function(e) {
+            deferred.reject(e);
+        }; 
+        req.send(null);
+        return deferred.promise;
+    }
+
     /**
      * Performs a binary search on indices begin <= i < end, utilizing query(i) to return where to
      * continue the search.
@@ -341,23 +371,9 @@ define(['q', 'module'], function(q, module) {
         };
     }
 
-    function isChrome() {
-      var isChromium = window.chrome,
-        winNav = window.navigator,
-        vendorName = winNav.vendor,
-        isOpera = winNav.userAgent.indexOf("OPR") > -1,
-        isIEedge = winNav.userAgent.indexOf("Edge") > -1,
-        isIOSChrome = winNav.userAgent.match("CriOS");
-
-      if(isIOSChrome){
-        return true;
-      } else if(isChromium !== null && isChromium !== undefined && vendorName === "Google Inc." && isOpera == false && isIEedge == false) {
-        return true;
-      } else { 
-        return false;
-      }
+    function isFireFox(){
+        return typeof InstallTrigger !== 'undefined';
     }
-
     /**
      * Functions and classes exposed by this module
      */
@@ -373,12 +389,11 @@ define(['q', 'module'], function(q, module) {
         readFloatFrom4Bytes : readFloatFrom4Bytes,
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
-        readSlice : module.config().mode == "file" ? readFileSlice : readXHRSlice,
+        readSlice : module.config().mode == "file" ? readFileSlice : isFireFox() ? readFFXHRSlice : readXHRSlice,
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,
         leftShift: leftShift,
         makeIterator: makeIterator,
-        isChrome: isChrome
     };
 });

@@ -114,6 +114,37 @@ function readXHRSlice(file, begin, size) {
     }); 
 }
 
+function readFFXHRSlice(file, begin, size){
+    return new Promise(function (resolve, reject){
+        var req = new XMLHttpRequest();
+        req.open('GET', file.name, true); 
+        if (location.protocol == 'file:') {
+            //console.log("blobloader");
+            req.responseType = "blob";
+            req.onload = function(e) {
+                var sliced = e.target.response.slice(begin, begin+size);
+                var fr = new FileReader();
+                fr.readAsArrayBuffer(sliced);
+                fr.addEventListener("load", function() {
+                    resolve(new Uint8Array(fr.result));
+                });
+            };
+        } else {
+            req.responseType = "arraybuffer";
+            var end = begin + size;
+            req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
+            req.onload = function(e) {
+                resolve(new Uint8Array(e.target.response));
+            };
+        }
+        req.onerror = req.onabort = function(e) {
+            reject(e);
+        }; 
+        req.send(null);
+    });
+}
+
+
 function dirEntryByUrlIndex(index, cache)
 {
     var that = this;
@@ -320,6 +351,10 @@ function init(){
         console.error("DirEntryFinder archive not set");
     }
 }
+
+function isFireFox(){
+    return typeof InstallTrigger !== 'undefined';
+}
     
 onmessage = function(e) {
   console.log('starting worker...');
@@ -329,7 +364,13 @@ onmessage = function(e) {
   wid = Math.floor(e.data[3])+"-"+Math.floor(e.data[4]);
   nodestart= Math.floor(e.data[3]);
   imageArray = e.data[5]; //Array.from(new Set(e.data[5])); // don't look up dups
-  readSlice = e.data[6] == "file" ? readFileSlice : readXHRSlice;
+  if (e.data[6] == "file") {
+    readSlice = readFileSlice;
+  }else if( e.data[6] == "xhrFF"){
+    readSlice = readFFXHRSlice;
+  }else{
+    readSlice = readXHRSlice;
+  } 
   //debugger;
   init();
 }

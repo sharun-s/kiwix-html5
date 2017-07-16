@@ -23,11 +23,17 @@
 'use strict';
 var params={};
 location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+// using this to test workaround for bugzilla.mozilla.org/show_bug.cgi?id=1378228
+var isFirefox = typeof InstallTrigger !== 'undefined';
 var mode = params['mode'] || "file";
+if (isFirefox && (mode !== "file")) {
+    mode = "xhrFF";
+};
+
 var results = params['results'] || 10;
 require.config({
     baseUrl: 'js/lib',
-    config: {'util': { mode: mode},'../app': { mode: mode, results: results}},
+    config: {'util': { mode: mode},'../app': { mode: mode, results: results, isFirefox:isFirefox}},
     paths: {
         'jquery': 'jquery-2.1.4',
         'bootstrap': 'bootstrap'
