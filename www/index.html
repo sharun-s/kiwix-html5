@@ -65,8 +65,7 @@
                 </nav>
 
 
-                <div class="container">
-                <form id="formArticleSearch">
+                <form id="formArticleSearch" class="container">
                     <div class="row">
                         <span class="nopadding col-md-offset-1 col-sm-offset-1 col-md-8 col-sm-8 col-xs-7">
                             <span class="input-group">
@@ -83,7 +82,7 @@
                         <img src="img/spinner.gif" alt="Please wait..." />
                     </div>
                 </form>
-                </div>
+                
             </header>
             <article class="view-content">
                 <div id="about" style="display: none;" class="category-padding">
@@ -185,13 +184,14 @@
                     Other Kiwix clients exist on various platforms. See the official site : <a href="http://www.kiwix.org/" target="_blank">http://www.kiwix.org/</a>
                 </div>
 
-                <div id="configuration" style="display: none;" class="category-padding">
-                    <h2>Configuration</h2>
-                    This application needs a ZIM archive to work. If you did not download one yet, please see the About section
-                    <div id="openLocalFiles" style="display: none;">
-                        Please select the .zim file (or all the .zimaa, .zimab etc in case of a split ZIM file)<br />
-                        <input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" /><br />
-                        <strong>Only Wikimedia contents (wiki*.zim* files) have been tested</strong> for now. There are known bugs on other contents, and audio/video/dynamic contents are not supported for now.<br />
+                <div id="configuration" style="display: none;" class="container">
+                    <h3>File Selector</h3>
+                    <div id="openLocalFiles" style="display: none;" >
+                        <p>Please select the .zim file (or all the .zimaa, .zimab etc in case of a split ZIM file)</p>
+                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" /></p>
+                        <p>Visit <a target="_blank" href="http://wiki.kiwix.org/wiki/Content#Download"><mark>Kiwix.org</mark></a> for available ZIM files. Only <span class="bg-info">Wikimedia (wiki*.zim*)</span> files have been tested.  
+                        </p>
+                        <p><span class="text-danger">Audio/Video/Dynamic Content</span> is currently unsupported. Visit the <a target="_blank" href="http://github.com/kiwix/kiwix-js/issues"><mark>Kiwix-JS Issue Tracker<mark></a> to report or lookup issues</p>
                     </div>
                     <div id="scanningForArchives" style="display: none;">
                         <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
@@ -200,19 +200,36 @@
                         <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
                         <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
                     </div>
-                    <br />
-                    <h2>Expert settings</h2>
+                    <h3>Display</h3>
+                    <p>
+                        <h4>Style <small>For Wikipedia Files</small></h4>
+                        <p>
+                        <label class"radio-inline" for="cssModeDesktopRadio">
+                            <input type="radio"  name="cssInjectionMode" value="desktop" id="cssModeDesktopRadio" checked> Desktop
+                        </label> 
+                        <label class"radio-inline" for="cssModeMobileRadio">
+                            <input type="radio" name="cssInjectionMode" value="mobile" id="cssModeMobileRadio"> Mobile
+                        </label>  
+                        </p>
+                        <h4>Cache</h4>
+                        <label for="cssCacheModeCheck"><input type="checkbox" name="cssCacheMode" value="local" id="cssCacheModeCheck">
+                        Use In-App Cached Styles</label> 
+                        <small>(<i>Recommended</i> For Wikipedia ZIM)</small>
+                        Uncheck to use styles in ZIM file
+                    </p>
+
+                <h3>Expert Settings</h3>
                     <div id="contentInjectionModeDiv">
                         Do not touch unless you know what you're doing. <br />
                         Content injection mode : <br/>
-                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">JQuery</label> (slow and memory hungry, but safer)
-                        <br>
-                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">ServiceWorker</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
+                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; JQuery</label> (slow and memory hungry, but safer)
+                            <br>
+                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; ServiceWorker</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
                     </div>
-                    <div id="serviceWorkerStatus"></div>
-                    <div id="messageChannelStatus"></div>
-                    <br />
-                </div>
+                <div id="serviceWorkerStatus"></div>
+                <div id="messageChannelStatus"></div>
+                <br />
+            </div> 
 
                 <div id="welcomeText" class="container category-padding">
                     You can search the content of your ZIM archive by typing in the above search field.

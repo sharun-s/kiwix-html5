@@ -31,9 +31,12 @@ if (isFirefox && (mode !== "file")) {
 };
 
 var results = params['results'] || 10;
+var cssSource = params['cssSource'] || "desktop"; //Set default to "desktop" or "mobile"
+var cssCache = params['cssCache'] || true; //Set default to true to use cached CSS, false to use Zim only
+
 require.config({
     baseUrl: 'js/lib',
-    config: {'util': { mode: mode},'../app': { mode: mode, results: results, isFirefox:isFirefox}},
+    config: {'util': { mode: mode},'../app': { mode: mode, results: results, isFirefox:isFirefox, cssSource:cssSource, cssCache:cssCache}},
     paths: {
         'jquery': 'jquery-2.1.4',
         'bootstrap': 'bootstrap'

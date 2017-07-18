@@ -27,7 +27,7 @@
   overflow-x: hidden;
 }
 [role=region] > header {
-  margin: .5rem 0 1rem 0;
+  //margin: .5rem 0 1rem 0;
   text-align: center;
 }
 [role=region] > header > h1 {
