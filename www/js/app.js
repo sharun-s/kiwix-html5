@@ -1337,6 +1337,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else {
                 $("#articleName").html(title);
+                $("title").html(title);
                 $("#readingArticle").show();
                 $('#articleContent').contents().find('body').html("");
                 readArticle(dirEntry);
@@ -1352,6 +1353,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             else {
                 if (dirEntry.namespace === 'A') {
                     $("#articleName").html(dirEntry.title);
+                    $("title").html(dirEntry.title);
                     pushBrowserHistoryState(dirEntry.url);
                     $("#readingArticle").show();
                     $('#articleContent').contents().find('body').html("");
@@ -1374,6 +1376,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             else {
                 if (dirEntry.namespace === 'A') {
                     $("#articleName").html(dirEntry.title);
+                    $("title").html(dirEntry.title);
                     pushBrowserHistoryState(dirEntry.url);
                     $("#readingArticle").show();
                     $('#articleContent').contents().find('body').html("");
