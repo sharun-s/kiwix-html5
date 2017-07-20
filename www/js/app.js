@@ -438,13 +438,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
                                                   searchForArchivesInPreferencesOrStorage);
     }
-    else {    
+    else {  
+            displayFileSelect();// when switching from url based loading to file based ensures UI is visible  
             var params={};
             location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
             if(params["title"] && params["archive"]){
                 console.log("loading " + params["title"] + " from " + params["archive"] );
                 $("#welcomeText").hide();
-                $("#articleListWithHeader").hide();
+                //$("#articleListWithHeader").hide();
                 selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
                 goToArticle(params["title"]);                
             }else if(params["titleSearch"] && params["archive"]){
@@ -463,7 +464,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 searchDirEntriesFromImagePrefix(keyword);
             }else{
     	        // If DeviceStorage is not available, we display the file select components
-    	        displayFileSelect();
+    	        
     	        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
     	            // Archive files are already selected, 
     	            setLocalArchiveFromFileSelect();
@@ -817,24 +818,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.log("the ServiceWorker sent a message on port1", event.data);
             if (event.data.action === "askForContent") {
                 console.log("we are asked for a content : let's try to answer to this message");
-                var title = event.data.title;
+                var url = event.data.url;
                 var messagePort = event.ports[0];
                 var readFile = function(dirEntry) {
                     if (dirEntry === null) {
-                        console.error("Title " + title + " not found in archive.");
-                        messagePort.postMessage({'action': 'giveContent', 'title' : title, 'content': ''});
+                        console.error("URL " + url + " not found in archive.");
+                        messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': ''});
                     } else if (dirEntry.isRedirect()) {
                         selectedArchive.resolveRedirect(dirEntry, readFile);
                     } else {
                         console.log("Reading binary file...");
                         selectedArchive.readBinaryFile(dirEntry, function(readableTitle, content) {
-                            messagePort.postMessage({'action': 'giveContent', 'title' : title, 'content': content});
+                            messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': content});
                             console.log("content sent to ServiceWorker");
                         });
                     }
                 };
-                selectedArchive.getDirEntryByTitle(title).then(readFile).fail(function() {
-                    messagePort.postMessage({'action': 'giveContent', 'title' : title, 'content': new UInt8Array()});
+                selectedArchive.getDirEntryByURL(url).then(readFile).fail(function() {
+                    messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': new UInt8Array()});
                 });
             }
             else {
@@ -895,8 +896,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
         }
 
-        function resolveCSS(title, index) {
-            selectedArchive.getDirEntryByTitle(title).then(
+        function resolveCSS(url, index) {
+            selectedArchive.getDirEntryByURL(url).then(
                 function (dirEntry) {
                 selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                     //var cssContent = util.uintToString(content); //Uncomment this line and break on next to capture cssContent for local filesystem cache
@@ -907,8 +908,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     injectCSS(); //Don't move this: it must run within .then function to pass correct values
                 });
             }).fail(function (e) {
-                console.error("could not find DirEntry for CSS : " + title, e);
-                blobArray[index] = title;
+                console.error("could not find DirEntry for CSS : " + url, e);
+                blobArray[index] = url;
                 injectCSS();
             });
         }
@@ -1127,7 +1128,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 if (hrefMatch) {
                     // It's a CSS file contained in the ZIM file
                     var title = uiUtil.removeUrlParameters(decodeURIComponent(hrefMatch[1]));
-                    cssLoaded = selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
+                    cssLoaded = selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
                         return selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                             var cssContent = util.uintToString(content);
                             // For some reason, Firefox OS does not accept the syntax <link rel="stylesheet" href="data:text/css,...">
@@ -1325,24 +1326,29 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         window.history.pushState(stateObj, stateLabel, urlParameters);
     }
 
+    // common code used by gotoArticle/gotoMainArticle/gotoRandomArticle
+    function injectContent(dirEntry){
+        $("#articleName").html(dirEntry.title);
+        $("title").html(dirEntry.title);
+        $("#readingArticle").show();
+        $('#articleContent').contents().find('body').html("");
+        readArticle(dirEntry);
+    }
+
     /**
-     * Replace article content with the one of the given title
-     * @param {String} title
+     * Replace article content with the one of the given url
+     * @param {String} article url eg: Paris.html
      */
-    function goToArticle(title) {
-        selectedArchive.getDirEntryByTitle(title).then(function(dirEntry) {
+    function goToArticle(url) {
+        selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 $("#readingArticle").hide();
-                alert("Article with title " + title + " not found in the archive");
+                alert("Article with url " + url + " not found in the archive");
             }
             else {
-                $("#articleName").html(title);
-                $("title").html(title);
-                $("#readingArticle").show();
-                $('#articleContent').contents().find('body').html("");
-                readArticle(dirEntry);
+                injectContent(dirEntry);
             }
-        }).fail(function() { alert("Error reading article with title " + title); });
+        }).fail(function() { alert("Error reading article with title " + url); });
     }
     
     function goToRandomArticle() {
@@ -1352,12 +1358,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else {
                 if (dirEntry.namespace === 'A') {
-                    $("#articleName").html(dirEntry.title);
-                    $("title").html(dirEntry.title);
                     pushBrowserHistoryState(dirEntry.url);
-                    $("#readingArticle").show();
-                    $('#articleContent').contents().find('body').html("");
-                    readArticle(dirEntry);
+                    injectContent(dirEntry);
                 }
                 else {
                     // If the random title search did not end up on an article,
@@ -1367,7 +1369,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
         });
     }
-    
+
     function goToMainArticle() {
         selectedArchive.getMainPageDirEntry(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
@@ -1375,12 +1377,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else {
                 if (dirEntry.namespace === 'A') {
-                    $("#articleName").html(dirEntry.title);
-                    $("title").html(dirEntry.title);
                     pushBrowserHistoryState(dirEntry.url);
-                    $("#readingArticle").show();
-                    $('#articleContent').contents().find('body').html("");
-                    readArticle(dirEntry);
+                    injectContent(dirEntry);
                 }
                 else {
                     console.error("The main page of this archive does not seem to be an article");

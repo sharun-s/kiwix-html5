@@ -227,31 +227,31 @@ function binarySearch(begin, end, query, lowerBound) {
 };
 
 
-function readImageDirEnt(title) {
+function readImageDirEnt(url) {
     //var image = $(img.value);//$(this);
     // It's a standard image contained in the ZIM file
     // We try to find its name (from an absolute or relative URL)
     //var imageMatch = image.attr("data-src").match(regexpImageUrl);
     //if (imageMatch) {
-        //var title = decodeURIComponent(imageMatch[1]);
+        //var url = decodeURIComponent(imageMatch[1]);
         //each time this is causing a binary search
-        //var p = selectedArchive.getDirEntryByTitle(title, sessionCache);
+        //var p = selectedArchive.getDirEntryByURL(url, sessionCache);
         //this check is unnecessary as its an image
-        /*if (regexpTitleWithoutNameSpace.test(title)) {
-            title= "A/" + title;
+        /*if (regexpTitleWithoutNameSpace.test(url)) {
+            url= "A/" + url;
         }*/
-        if (loadingCache && loadingCache.has(title)){
-            return Promise.resolve().then(() => loadingCache.get(title));
+        if (loadingCache && loadingCache.has(url)){
+            return Promise.resolve().then(() => loadingCache.get(url));
         }
         //var pb = 
         return binarySearch(0, articleCount, 
                     function compare(i) {
                         return dirEntryByUrlIndex(i, loadingCache).then(function (dirEntry){
-                            var url = dirEntry.namespace + "/" + dirEntry.url;
+                            var foundurl = dirEntry.namespace + "/" + dirEntry.url;
                             //console.log(title+" "+url);
-                            if (title < url)
+                            if (url < foundurl)
                                 return -1;
-                            else if (title > url)
+                            else if (url > foundurl)
                                 return 1;
                             else
                                 return 0;
@@ -265,7 +265,7 @@ function readImageDirEnt(title) {
                     return dirEntryByUrlIndex(index);
                 }).then( function (dirEntry){
                         if(loadingCache)
-                            loadingCache.set(title, dirEntry);
+                            loadingCache.set(url, dirEntry);
                         return dirEntry;
                 });
             //return pb.then(function (dirent){return Promise.resolve();}, function (){console.error("could not find dirent");});

@@ -99,39 +99,39 @@ function fetchEventListener(event) {
             console.log('Asking app.js for a content', event.request.url);
             event.respondWith(new Promise(function(resolve, reject) {
                 var nameSpace;
-                var title;
-                var titleWithNameSpace;
+                var url;
+                var urlWithNameSpace;
                 var contentType;
                 if (regexpContentUrlWithoutNamespace.test(event.request.url)) {
                     // When the request URL is in the same folder,
                     // it means it's a link to an article (namespace A)
                     var regexpResult = regexpContentUrlWithoutNamespace.exec(event.request.url);
                     nameSpace = 'A';
-                    title = regexpResult[1];
+                    url = regexpResult[1];
                 } else {
                     var regexpResult = regexpContentUrlWithNamespace.exec(event.request.url);
                     nameSpace = regexpResult[1];
-                    title = regexpResult[2];
+                    url = regexpResult[2];
                 }
 
                 // The namespace defines the type of content. See http://www.openzim.org/wiki/ZIM_file_format#Namespaces
                 // TODO : read the contentType from the ZIM file instead of hard-coding it here
                 if (nameSpace === 'A') {
-                    console.log("It's an article : " + title);
+                    console.log("It's an article : " + url);
                     contentType = 'text/html';
                 }
                 else if (nameSpace === 'I' || nameSpace === 'J') {
-                    console.log("It's an image : " + title);
-                    if (regexpJPEG.test(title)) {
+                    console.log("It's an image : " + url);
+                    if (regexpJPEG.test(url)) {
                         contentType = 'image/jpeg';
                     }
-                    else if (regexpPNG.test(title)) {
+                    else if (regexpPNG.test(url)) {
                         contentType = 'image/png';
                     }
                 }
                 else if (nameSpace === '-') {
-                    console.log("It's a layout dependency : " + title);
-                    if (regexpJS.test(title)) {
+                    console.log("It's a layout dependency : " + url);
+                    if (regexpJS.test(url)) {
                         contentType = 'text/javascript';
                         var responseInit = {
                             status: 200,
@@ -147,21 +147,21 @@ function fetchEventListener(event) {
                         resolve(httpResponse);
                         return;
                     }
-                    else if (regexpCSS.test(title)) {
+                    else if (regexpCSS.test(url)) {
                         contentType = 'text/css';
                     }
                 }
 
                 // We need to remove the potential parameters in the URL
-                title = removeUrlParameters(decodeURIComponent(title));
+                url = removeUrlParameters(decodeURIComponent(url));
 
-                titleWithNameSpace = nameSpace + '/' + title;
+                urlWithNameSpace = nameSpace + '/' + url;
 
                 // Let's instanciate a new messageChannel, to allow app.s to give us the content
                 var messageChannel = new MessageChannel();
                 messageChannel.port1.onmessage = function(event) {
                     if (event.data.action === 'giveContent') {
-                        console.log('content message received for ' + titleWithNameSpace, event.data);
+                        console.log('content message received for ' + urlWithNameSpace, event.data);
                         var responseInit = {
                             status: 200,
                             statusText: 'OK',
@@ -172,16 +172,16 @@ function fetchEventListener(event) {
 
                         var httpResponse = new Response(event.data.content, responseInit);
 
-                        console.log('ServiceWorker responding to the HTTP request for ' + titleWithNameSpace + ' (size=' + event.data.content.length + ' octets)' , httpResponse);
+                        console.log('ServiceWorker responding to the HTTP request for ' + urlWithNameSpace + ' (size=' + event.data.content.length + ' octets)' , httpResponse);
                         resolve(httpResponse);
                     }
                     else {
-                        console.log('Invalid message received from app.js for ' + titleWithNameSpace, event.data);
+                        console.log('Invalid message received from app.js for ' + urlWithNameSpace, event.data);
                         reject(event.data);
                     }
                 };
-                console.log('Eventlistener added to listen for an answer to ' + titleWithNameSpace);
-                outgoingMessagePort.postMessage({'action': 'askForContent', 'title': titleWithNameSpace}, [messageChannel.port2]);
+                console.log('Eventlistener added to listen for an answer to ' + urlWithNameSpace);
+                outgoingMessagePort.postMessage({'action': 'askForContent', 'url': urlWithNameSpace}, [messageChannel.port2]);
                 console.log('Message sent to app.js through outgoingMessagePort');
             }));
         }

@@ -412,26 +412,26 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
     var regexpTitleWithoutNameSpace = /^[^\/]+$/;
 
     /**
-     * Searches a DirEntry (article / page) by its title.
-     * @param {String} title
+     * Searches a DirEntry (article / page) by its url eg: Paris.html
+     * @param {String} article url
      * @return {Promise} resolving to the DirEntry object or null if not found.
      */
-    ZIMArchive.prototype.getDirEntryByTitle = function(title, cache) {
+    ZIMArchive.prototype.getDirEntryByURL = function(url, cache) {
         var that = this;
 
         // If no namespace is mentioned, it's an article, and we have to add it
-        if (regexpTitleWithoutNameSpace.test(title)) {
-            title= "A/" + title;
+        if (regexpTitleWithoutNameSpace.test(url)) {
+            url= "A/" + url;
         }
-        if (cache && cache.has(title)){
-            return Promise.resolve().then(() => cache.get(title));
+        if (cache && cache.has(url)){
+            return Promise.resolve().then(() => cache.get(url));
         }
         return util.binarySearch(0, this._file.articleCount, function(i) {
             return that._file.dirEntryByUrlIndex(i, cache).then(function(dirEntry) {
-                var url = dirEntry.namespace + "/" + dirEntry.url;
-                if (title < url)
+                var foundurl = dirEntry.namespace + "/" + dirEntry.url;
+                if (url < foundurl)
                     return -1;
-                else if (title > url)
+                else if (url > foundurl)
                     return 1;
                 else
                     return 0;
@@ -441,7 +441,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
             return that._file.dirEntryByUrlIndex(index);
         }).then(function(dirEntry) {
             if(cache)
-                cache.set(title, dirEntry);
+                cache.set(url, dirEntry);
             return dirEntry;
         });
     };

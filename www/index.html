@@ -185,13 +185,11 @@
                 </div>
 
                 <div id="configuration" style="display: none;" class="container">
-                    <h3>File Selector</h3>
+                    <h4>File Selector</h4>
                     <div id="openLocalFiles" style="display: none;" >
-                        <p>Please select the .zim file (or all the .zimaa, .zimab etc in case of a split ZIM file)</p>
-                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" /></p>
-                        <p>Visit <a target="_blank" href="http://wiki.kiwix.org/wiki/Content#Download"><mark>Kiwix.org</mark></a> for available ZIM files. Only <span class="bg-info">Wikimedia (wiki*.zim*)</span> files have been tested.  
-                        </p>
-                        <p><span class="text-danger">Audio/Video/Dynamic Content</span> is currently unsupported. Visit the <a target="_blank" href="http://github.com/kiwix/kiwix-js/issues"><mark>Kiwix-JS Issue Tracker<mark></a> to report or lookup issues</p>
+                        <p>Please select the archive (.zim file) to load, or multi-select .zimaa, .zimab etc if loading a split archive. <small>(Or visit <a target="_blank" href="http://wiki.kiwix.org/wiki/Content#Download"><mark>Kiwix.org</mark></a> to download an archive)</small></p>
+                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" /></p>   
+                        <p><small><i class="text-info">Only Wikimedia (wiki*.zim*)</i> files have been tested. <i class="text-info">Audio, Video and Dynamic Content</i> is currently unsupported. To lookup old/submit new issues visit the <a target="_blank" href="http://github.com/kiwix/kiwix-js/issues">Kiwix-JS Issue Tracker</a></small></p>
                     </div>
                     <div id="scanningForArchives" style="display: none;">
                         <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
@@ -200,28 +198,25 @@
                         <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
                         <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
                     </div>
-                    <h3>Display</h3>
+                    <h4>Display</h4>
                     <p>
-                        <h4>Style <small>For Wikipedia Files</small></h4>
-                        <p>
-                        <label class"radio-inline" for="cssModeDesktopRadio">
+                        <b>Style </b>
+                         For Wikipedia Files: 
+                            <label class"radio-inline" for="cssModeDesktopRadio">
                             <input type="radio"  name="cssInjectionMode" value="desktop" id="cssModeDesktopRadio" checked> Desktop
                         </label> 
                         <label class"radio-inline" for="cssModeMobileRadio">
                             <input type="radio" name="cssInjectionMode" value="mobile" id="cssModeMobileRadio"> Mobile
                         </label>  
-                        </p>
-                        <h4>Cache</h4>
-                        <label for="cssCacheModeCheck"><input type="checkbox" name="cssCacheMode" value="local" id="cssCacheModeCheck">
-                        Use In-App Cached Styles</label> 
-                        <small>(<i>Recommended</i> For Wikipedia ZIM)</small>
-                        Uncheck to use styles in ZIM file
+                        <br/>
+                        <b>Cache</b>
+                        Use In-App Cached Styles: <label for="cssCacheModeCheck"><input type="checkbox" name="cssCacheMode" value="local" id="cssCacheModeCheck">
+                        </label> 
+                        <small> ( Recommended For Wikipedia ZIM )</small>
                     </p>
-
-                <h3>Expert Settings</h3>
+                <h4>Expert Settings</h4>
                     <div id="contentInjectionModeDiv">
-                        Do not touch unless you know what you're doing. <br />
-                        Content injection mode : <br/>
+                        Content injection mode <small>(Don't touch unless you know what you're doing) </small>: <br/>
                         <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; JQuery</label> (slow and memory hungry, but safer)
                             <br>
                         <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; ServiceWorker</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
