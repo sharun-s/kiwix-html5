@@ -1078,7 +1078,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.time("Total Image Lookup+Read Time");
                 var AboveTheFold = 5;
                 var step = imageArray.length/N;
-                if (step > 0){                    
+                if (step > 0 && imageArray.length >= AboveTheFold){                    
                     var p = createDirEntryFinder(0, AboveTheFold);
                     p.then(Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]))
                         .then(
@@ -1265,8 +1265,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.time(foundDirEntry.title + " "+imageArray.length+" Image Lookup+Read Time");
             var AboveTheFold = 5;
             var step = imageArray.length/N;
-            //console.log(foundDirEntry.title + " #img dirents to be processed: " + imageArray.length );
             // No point running multiple workers for low image counts
+            // Also dup producing BUG exists when imageArray.length < AboveTheFold  
             if (step > 0 && imageArray.length >= AboveTheFold){                    
                 var p = createDirEntryFinder(0, AboveTheFold);
                 var waitForImagesAboveTheFold = imageLoadCompletions.length > 0 ? 
