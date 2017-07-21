@@ -213,16 +213,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             setContentInjectionMode('jquery');
         }
     });
-    $('input:checkbox[name=cssCacheMode]').on('change', function (e) {
-        params['cssCache'] = this.checked ? true : false;
+    /*$('input:checkbox[name=cssCacheMode]').on('change', function (e) {
+        module.config().cssCache = this.checked ? true : false;
     });
     $('input:radio[name=cssInjectionMode]').on('change', function (e) {
-        params['cssSource'] = this.value;
+        module.config().cssSource = this.value;
     });
     $(document).ready(function (e) {
         // Set checkbox for cssCache and radio for cssSource
         document.getElementById('cssCacheModeCheck').checked = module.config().cssCache;
-    });
+    });*/
     
     /**
      * Displays or refreshes the API status shown to the user
@@ -862,88 +862,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} htmlArticle
      */
     function displayArticleInForm(dirEntry, htmlArticle) {
-        //Fast-replace img src with data-kiwixsrc and hide image [kiwix-js #272]
-        htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig,
-            "$1style=\"display: none;\" onload=\"this.style.display='inline'\" data-src$2");
-        //Preload stylesheets [kiwix-js @149]
-        //Set up blobArray of promises
-        var cssArray = htmlArticle.match(regexpSheetHref);
-        var blobArray = [];
-        var cssSource = module.config().cssSource;
-        var cssCache = module.config().cssCache;
-        var zimType = "";
-        getBLOB(cssArray);
-
-        //Extract CSS URLs from given array of links
-        function getBLOB(arr) {
-            zimType = arr.join().match(/-\/s\/style\.css/i) ? "desktop" : zimType;
-            zimType = arr.join().match(/minerva|mobile/i) ? "mobile" : zimType;
-
-            for (var i = 0; i < arr.length; i++) {
-                var linkArray = regexpSheetHref.exec(arr[i]);
-                regexpSheetHref.lastIndex = 0; //Reset start position for next loop
-                if (regexpMetadataUrl.test(linkArray[2])) { //It's a CSS file contained in ZIM
-                    var zimLink = decodeURIComponent(uiUtil.removeUrlParameters(linkArray[2]));
-                    /* zl = zimLink; zim = zimType; cc = cssCache; cs = cssSource; i  */
-                    var filteredLink = transformStyles.filterCSS(zimLink, zimType, cssCache, cssSource, i);
-                    //blobArray[i] = filteredLink.zl; //This line is a mistake! It fills blobArray too quickly and doesn't trigger waiting for primises...
-                    //filteredLink.rtnFunction == "injectCSS" ? injectCSS() : resolveCSS(filteredLink.zl, i); 
-                    if (filteredLink.rtnFunction == "injectCSS") { blobArray[i] = filteredLink.zl; injectCSS() } else { resolveCSS(filteredLink.zl, i); }
-                } else {
-                    blobArray[i] = zimLink; //If CSS not in ZIM, store URL in blobArray
-                    injectCSS(); //Ensure this is called even if none of CSS links are in ZIM
-                }
-            }
-        }
-
-        function resolveCSS(url, index) {
-            selectedArchive.getDirEntryByURL(url).then(
-                function (dirEntry) {
-                selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
-                    //var cssContent = util.uintToString(content); //Uncomment this line and break on next to capture cssContent for local filesystem cache
-                    var cssBlob = new Blob([content], { type: 'text/css' }, { oneTimeOnly: true });
-                    var newURL = URL.createObjectURL(cssBlob);
-                    //blobArray[index] = newURL; //Don't bother with "index" -- you don't need to track the order of the blobs TODO: delete this logic
-                    blobArray.push(newURL);
-                    injectCSS(); //Don't move this: it must run within .then function to pass correct values
-                });
-            }).fail(function (e) {
-                console.error("could not find DirEntry for CSS : " + url, e);
-                blobArray[index] = url;
-                injectCSS();
-            });
-        }
-
-        function injectCSS() {
-            if (blobArray.length === cssArray.length) { //If all promised values have been obtained
-                for (var i in cssArray) {
-                    cssArray[i] = cssArray[i].replace(/(href\s*=\s*["'])([^"']+)/i, "$1" + blobArray[i]);
-                    //DEV note: do not attempt to add onload="URL.revokeObjectURL...)": see [kiwix.js #284]
-                }
-                htmlArticle = htmlArticle.replace(regexpSheetHref, ""); //Void existing stylesheets
-                var cssArray$ = "\r\n" + cssArray.join("\r\n") + "\r\n";
-                if (cssSource == "mobile") { //If user has selected mobile display mode...
-                    var mobileCSS = transformStyles.toMobileCSS(htmlArticle, zimType, cssCache, cssSource, cssArray$);
-                    htmlArticle = mobileCSS.html;
-                    cssArray$ = mobileCSS.css;
-                }
-                if (cssSource == "desktop") { //If user has selected desktop display mode...
-                    htmlArticle = transformStyles.toDesktopCSS(htmlArticle,zimType,cssCache).html;
-                }
-                if ( cssCache ) { //For all cases except where user wants exactly what's in the zimfile...
-                    //Reduce the hard-coded top padding to 0
-                    htmlArticle = htmlArticle.replace(/(<div\s+[^>]*mw-body[^>]+style[^>]+padding\s*:\s*)1em/i, "$10 1em");
-                }
-                htmlArticle = htmlArticle.replace(/\s*(<\/head>)/i, cssArray$ + "$1");
-                console.log("All CSS resolved");
-                injectHTML(htmlArticle); //Pass the revised HTML to the image and JS subroutine...
-            } else {
-                //console.log("Waiting for " + (cssArray.length - blobArray.length) + " out of " + cssArray.length + " to resolve...")
-            }
-        }
-    //End of preload stylesheets code
-
-        function injectHTML(htmlContent) {
+        
         $("#readingArticle").hide();
         $("#articleContent").show();
         // Scroll the iframe to its top
@@ -951,14 +870,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         // Display the article inside the web page.
 	    // Prevents unnecessary 404's being produced when iframe loads images
-        /*var $body = $(htmlArticle);
+        var $body = $(htmlArticle);
         $body.find('img').each(function(){
             var image = $(this);
             $(image).attr("data-src", $(image).attr("src"));
             $(image).removeAttr("src");
-        });*/
+        });
         // 404's should now only be produced on loading css and js
-        $('#articleContent').contents().find('body').html(htmlContent);
+        $('#articleContent').contents().find('body').html($body);//.html(htmlContent);
        
         
         
@@ -1030,7 +949,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
             // TODO: Temp immediately resolved promise. Remove after verifying new css loading
-            var cssLoaded = Promise.resolve(); 
+            //var cssLoaded = Promise.resolve(); 
             function createDirEntryFinder(startImageIndex, endImageIndex){
                 var _startImageIndex = Math.floor(startImageIndex);
                 return new Promise(function (resolve,reject){
@@ -1120,7 +1039,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             workerStartwithFold();
             //createDirEntryFinder(0, 10);
             // Load CSS content
-/*            var cssLoaded;
+            var cssLoaded;
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
                 console.log("loading css");
                 var link = $(this);
@@ -1159,8 +1078,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         console.error("could not find DirEntry for CSS : " + title, e);
                     });
                 }
-            });*/                
-        }
+            });                
+        //}
         }
     }
 
