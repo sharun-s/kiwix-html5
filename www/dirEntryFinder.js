@@ -1,4 +1,4 @@
-var params={}, articleCount, urlPtrPos, wid, nodestart, readSlice;
+var archive, articleCount, urlPtrPos, readSlice, wid;
 // Remove to debug    
 //console.log = function(){}     
 //console.time = function(){};
@@ -153,7 +153,7 @@ function dirEntryByUrlIndex(index, cache)
     }
     //console.count("readURLIndex");
     //return readXHRSlice(urlPtrPos + index * 8, 8).then(function(data)
-    return readSlice(params['archive'], urlPtrPos + index * 8, 8).then(function(data)
+    return readSlice(archive, urlPtrPos + index * 8, 8).then(function(data)
         {
             return readInt(data, 0, 8);
         }).then(function(dirEntryPos)
@@ -184,7 +184,7 @@ function dirEntryByOffset(offset)
 {
     var that = this;
     //return readXHRSlice(offset, 2048).then(function(data)
-    return readSlice(params['archive'], offset, 2048).then(function(data)    
+    return readSlice(archive, offset, 2048).then(function(data)    
     {
         var dirEntry =
         {
@@ -277,23 +277,22 @@ function readImageDirEnt(url) {
     //    return image.attr('data-src');
     //}
 }
-var icnt=0;
+
 function startChain(id) {
   var cnt = 0;
   
   return Promise.resolve().then(function next() {
         var image = images.next();
         if (!image.done) {
-            icnt++; cnt++;
+            cnt++;
             var c = images.current();
             var p = readImageDirEnt(image.value);
-
             p.then(function (val){
                 // the second arg past back is the index into the jquery image collection
-                // 
                 //console.log(nodestart + images.current());
-                postMessage([nodestart + c, val]);
-            } );
+                //postMessage([nodestart + c, val]);
+                postMessage([c, val]);
+            });
             return p.then(next); // continue the chain
         }else{
             //console.timeEnd("DirEntryFinder:chain"+id);
@@ -319,7 +318,7 @@ console.log(imageArray);
 function start(){
     //console.profile("completePageLoad")
     console.time("DEFinder"+wid+":loadImages");
-    for (k = 0; k < N; k += 1) {
+    for (var k = 0; k < N; k += 1) {
         var id = k +1;
         //console.time("DirEntryFinder:chain"+id)
         imagePromises.push(startChain(id));
@@ -337,14 +336,14 @@ function start(){
 
 var images;
 var imagePromises, loadingCache;
-var N = 2, k;
+var N = 2;
 function init(){
     imagePromises = [];
     loadingCache = new Map();
     images = makeIterator(imageArray);//.slice(0,100));
     //images = makeIterator(Array.from(new Set(imageArray)));
 
-    if(params["archive"]){
+    if(archive){
         //console.log("DirEntryFinder starting...");
         start();
     }else{
@@ -358,15 +357,15 @@ function isFireFox(){
     
 onmessage = function(e) {
   console.log('starting worker...');
-  params['archive'] = e.data[0]; 
+  archive = e.data[0]; 
   articleCount = e.data[1];
   urlPtrPos = e.data[2];
-  wid = Math.floor(e.data[3])+"-"+Math.floor(e.data[4]);
-  nodestart= Math.floor(e.data[3]);
-  imageArray = e.data[5]; //Array.from(new Set(e.data[5])); // don't look up dups
-  if (e.data[6] == "file") {
+  wid = e.data[3];//Math.floor(e.data[3])+"-"+Math.floor(e.data[4]);
+  //nodestart= Math.floor(e.data[3]);
+  imageArray = e.data[4]; //Array.from(new Set(e.data[5])); // don't look up dups
+  if (e.data[5] == "file") {
     readSlice = readFileSlice;
-  }else if( e.data[6] == "xhrFF"){
+  }else if( e.data[5] == "xhrFF"){
     readSlice = readFFXHRSlice;
   }else{
     readSlice = readXHRSlice;

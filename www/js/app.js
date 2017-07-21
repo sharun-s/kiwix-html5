@@ -1032,6 +1032,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // TODO: Temp immediately resolved promise. Remove after verifying new css loading
             var cssLoaded = Promise.resolve(); 
             function createDirEntryFinder(startImageIndex, endImageIndex){
+                var _startImageIndex = Math.floor(startImageIndex);
                 return new Promise(function (resolve,reject){
                     var def = new Worker("dirEntryFinder.js");
                     def.onmessage = function (e) {
@@ -1052,15 +1053,15 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             p.then(function (content) {
                                 //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
                                 if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                    console.log(dirEntry.title +" "+ dirEntry.url);
-                                    uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                                    //console.log(dirEntry.title +" "+ dirEntry.url);
+                                    uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex+index]), 'src', content, 'image/svg+xml;');
                                 }else{
-                                    uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                                    uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex+index]), 'src', content, 'image');
                                 }
                                 //uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
                                 imgtrack++;
                             },function (){
-                                console.error("Failed loading " + index );
+                                console.error("Failed loading " + _startImageIndex+index );
                             }).then(() => Promise.resolve());
                             imageLoadCompletions.push(p);                            
                         }
@@ -1068,8 +1069,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     def.postMessage( [ selectedArchive._file._files[0], 
                         selectedArchive._file.articleCount, 
                         selectedArchive._file.urlPtrPos,
-                        startImageIndex,
-                        endImageIndex,
+                        // worker id (TODO: include article title)
+                        _startImageIndex+"-"+Math.floor(endImageIndex),
                         imageArray.slice( startImageIndex, endImageIndex), 
                         module.config().mode]);
                 });
@@ -1199,6 +1200,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                            .map(el => decodeURIComponent(el.getAttribute('data-src')
                                         .match(regexpImageUrl)[1]));
         function createDirEntryFinder(startImageIndex, endImageIndex){
+            var _startImageIndex = Math.floor(startImageIndex);
             return new Promise(function (resolve,reject){
                 var def = new Worker("dirEntryFinder.js");
                 def.onmessage = function (e) {
@@ -1221,9 +1223,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
                             //console.log(dirEntry.title +" "+ dirEntry.url);
                             if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                                uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex + index]), 'src', content, 'image/svg+xml;');
                             }else{
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                                uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex + index]), 'src', content, 'image');
                             }
                                 
                             //var w = $(imgNodes[index]).attr("width");
@@ -1241,13 +1243,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             //tmpnode.css("height", h);
                             $("#articleContent").contents().find('.grid').append(
                                     tmpnode.append(
-                                        $(imgNodes[index])
+                                        $(imgNodes[_startImageIndex + index])
                                         )
                                 );
                             imgtrack++;
                             console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
                         },function (){
-                            console.error("Failed loading " + index );
+                            console.error("Failed loading " + _startImageIndex+index );
                         }).then(() => Promise.resolve());
                         imageLoadCompletions.push(p);                            
                     }
@@ -1255,8 +1257,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 def.postMessage( [ selectedArchive._file._files[0], 
                     selectedArchive._file.articleCount, 
                     selectedArchive._file.urlPtrPos,
-                    startImageIndex,
-                    endImageIndex,
+                    foundDirEntry +":"+ _startImageIndex +"-"+ Math.floor(endImageIndex),
                     imageArray.slice( startImageIndex, endImageIndex), 
                     module.config().mode]);
             });
