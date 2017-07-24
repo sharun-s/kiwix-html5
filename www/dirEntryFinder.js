@@ -1,4 +1,4 @@
-var archive, articleCount, urlPtrPos, readSlice, wid;
+var archive, articleCount, urlPtrPos, readSlice, wid, cacheHits=0;
 // Remove to debug    
 //console.log = function(){}     
 //console.time = function(){};
@@ -151,8 +151,6 @@ function dirEntryByUrlIndex(index, cache)
     if (cache && cache.has(index)){
         return Promise.resolve().then(() => cache.get(index));
     }
-    //console.count("readURLIndex");
-    //return readXHRSlice(urlPtrPos + index * 8, 8).then(function(data)
     return readSlice(archive, urlPtrPos + index * 8, 8).then(function(data)
         {
             return readInt(data, 0, 8);
@@ -178,12 +176,10 @@ function zimDirEntry(dirEntryData) {
     title : dirEntryData.title};
 };
 
-
 // formerly zimfile.dirEntry(offset)
 function dirEntryByOffset(offset)
 {
     var that = this;
-    //return readXHRSlice(offset, 2048).then(function(data)
     return readSlice(archive, offset, 2048).then(function(data)    
     {
         var dirEntry =
@@ -210,7 +206,6 @@ function dirEntryByOffset(offset)
     });
 };
 
-
 function binarySearch(begin, end, query, lowerBound) {
     if (end <= begin)
         return lowerBound ? begin : null;
@@ -226,20 +221,7 @@ function binarySearch(begin, end, query, lowerBound) {
     });
 };
 
-
 function readImageDirEnt(url) {
-    //var image = $(img.value);//$(this);
-    // It's a standard image contained in the ZIM file
-    // We try to find its name (from an absolute or relative URL)
-    //var imageMatch = image.attr("data-src").match(regexpImageUrl);
-    //if (imageMatch) {
-        //var url = decodeURIComponent(imageMatch[1]);
-        //each time this is causing a binary search
-        //var p = selectedArchive.getDirEntryByURL(url, sessionCache);
-        //this check is unnecessary as its an image
-        /*if (regexpTitleWithoutNameSpace.test(url)) {
-            url= "A/" + url;
-        }*/
         if (loadingCache && loadingCache.has(url)){
             return Promise.resolve().then(() => loadingCache.get(url));
         }
@@ -288,48 +270,27 @@ function startChain(id) {
             var c = images.current();
             var p = readImageDirEnt(image.value);
             p.then(function (val){
-                // the second arg past back is the index into the jquery image collection
-                //console.log(nodestart + images.current());
-                //postMessage([nodestart + c, val]);
                 postMessage([c, val]);
             });
             return p.then(next); // continue the chain
         }else{
-            //console.timeEnd("DirEntryFinder:chain"+id);
             return cnt; //resolve and stop chain
         }
     });
 }
-
-
-/* var images = makeIterator($('#articleContent img'));
-
-var imageArray = [];    
-$('#articleContent img').each(function (){
-    var image = $(this);
-    console.log(image.attr("data-src"));
-    var imageMatch = image.attr("data-src").match(regexpImageUrl);
-    if(imageMatch)
-        imageArray.push(decodeURIComponent(imageMatch[1]));
-});
-console.log(imageArray);
-*/
 
 function start(){
     //console.profile("completePageLoad")
     console.time("DEFinder"+wid+":loadImages");
     for (var k = 0; k < N; k += 1) {
         var id = k +1;
-        //console.time("DirEntryFinder:chain"+id)
         imagePromises.push(startChain(id));
     }
-
     Promise.all(imagePromises).then(function(val){
         //console.log(val);
         //console.log(loadingCache.size);
         //console.profileEnd("completePageLoad")
         console.timeEnd("DEFinder"+wid+":loadImages");
-        //console.log('Posting message back to main script');
         postMessage(["done",null]);
     });    
 }
@@ -342,9 +303,7 @@ function init(){
     loadingCache = new Map();
     images = makeIterator(imageArray);//.slice(0,100));
     //images = makeIterator(Array.from(new Set(imageArray)));
-
     if(archive){
-        //console.log("DirEntryFinder starting...");
         start();
     }else{
         console.error("DirEntryFinder archive not set");
@@ -356,20 +315,18 @@ function isFireFox(){
 }
     
 onmessage = function(e) {
-  console.log('starting worker...');
   archive = e.data[0]; 
   articleCount = e.data[1];
   urlPtrPos = e.data[2];
-  wid = e.data[3];//Math.floor(e.data[3])+"-"+Math.floor(e.data[4]);
-  //nodestart= Math.floor(e.data[3]);
+  wid = e.data[3];
   imageArray = e.data[4]; //Array.from(new Set(e.data[5])); // don't look up dups
   if (e.data[5] == "file") {
     readSlice = readFileSlice;
   }else if( e.data[5] == "xhrFF"){
+  console.log("WARNING: direntry using xhrff - ignore timing data");
     readSlice = readFFXHRSlice;
   }else{
     readSlice = readXHRSlice;
   } 
-  //debugger;
   init();
 }
