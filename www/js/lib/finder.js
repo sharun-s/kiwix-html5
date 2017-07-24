@@ -39,7 +39,7 @@ define(["module"], function(module) {
         this.workerCompletions = 0;
         this.urlArray = urllist;
         // [TODO] refactor
-        this.onFirstResult = callbacks.hasOwnProperty("onFirstResult") ? callbacks["onFirstResult"] : function (){};   
+        //this.onFirstResult = callbacks.hasOwnProperty("onFirstResult") ? callbacks["onFirstResult"] : function (){};   
         this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
         //this.onWorkerCompletion = callbacks.hasOwnProperty("onWorkerCompletion") ? callbacks["onWorkerCompletion"] : function (){};        
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
@@ -94,7 +94,8 @@ define(["module"], function(module) {
         var step = this.urlArray.length/this.N;
         if (step > 0 && this.urlArray.length > this.AboveTheFold){ 
             var p = this.createDirEntryFinder(0, this.AboveTheFold);
-            p.then(that.onFirstResult).then(function (){
+            //p.then(that.onFirstResult);
+            p.then(function (){
                 //BUG: creates a worker if start=end eg:urlarray.len=11  
                 that.createDirEntryFinder(that.AboveTheFold, step);
                 for (var k = 1; k < that.N; k += 1) {

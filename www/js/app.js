@@ -945,38 +945,31 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.log(foundDirEntry.title +" no images found");
                 return; // should jump to css load  
             }
-            var imageArray = [].slice.call(imgNodes)
+            var imageURLs = [].slice.call(imgNodes)
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
-            //workerStartwithFold();
-            console.log("images to load:" + imageArray.length);
-            if(imageArray.length > 0){
+            console.log("images to load:" + imageURLs.length);
+            if(imageURLs.length > 0){
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
             }
-            var imageLoadCompletions = [];
+            var cssLoaded, imageLoadCompletions = [];
             var AboveTheFold = module.config().initialImageLoad;
-            var f = selectedArchive.findImages(imageArray, {
-                onFirstResult: function(){
-                    return Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]])
-                                    .then(
-                                        function firstPaintDone(){
-                                        console.timeEnd("TimeToFirstPaint");                                                            
-                                    });
-                }, 
+
+            var f = selectedArchive.findImages(imageURLs, {
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                        p.then(function (content) {
-                            if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
-                            }else{
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                            }
-                            
-                        },function (){
-                            console.error("Failed loading " + dirEntry.url );
-                        }).then(() => Promise.resolve());
-                        imageLoadCompletions.push(p);
+                    p.then(function (content) {
+                        if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                        }else{
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                        }
+                        
+                    },function (){
+                        console.error("Failed loading " + dirEntry.url );
+                    }).then(() => Promise.resolve());
+                    imageLoadCompletions.push(p);
                 }, 
                 onAllWorkersCompletion: function(resultsCount){
                     //console.log("images in document:" + resultsCount);
@@ -989,7 +982,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
             
             // Load CSS content
-            var cssLoaded;
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
                 console.log("loading css");
                 var link = $(this);
@@ -1028,7 +1020,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         console.error("could not find DirEntry for CSS : " + url, e);
                     });
                 }
-            });                
+            });
+            
+            Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]).then(
+                                        function firstPaintDone(){
+                                        console.timeEnd("TimeToFirstPaint");                                                            
+            });
+                
         //}
         }
     }
