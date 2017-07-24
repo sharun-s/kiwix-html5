@@ -879,8 +879,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // 404's should now only be produced on loading css and js
         $('#articleContent').contents().find('body').html($body);//.html(htmlContent);
        
-        
-        
         // If the ServiceWorker is not useable, we need to fallback to parse the DOM
         // to inject math images, and replace some links with javascript calls
         if (contentInjectionMode === 'jquery') {
@@ -941,103 +939,55 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            var imgtrack=0,N=2, firstpaint=0;
-            var imageLoadCompletions = [];
-            var workerCompletions = 0;
             var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
+            if(imgNodes.length==0)
+            {
+                console.log(foundDirEntry.title +" no images found");
+                return; // should jump to css load  
+            }
             var imageArray = [].slice.call(imgNodes)
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
-            // TODO: Temp immediately resolved promise. Remove after verifying new css loading
-            //var cssLoaded = Promise.resolve(); 
-            function createDirEntryFinder(startImageIndex, endImageIndex){
-                var _startImageIndex = Math.floor(startImageIndex);
-                return new Promise(function (resolve,reject){
-                    var def = new Worker("dirEntryFinder.js");
-                    def.onmessage = function (e) {
-                        if(e.data[0] == "done" ){
-                            resolve();
-                            workerCompletions++;
-                            //console.log("recvd done" + workerCompletions +" " + N);
-                            if(workerCompletions == N)
-                                Promise.all(imageLoadCompletions).then(function (){
-                                    //console.log("images in document:" + imgNodes.length);
-                                    console.log("Images loaded:" + imgtrack);
-                                    console.timeEnd("Total Image Lookup+Read Time");
-                                });
-                        }else{
-                            var index = e.data[0];                          
-                            var dirEntry = e.data[1];   
-                            var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                            p.then(function (content) {
-                                //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
-                                if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                    //console.log(dirEntry.title +" "+ dirEntry.url);
-                                    uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex+index]), 'src', content, 'image/svg+xml;');
-                                }else{
-                                    uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex+index]), 'src', content, 'image');
-                                }
-                                //uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                                imgtrack++;
-                            },function (){
-                                console.error("Failed loading " + _startImageIndex+index );
-                            }).then(() => Promise.resolve());
-                            imageLoadCompletions.push(p);                            
-                        }
-                    };
-                    def.postMessage( [ selectedArchive._file._files[0], 
-                        selectedArchive._file.articleCount, 
-                        selectedArchive._file.urlPtrPos,
-                        // worker id (TODO: include article title)
-                        _startImageIndex+"-"+Math.floor(endImageIndex),
-                        imageArray.slice( startImageIndex, endImageIndex), 
-                        module.config().mode]);
-                });
+            //workerStartwithFold();
+            console.log("images to load:" + imageArray.length);
+            if(imageArray.length > 0){
+                console.time("Total Image Lookup+Read+Inject Time");
+                console.time("TimeToFirstPaint");
             }
-
-            function workerStartwithFold(){
-                console.time("Total Image Lookup+Read Time");
-                var AboveTheFold = 5;
-                var step = imageArray.length/N;
-                if (step > 0 && imageArray.length >= AboveTheFold){                    
-                    var p = createDirEntryFinder(0, AboveTheFold);
-                    p.then(Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]))
-                        .then(
-                            function firstPaintDone(){
-                            console.timeEnd("TimeToFirstPaint");                
-                            createDirEntryFinder(AboveTheFold, step);
-                            for (var k = 1; k < N; k += 1) {
-                                var start = k*step;
-                                var end = start+step;
-                                createDirEntryFinder(start, end);
-                                //console.log(start +" "+ end);
+            var imageLoadCompletions = [];
+            var AboveTheFold = module.config().initialImageLoad;
+            var f = selectedArchive.findImages(imageArray, {
+                onFirstResult: function(){
+                    return Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]])
+                                    .then(
+                                        function firstPaintDone(){
+                                        console.timeEnd("TimeToFirstPaint");                                                            
+                                    });
+                }, 
+                onEachResult: function(index, dirEntry){
+                    var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                        p.then(function (content) {
+                            if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                            }else{
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
                             }
-                            N++;
-                        });    
-                }else{
-                    N=1;
-                    createDirEntryFinder(0, imageArray.length);
-                }                
-            }
-
-            function workerStart(){
-                //console.time("All Image Lookup+Read Time");
-                var step = imageArray.length/N;
-                if (imageArray.length > 10){                    
-                    for (var k = 0; k < N; k += 1){
-                        var start = k*step;
-                        var end = start+step;
-                        createDirEntryFinder(start, end);
-                        //console.log(start +" "+ end);
-                    }    
-                }else{
-                    N=1;
-                    createDirEntryFinder(0, imageArray.length);
-                }                
-            }
-            console.time("TimeToFirstPaint");
-            workerStartwithFold();
-            //createDirEntryFinder(0, 10);
+                            
+                        },function (){
+                            console.error("Failed loading " + dirEntry.url );
+                        }).then(() => Promise.resolve());
+                        imageLoadCompletions.push(p);
+                }, 
+                onAllWorkersCompletion: function(resultsCount){
+                    //console.log("images in document:" + resultsCount);
+                    // this waiting logic should really be in the finder thread
+                    Promise.all(imageLoadCompletions).then(function (){
+                        console.log("Images loaded:" + resultsCount);
+                        console.timeEnd("Total Image Lookup+Read+Inject Time");
+                    });
+                }
+            });
+            
             // Load CSS content
             var cssLoaded;
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
@@ -1047,7 +997,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);
                 if (hrefMatch) {
                     // It's a CSS file contained in the ZIM file
-                    var title = uiUtil.removeUrlParameters(decodeURIComponent(hrefMatch[1]));
+                    var url = uiUtil.removeUrlParameters(decodeURIComponent(hrefMatch[1]));
                     cssLoaded = selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
                         return selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
                             var cssContent = util.uintToString(content);
@@ -1075,7 +1025,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             return Promise.resolve();
                         });
                     }).fail(function (e) {
-                        console.error("could not find DirEntry for CSS : " + title, e);
+                        console.error("could not find DirEntry for CSS : " + url, e);
                     });
                 }
             });                
@@ -1176,7 +1126,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 def.postMessage( [ selectedArchive._file._files[0], 
                     selectedArchive._file.articleCount, 
                     selectedArchive._file.urlPtrPos,
-                    foundDirEntry +":"+ _startImageIndex +"-"+ Math.floor(endImageIndex),
+                    foundDirEntry.title +":"+ _startImageIndex +"-"+ Math.floor(endImageIndex),
                     imageArray.slice( startImageIndex, endImageIndex), 
                     module.config().mode]);
             });
@@ -1184,7 +1134,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         function workerStartwithFold(){
             console.time(foundDirEntry.title + " "+imageArray.length+" Image Lookup+Read Time");
-            var AboveTheFold = 5;
+            var AboveTheFold = module.config().initialImageLoad;
             var step = imageArray.length/N;
             // No point running multiple workers for low image counts
             // Also dup producing BUG exists when imageArray.length < AboveTheFold  

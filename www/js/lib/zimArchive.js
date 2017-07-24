@@ -20,8 +20,8 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
-    function(zimfile, zimDirEntry, util, utf8) {
+define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
+    function(zimfile, zimDirEntry, util, utf8, finder) {
     
     /**
      * ZIM Archive
@@ -189,7 +189,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
 
     var waitForArticleReadCompletion = null;
     // rewrite of findDirEntriesWithPrefix
-    // Callback is called for each Result found.
+    // Callback is called for each Result found. calback args - dirEntry, data
     // Previously it was called after all results were found which slows things down.
     ZIMArchive.prototype.findDirEntriesAndContent = function(prefix, resultSize, callback) {
         var that = this;
@@ -454,6 +454,13 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         var index = Math.floor(Math.random() * this._file.articleCount);
         this._file.dirEntryByUrlIndex(index).then(callback);
     };
+
+    // Takes a list of image urls, starts N workers distributing urls among them
+    // When results are ready onResultCallbacks are called. Look at finder module for details 
+    ZIMArchive.prototype.findImages = function(urllist, onResultCallbacks){
+        var f = new finder.start(urllist, "quick", onResultCallbacks, this);
+        f.run();
+    }
 
     /**
      * Functions and classes exposed by this module
