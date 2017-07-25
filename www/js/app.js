@@ -617,6 +617,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Sets the localArchive from the File selects populated by user
      */
     function setLocalArchiveFromFileSelect() {
+        // if firefox is started in xhrff mode loading archive from url 
+        // and then user switches to archive via fileselctor change the mode to file 
+        // for readslice to use the right mode. This is because init.js wont get reloaded in this case. 
+        if(module.config().mode=="xhrFF"){
+            // this is not enough as mode must be set in util and finder too 
+            // so trigger a reload
+            // module.config().mode="file";
+            // [TODO] This is temp hack - find a way to set mode across modules
+            location.replace(uiUtil.removeUrlParameters(location.href));
+        } 
+            
         setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
 
@@ -858,11 +869,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
      * NB : in some error cases, the given title can be null, and the htmlArticle contains the error message
-     * @param {DirEntry} dirEntry
+     * @param {DirEntry} dirEntry [BUG] Really title I think
      * @param {String} htmlArticle
      */
     function displayArticleInForm(dirEntry, htmlArticle) {
-        
         $("#readingArticle").hide();
         $("#articleContent").show();
         // Scroll the iframe to its top
@@ -940,19 +950,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
             // Load images
             var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
-            if(imgNodes.length==0)
+            if(imgNodes.length == 0)
             {
-                console.log(foundDirEntry.title +" no images found");
-                return; // should jump to css load  
+                console.log(dirEntry +" no images found");
+                return; // [TODO] Should skip image loading and jump to css loading  
             }
             var imageURLs = [].slice.call(imgNodes)
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
                                             .match(regexpImageUrl)[1]));
-            console.log("images to load:" + imageURLs.length);
-            if(imageURLs.length > 0){
-                console.time("Total Image Lookup+Read+Inject Time");
-                console.time("TimeToFirstPaint");
-            }
+            //console.log("images to load:" + imageURLs.length);
+            console.time("Total Image Lookup+Read+Inject Time");
+            //console.time("TimeToFirstPaint");
             var cssLoaded, imageLoadCompletions = [];
             var AboveTheFold = module.config().initialImageLoad;
 
@@ -1021,13 +1029,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     });
                 }
             });
-            
-            Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]).then(
-                                        function firstPaintDone(){
-                                        console.timeEnd("TimeToFirstPaint");                                                            
-            });
-                
-        //}
+            //Something wrong with this 
+            //Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]).then(
+            //            function firstPaintDone(){console.timeEnd("TimeToFirstPaint");    });
         }
     }
 
@@ -1049,12 +1053,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $(image).attr("data-src", $(image).attr("src"));
             $(image).removeAttr("src");
         });
-        // 404's should now only be produced on loading css and js
-        //$body = $('#articleContent').contents().find('body');//.html($body);
-        // Load images
-        var imgtrack=0,N=2, firstpaint=0;
-        var imageLoadCompletions = [];
-        var workerCompletions = 0;
         var imgNodes = $body.contents().find('img').filter(function(index){
             return $(this).attr('width') > 50
         } );//$('#articleContent img');
@@ -1063,10 +1061,46 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.log(foundDirEntry.title +" no images found");
             return;
         }    
-        var imageArray = [].slice.call(imgNodes)
+        var imageURLs = [].slice.call(imgNodes)
                            .map(el => decodeURIComponent(el.getAttribute('data-src')
                                         .match(regexpImageUrl)[1]));
-        function createDirEntryFinder(startImageIndex, endImageIndex){
+        if(imageURLs.length > 0){
+            console.time(foundDirEntry.title+" "+imageURLs.length+" Image Lookup+Read+Inject Time");
+        }
+        var imageLoadCompletions = [];
+        var AboveTheFold = module.config().initialImageLoad;
+        var f = selectedArchive.findImages(imageURLs, {
+                onEachResult: function(index, dirEntry){
+                    var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                    p.then(function (content) {
+                        if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                        }else{
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                        }
+                        var tmpnode = $('<span>', {class:"grid-item"});
+                        tmpnode.on('click', function(e) {
+                                var decodedURL = decodeURIComponent(foundDirEntry.url);
+                                pushBrowserHistoryState(decodedURL);
+                                goToArticle(decodedURL);
+                                return false;
+                        });
+                        $("#articleContent").contents().find('.grid').append(
+                                tmpnode.append($(imgNodes[index])));
+                        console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
+                    },function (){
+                        console.error("Failed loading " + dirEntry.url );
+                    }).then(() => Promise.resolve());
+                    imageLoadCompletions.push(p);
+                }, 
+                onAllWorkersCompletion: function(resultsCount){
+                    Promise.all(imageLoadCompletions).then(function (){
+                        console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
+                    });
+                }
+            }
+        );
+        /*function createDirEntryFinder(startImageIndex, endImageIndex){
             var _startImageIndex = Math.floor(startImageIndex);
             return new Promise(function (resolve,reject){
                 var def = new Worker("dirEntryFinder.js");
@@ -1160,7 +1194,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
 
         console.time(foundDirEntry.title + " TimeToFirstPaint");
-        workerStartwithFold();
+        workerStartwithFold();*/
     }
 
     /**

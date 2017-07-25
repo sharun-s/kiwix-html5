@@ -30,7 +30,7 @@ define(["module"], function(module) {
         onAllWorkersCompletion: null
     }
 
-    function finder(urllist, type, callbacks, archive){
+    function finder(urllist, callbacks, archive){
         this.resultstrack=0;
         this.N=2;
         this.firstpaint=0;
@@ -48,12 +48,11 @@ define(["module"], function(module) {
         this.file = archive._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
+   }
 
-        this.type = type;
-    }
-
-    finder.prototype.run = function(){
-        if (this.type && this.type == "quick") //"quickImageLoad"
+    // This is a way to pick distribution of url to worker strategy
+    finder.prototype.run = function(type){
+        if (type && type == "quick") //"quickImageLoad"
             this.workerStartwithFold();
         else
             this.workerStart(); 
@@ -111,7 +110,7 @@ define(["module"], function(module) {
         }                
     }
 
-    /* Even split if greater than 10
+     //Even split if greater than 10
      finder.prototype.workerStart = function(){
         //console.time("All Image Lookup+Read Time");
         var step = imageArray.length/N;
@@ -126,9 +125,9 @@ define(["module"], function(module) {
             N=1;
             createDirEntryFinder(0, imageArray.length);
         }                
-    }*/
+    }
 
     return {
-        start: finder
+        init: finder
     };
 });

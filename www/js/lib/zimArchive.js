@@ -458,8 +458,8 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
     // Takes a list of image urls, starts N workers distributing urls among them
     // When results are ready onResultCallbacks are called. Look at finder module for details 
     ZIMArchive.prototype.findImages = function(urllist, onResultCallbacks){
-        var f = new finder.start(urllist, "quick", onResultCallbacks, this);
-        f.run();
+        var f = new finder.init(urllist, onResultCallbacks, this);
+        f.run("quick");
     }
 
     /**
