@@ -66,6 +66,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // Define behavior of HTML elements
     $('#searchArticles').on('click', function(e) {
         pushBrowserHistoryState(null, $('#prefix').val());
+        $("title").html($('#prefix').val());
         searchDirEntriesFromPrefix($('#prefix').val());
         $("#welcomeText").hide();
         $("#readingArticle").hide();
@@ -76,6 +77,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     });
     $('#searchImages').on('click', function(e) {
         pushBrowserHistoryState(null, null, $('#prefix').val());
+        $("title").html($('#prefix').val());
         searchDirEntriesFromImagePrefix($('#prefix').val());
         $("#welcomeText").hide();
         $("#readingArticle").hide();
@@ -163,6 +165,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     });
     $('#btnConfigure').on('click', function(e) {
         // Highlight the selected section in the navbar
+        $("title").html("Kiwix");
         $('#liHomeNav').attr("class","");
         $('#liConfigureNav').attr("class","active");
         $('#liAboutNav').attr("class","");
@@ -185,6 +188,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     });
     $('#btnAbout').on('click', function(e) {
         // Highlight the selected section in the navbar
+        $("title").html("Kiwix");
         $('#liHomeNav').attr("class","");
         $('#liConfigureNav').attr("class","");
         $('#liAboutNav').attr("class","active");
@@ -454,6 +458,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 //$("#articleListWithHeader").hide();
                 selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
                 var keyword = decodeURIComponent(params["titleSearch"]);
+                $("title").html(keyword);
                 searchDirEntriesFromPrefix(keyword);
             }else if(params["imageSearch"] && params["archive"]){
                 console.log("searching for " + params["imageSearch"] + " from " + params["archive"] );
@@ -461,6 +466,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 //$("#articleListWithHeader").hide();
                 selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
                 var keyword = decodeURIComponent(params["imageSearch"]);
+                $("title").html(keyword);
                 searchDirEntriesFromImagePrefix(keyword);
             }else{
     	        // If DeviceStorage is not available, we display the file select components
@@ -500,11 +506,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else if (titleSearch && !(""===titleSearch)) {
                 $('#prefix').val(titleSearch);
+                $("title").html(titleSearch);
                 searchDirEntriesFromPrefix($('#prefix').val());
             }else if(imageSearch && !(""===imageSearch)){
                 //disable prefix change handler
                 //$('#prefix').val(imageSearch);
                 //enable prefix change handler
+                $("title").html(imageSearch);
                 searchDirEntriesFromImagePrefix(imageSearch);
             }
         }
@@ -1100,101 +1108,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
             }
         );
-        /*function createDirEntryFinder(startImageIndex, endImageIndex){
-            var _startImageIndex = Math.floor(startImageIndex);
-            return new Promise(function (resolve,reject){
-                var def = new Worker("dirEntryFinder.js");
-                def.onmessage = function (e) {
-                    if(e.data[0] == "done" ){
-                        resolve();
-                        workerCompletions++;
-                        //console.log("recvd done" + workerCompletions +" " + N);
-                        if(workerCompletions == N)
-                            Promise.all(imageLoadCompletions).then(function (){
-                                //console.log("images in document:" + imgNodes.length);
-                                //console.log("Images loaded:" + imgtrack);
-                                console.timeEnd(foundDirEntry.title + " "+imgtrack+" Image Lookup+Read Time");
-                            });
-                    }else{
-                        var index = e.data[0];                          
-                        var dirEntry = e.data[1];   
-                        var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                        ResultSet.get(foundDirEntry.title).images.push(dirEntry.url);
-                        p.then(function (content) {
-                            //console.assert($(imgNodes[index]).attr('data-src').includes(dirEntry.url) > 0,"image url mismatch",dirEntry.url, $(imgNodes[index]).attr('data-src'));
-                            //console.log(dirEntry.title +" "+ dirEntry.url);
-                            if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex + index]), 'src', content, 'image/svg+xml;');
-                            }else{
-                                uiUtil.feedNodeWithBlob($(imgNodes[_startImageIndex + index]), 'src', content, 'image');
-                            }
-                                
-                            //var w = $(imgNodes[index]).attr("width");
-                            //var h = $(imgNodes[index]).attr("height");
-                            var tmpnode = $('<span>', {class:"grid-item"});
-                            tmpnode.on('click', function(e) {
-                                var decodedURL = decodeURIComponent(foundDirEntry.url);
-                                pushBrowserHistoryState(decodedURL);
-                                //goToArticle($(imgNodes[index]).attr('data-src'));
-                                //goToArticle($body.filter('title')[0].innerText+".html");
-                                goToArticle(decodedURL);
-                                return false;
-                            });
-                            //tmpnode.css("width", w);
-                            //tmpnode.css("height", h);
-                            $("#articleContent").contents().find('.grid').append(
-                                    tmpnode.append(
-                                        $(imgNodes[_startImageIndex + index])
-                                        )
-                                );
-                            imgtrack++;
-                            console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
-                        },function (){
-                            console.error("Failed loading " + _startImageIndex+index );
-                        }).then(() => Promise.resolve());
-                        imageLoadCompletions.push(p);                            
-                    }
-                };
-                def.postMessage( [ selectedArchive._file._files[0], 
-                    selectedArchive._file.articleCount, 
-                    selectedArchive._file.urlPtrPos,
-                    foundDirEntry.title +":"+ _startImageIndex +"-"+ Math.floor(endImageIndex),
-                    imageArray.slice( startImageIndex, endImageIndex), 
-                    module.config().mode]);
-            });
-        }
-
-        function workerStartwithFold(){
-            console.time(foundDirEntry.title + " "+imageArray.length+" Image Lookup+Read Time");
-            var AboveTheFold = module.config().initialImageLoad;
-            var step = imageArray.length/N;
-            // No point running multiple workers for low image counts
-            // Also dup producing BUG exists when imageArray.length < AboveTheFold  
-            if (step > 0 && imageArray.length >= AboveTheFold){                    
-                var p = createDirEntryFinder(0, AboveTheFold);
-                var waitForImagesAboveTheFold = imageLoadCompletions.length > 0 ? 
-                    Promise.all(imageLoadCompletions[AboveTheFold]) : Promise.resolve();
-                p.then(waitForImagesAboveTheFold)
-                    .then(
-                        function firstPaintDone(){
-                        console.timeEnd(foundDirEntry.title + " TimeToFirstPaint");                
-                        createDirEntryFinder(AboveTheFold, step);
-                        for (var k = 1; k < N; k += 1) {
-                            var start = k*step;
-                            var end = start+step;
-                            createDirEntryFinder(start, end);
-                            //console.log(start +" "+ end);
-                        }
-                        N++;
-                    });    
-            }else{
-                N=1;
-                createDirEntryFinder(0, imageArray.length);
-            }                
-        }
-
-        console.time(foundDirEntry.title + " TimeToFirstPaint");
-        workerStartwithFold();*/
     }
 
     /**
