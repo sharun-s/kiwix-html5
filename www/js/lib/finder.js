@@ -39,9 +39,9 @@ define(["module"], function(module) {
         this.workerCompletions = 0;
         this.urlArray = urllist;
         // [TODO] refactor
-        //this.onFirstResult = callbacks.hasOwnProperty("onFirstResult") ? callbacks["onFirstResult"] : function (){};   
         this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
         //this.onWorkerCompletion = callbacks.hasOwnProperty("onWorkerCompletion") ? callbacks["onWorkerCompletion"] : function (){};        
+        this.onFirstWorkerCompletion = callbacks.hasOwnProperty("onFirstWorkerCompletion") ? callbacks["onFirstWorkerCompletion"] : function (){};   
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
         // [TODO] This stuff is being passed around unnecessarily. 
         // Find a way to share it across modules and worker. Maybe a singleton selectedArchive
@@ -68,8 +68,11 @@ define(["module"], function(module) {
                     resolve();
                     that.workerCompletions++;
                     //console.log("recvd done" + that.workerCompletions +" " + that.N);
-                    if(that.workerCompletions == that.N)
+                    if(that.workerCompletions == that.N){
+                        if(that.N == 1)
+                            that.onFirstWorkerCompletion();
                         that.onAllWorkersCompletion(that.resultstrack);
+                    }
                 }else{
                     var index = e.data[0];                          
                     var dirEntry = e.data[1];
@@ -88,14 +91,12 @@ define(["module"], function(module) {
     }
 
     finder.prototype.workerStartwithFold = function(){
-        //console.time("Total Image Lookup+Read Time");
         var that= this;
         var step = this.urlArray.length/this.N;
         if (step > 0 && this.urlArray.length > this.AboveTheFold){ 
             var p = this.createDirEntryFinder(0, this.AboveTheFold);
-            //p.then(that.onFirstResult);
-            p.then(function (){
-                //BUG: creates a worker if start=end eg:urlarray.len=11  
+            p.then(that.onFirstWorkerCompletion).then(function startTheRest(){
+                //BUG: creates an extra do nothing (harmless) worker if step<=abv the fold  
                 that.createDirEntryFinder(that.AboveTheFold, step);
                 for (var k = 1; k < that.N; k += 1) {
                     var start = k*step;

@@ -957,54 +957,50 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
-            if(imgNodes.length == 0)
-            {
-                // [TODO] Should skip image loading and jump to css loading
-                //console.log(dirEntry +" no images found");
-                return;   
-            }
-            var imageURLs = [].slice.call(imgNodes)
-                               .map(el => decodeURIComponent(el.getAttribute('data-src')
-                                            .match(regexpImageUrl)[1]));
-            //console.log("images to load:" + imageURLs.length);
-            console.time("Total Image Lookup+Read+Inject Time");
-            //console.time("TimeToFirstPaint");
             var cssLoaded, imageLoadCompletions = [];
             var AboveTheFold = module.config().initialImageLoad;
-
-            var f = selectedArchive.findImages(imageURLs, {
-                onEachResult: function(index, dirEntry){
-                    var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                    p.then(function (content) {
-                        if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
-                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
-                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
-                        }else{
-                            //console.error("Unrecognized image format: " + dirEntry.url);
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                        }
-                    },function (){
-                        console.error("Failed loading " + dirEntry.url );
-                    }).then(() => Promise.resolve());
-                    imageLoadCompletions.push(p);
-                }, 
-                onAllWorkersCompletion: function(resultsCount){
-                    //console.log("images in document:" + resultsCount);
-                    // this waiting logic should really be in the finder thread
-                    Promise.all(imageLoadCompletions).then(function (){
-                        console.log("Images loaded:" + resultsCount);
-                        console.timeEnd("Total Image Lookup+Read+Inject Time");
-                    });
-                }
-            });
+            var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
+            if(imgNodes.length > 0)
+            {
+                var imageURLs = [].slice.call(imgNodes)
+                               .map(el => decodeURIComponent(el.getAttribute('data-src')
+                                            .match(regexpImageUrl)[1]));
+                console.time("Total Image Lookup+Read+Inject Time");
+                console.time("TimeToFirstPaint");
+                var f = selectedArchive.findImages(imageURLs, {
+                    onEachResult: function(index, dirEntry){
+                        var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                        p.then(function (content) {
+                            if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
+                            }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                            }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
+                            }else{
+                                //console.error("Unrecognized image format: " + dirEntry.url);
+                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                            }
+                        },function (){
+                            console.error("Failed loading " + dirEntry.url );
+                        }).then(() => Promise.resolve());
+                        imageLoadCompletions.push(p);
+                    },
+                    onFirstWorkerCompletion: function(){
+                        return cssLoaded.then(()=>console.timeEnd("TimeToFirstPaint"));
+                    }, 
+                    onAllWorkersCompletion: function(resultsCount){
+                        Promise.all(imageLoadCompletions).then(function (){
+                            console.log("Images loaded:" + resultsCount);
+                            console.timeEnd("Total Image Lookup+Read+Inject Time");
+                        });
+                    }
+                });
+            }
             
             // Load CSS content
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
-                console.log("loading css");
+                //console.log("loading css");
                 var link = $(this);
                 // We try to find its name (from an absolute or relative URL)
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);
@@ -1042,9 +1038,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     });
                 }
             });
-            //Something wrong with this 
-            //Promise.all([cssLoaded,imageLoadCompletions[AboveTheFold]]).then(
-            //            function firstPaintDone(){console.timeEnd("TimeToFirstPaint");    });
         }
     }
 
