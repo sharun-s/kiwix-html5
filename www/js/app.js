@@ -960,8 +960,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
             if(imgNodes.length == 0)
             {
-                console.log(dirEntry +" no images found");
-                return; // [TODO] Should skip image loading and jump to css loading  
+                // [TODO] Should skip image loading and jump to css loading
+                //console.log(dirEntry +" no images found");
+                return;   
             }
             var imageURLs = [].slice.call(imgNodes)
                                .map(el => decodeURIComponent(el.getAttribute('data-src')
@@ -976,12 +977,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
-                        if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                        if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
+                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
                             uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
                         }else{
+                            //console.error("Unrecognized image format: " + dirEntry.url);
                             uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
                         }
-                        
                     },function (){
                         console.error("Failed loading " + dirEntry.url );
                     }).then(() => Promise.resolve());

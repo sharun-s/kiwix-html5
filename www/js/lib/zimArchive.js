@@ -385,11 +385,9 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
      * @param {callbackStringContent} callback
      */
     ZIMArchive.prototype.readArticle = function(dirEntry, callback) {
-        console.time("HTMLReadNotAssets:"+dirEntry.title)
         dirEntry.readData().then(function(data) {
             // This generates many asset loads all async
             callback(dirEntry.title, utf8.parse(data));
-            console.timeEnd("HTMLloadedNotAssets:"+dirEntry.title);
         });
     };
 

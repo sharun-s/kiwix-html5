@@ -21,7 +21,6 @@
  */
 'use strict';
 define(['q', 'module'], function(q, module) {
-    console.log("util being run");
     /**
      * Utility function : return true if the given string ends with the suffix
      * @param {String} str
