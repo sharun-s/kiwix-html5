@@ -441,43 +441,45 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // After that, we can start looking for archives
         storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
                                                   searchForArchivesInPreferencesOrStorage);
-    }
-    else {  
-            displayFileSelect();// when switching from url based loading to file based ensures UI is visible  
-            var params={};
-            location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
-            if(params["title"] && params["archive"]){
-                console.log("loading " + params["title"] + " from " + params["archive"] );
-                $("#welcomeText").hide();
-                //$("#articleListWithHeader").hide();
-                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+    }else{ 
+        // when switching from url based loading to file based ensures UI is visible    
+        displayFileSelect();
+        var params={};
+        // TODO: Create a map of all known zims that can be loaded
+        var wikipedia_en_all_2016_12 = '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}'; 
+        location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+        if(params["archive"]) // == wiki_en_2016-12
+        {  
+            $("#welcomeText").hide();
+            selectedArchive = zimArchiveLoader.loadArchiveFromString(wikipedia_en_all_2016_12);
+            if(params["title"]){
                 goToArticle(params["title"]);                
-            }else if(params["titleSearch"] && params["archive"]){
-                console.log("searching for " + params["titleSearch"] + " from " + params["archive"] );
-                $("#welcomeText").hide();
-                //$("#articleListWithHeader").hide();
-                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+            }else if(params["titleSearch"]){
                 var keyword = decodeURIComponent(params["titleSearch"]);
-                $("title").html(keyword);
+                $("title").html("Search Results for "+keyword);
                 searchDirEntriesFromPrefix(keyword);
-            }else if(params["imageSearch"] && params["archive"]){
-                console.log("searching for " + params["imageSearch"] + " from " + params["archive"] );
-                $("#welcomeText").hide();
-                //$("#articleListWithHeader").hide();
-                selectedArchive = zimArchiveLoader.loadArchiveFromString('{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}');
+            }else if(params["imageSearch"]){
                 var keyword = decodeURIComponent(params["imageSearch"]);
-                $("title").html(keyword);
+                $("title").html("ImageSearch Results for "+keyword);
                 searchDirEntriesFromImagePrefix(keyword);
             }else{
-    	        // If DeviceStorage is not available, we display the file select components
-    	        
-    	        if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
-    	            // Archive files are already selected, 
-    	            setLocalArchiveFromFileSelect();
-    	        }
-	        else {
-	            $("#btnConfigure").click();
-	        }
+                selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
+                    selectedArchive.readArticle(dirEntry, 
+                        (de,content) => $('#articleContent').contents().find('body').html("Loaded archive: wikipedia_en_all_2016_12. It contains:<br>"+
+                            content.split(';').join('<br>')+
+                            "<br>Total Article Count:" + selectedArchive._file.articleCount));
+                });
+                
+                                
+            }
+        }else{
+	        // If DeviceStorage is not available, we display the file select components
+            if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+                // Archive files are already selected, 
+                setLocalArchiveFromFileSelect();
+            }else{
+               $("#btnConfigure").click();
+            }
 	    }
     }
 
