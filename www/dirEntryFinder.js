@@ -1,5 +1,8 @@
-var archive, articleCount, urlPtrPos, readSlice, wid, cacheHits=0;
-// Remove to debug    
+//Takes a list of URL's and returns corresponding direntries
+//Speed is achieved by using a cache that minimizes repeating binary search steps during lookup 
+
+var archive, articleCount, urlPtrPos, readSlice, wid;
+//Comment out for logs and timing    
 //console.log = function(){}     
 //console.time = function(){};
 //console.timeEnd =function(){};
@@ -163,19 +166,6 @@ function dirEntryByUrlIndex(index, cache)
     });
 };
 
-function zimDirEntry(dirEntryData) {
-    return {
-    redirect : dirEntryData.redirect,
-    offset : dirEntryData.offset,
-    mimetype : dirEntryData.mimetype,
-    namespace : dirEntryData.namespace,
-    redirectTarget : dirEntryData.redirectTarget,
-    cluster : dirEntryData.cluster,
-    blob : dirEntryData.blob,
-    url : dirEntryData.url,
-    title : dirEntryData.title};
-};
-
 // formerly zimfile.dirEntry(offset)
 function dirEntryByOffset(offset)
 {
@@ -201,8 +191,18 @@ function dirEntryByOffset(offset)
         while (data[pos] !== 0)
             pos++;
         dirEntry.title = utf8parse(data.subarray(pos + 1), true).str;
-        // [TODO] this call is extra remove
-        return new zimDirEntry(dirEntry);
+        // TODO: Remove unused props
+        return {
+            redirect : dirEntry.redirect,
+            offset : dirEntry.offset,
+            mimetype : dirEntry.mimetype,
+            namespace : dirEntry.namespace,
+            redirectTarget : dirEntry.redirectTarget,
+            cluster : dirEntry.cluster,
+            blob : dirEntry.blob,
+            url : dirEntry.url,
+            title : dirEntry.title
+        };
     });
 };
 
@@ -222,47 +222,37 @@ function binarySearch(begin, end, query, lowerBound) {
 };
 
 function readImageDirEnt(url) {
-        if (loadingCache && loadingCache.has(url)){
-            return Promise.resolve().then(() => loadingCache.get(url));
-        }
-        //var pb = 
-        return binarySearch(0, articleCount, 
-                    function compare(i) {
-                        return dirEntryByUrlIndex(i, loadingCache).then(function (dirEntry){
-                            var foundurl = dirEntry.namespace + "/" + dirEntry.url;
-                            //console.log(title+" "+url);
-                            if (url < foundurl)
-                                return -1;
-                            else if (url > foundurl)
-                                return 1;
-                            else
-                                return 0;
-                            });
-                        }            
-                ).then(function (index){
-                    if (index === null){ 
-                        console.error("bsearch returned null"); 
-                        return null;
-                    }
-                    return dirEntryByUrlIndex(index);
-                }).then( function (dirEntry){
-                        if(loadingCache)
-                            loadingCache.set(url, dirEntry);
-                        return dirEntry;
-                });
-            //return pb.then(function (dirent){return Promise.resolve();}, function (){console.error("could not find dirent");});
-            //});        
-        //return p;
-    //}else{
-    //    console.count("image_unmatched_url");
-    //    console.log(image.attr('data-src'));
-    //    return image.attr('data-src');
-    //}
+    if (loadingCache && loadingCache.has(url)){
+        return Promise.resolve().then(() => loadingCache.get(url));
+    }
+    return binarySearch(0, articleCount, 
+                function compare(i) {
+                    return dirEntryByUrlIndex(i, loadingCache).then(function (dirEntry){
+                        var foundurl = dirEntry.namespace + "/" + dirEntry.url;
+                        //console.log(title+" "+url);
+                        if (url < foundurl)
+                            return -1;
+                        else if (url > foundurl)
+                            return 1;
+                        else
+                            return 0;
+                        });
+                    }            
+        ).then(function (index){
+            if (index === null){ 
+                console.error("bsearch returned null"); 
+                return null;
+            }
+            return dirEntryByUrlIndex(index);
+        }).then( function (dirEntry){
+                if(loadingCache)
+                    loadingCache.set(url, dirEntry);
+                return dirEntry;
+        });
 }
 
 function startChain(id) {
-  var cnt = 0;
-  
+  var cnt = 0;  
   return Promise.resolve().then(function next() {
         var image = images.next();
         if (!image.done) {
@@ -279,39 +269,32 @@ function startChain(id) {
     });
 }
 
-function start(){
-    //console.profile("completePageLoad")
-    console.time("DEFinder"+wid+":loadImages");
-    for (var k = 0; k < N; k += 1) {
-        var id = k +1;
-        imagePromises.push(startChain(id));
-    }
-    Promise.all(imagePromises).then(function(val){
-        //console.log(val);
-        //console.log(loadingCache.size);
-        //console.profileEnd("completePageLoad")
-        console.timeEnd("DEFinder"+wid+":loadImages");
-        postMessage(["done",null]);
-    });    
-}
-
 var images;
 var imagePromises, loadingCache;
-var N = 2;
+var N = 2; // can be much higher on newer (desktop) browsers
 function init(){
     imagePromises = [];
     loadingCache = new Map();
     images = makeIterator(imageArray);//.slice(0,100));
     //images = makeIterator(Array.from(new Set(imageArray)));
     if(archive){
-        start();
+        console.time("DEFinder"+wid+":loadImages");
+        // Multiple chains are faster than a single chain
+        // since jobs can queue up behind a particular long op.
+        // To see how many jobs each chain ends up processing inspect "cnt" after each chain is done 
+        // Note: Optimal N is browser dependent 
+        for (var k = 0; k < N; k += 1) {
+            var id = k +1;
+            imagePromises.push(startChain(id));
+        }
+        Promise.all(imagePromises).then(function(val){
+            //console.log(val);//console.log(loadingCache.size);            
+            console.timeEnd("DEFinder"+wid+":loadImages");
+            postMessage(["done",null]);
+        });    
     }else{
         console.error("DirEntryFinder archive not set");
     }
-}
-
-function isFireFox(){
-    return typeof InstallTrigger !== 'undefined';
 }
     
 onmessage = function(e) {
@@ -323,7 +306,7 @@ onmessage = function(e) {
   if (e.data[5] == "file") {
     readSlice = readFileSlice;
   }else if( e.data[5] == "xhrFF"){
-  console.log("WARNING: direntry using xhrff - ignore timing data");
+  console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
     readSlice = readFFXHRSlice;
   }else{
     readSlice = readXHRSlice;

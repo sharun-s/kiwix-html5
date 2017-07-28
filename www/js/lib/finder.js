@@ -22,14 +22,6 @@
 'use strict';
 define(["module"], function(module) {
 
-    finder.prototype = {
-        urlArray : null,
-        onFirstResult: null,
-        onEachResult: null,
-        //onWorkerCompletion: null,
-        onAllWorkersCompletion: null
-    }
-
     function finder(urllist, callbacks, archive){
         this.resultstrack=0;
         this.N=2;
