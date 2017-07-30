@@ -65,6 +65,7 @@ define(["module"], function(module) {
                             that.onFirstWorkerCompletion();
                         that.onAllWorkersCompletion(that.resultstrack);
                     }
+                    def.terminate();
                 }else{
                     var index = e.data[0];                          
                     var dirEntry = e.data[1];
