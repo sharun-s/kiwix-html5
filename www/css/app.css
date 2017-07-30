@@ -26,10 +26,10 @@
   position: fixed;
   overflow-x: hidden;
 }
-[role=region] > header {
-  //margin: .5rem 0 1rem 0;
+/*[role=region] > header {
+  margin: .5rem 0 1rem 0;
   text-align: center;
-}
+}*/
 [role=region] > header > h1 {
   margin: 0;
   text-shadow: 0px 1px 1px rgba(0,0,0,.4);
@@ -38,7 +38,7 @@
   margin: 0;
   position: relative; /*Fixes #250 Random button display bug in W10M */
 }
-[role=region] > footer {
+/*[role=region] > footer {
   background: rgba(0,0,0,.2);
   right: 0; bottom: 0; left: 0;
   position: fixed;
@@ -48,29 +48,29 @@
   margin: 0;
   padding: 0;
 }
-
-#navigationButtons .restrictedSize {
+*/
+/*#navigationButtons .restrictedSize {
     max-width: 80%;
     margin-left: auto;
     margin-right: auto;
-}
+}*/
 
 .nopadding {
     padding-right: 1px !important;
     padding-left: 1px !important;
 }
 
-#searchingForArticles .floating {
+/*#searchingForArticles .floating {
     position: relative;
     z-index: 10;
     top: 20px;
     height: 0px; 
-}
+}*/
 
-.articleIFrame {
+/*.articleIFrame {
     width: 100%;
     border: 0;
-}
+}*/
 
 .category-padding {
    margin: 0 1rem 0 1rem;

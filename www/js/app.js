@@ -55,10 +55,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function resizeIFrame() {
         var height = $(window).outerHeight()
                 - $("#top").outerHeight(true)
-                - $("#articleListWithHeader").outerHeight(true)
+                //- $("#articleListWithHeader").outerHeight(true)
                 // TODO : this 5 should be dynamically computed, and not hard-coded
                 - 5;
-        $(".articleIFrame").css("height", height + "px");
+        $("#articleContent").css("height", height + "px");
     }
     $(document).ready(resizeIFrame);
     $(window).resize(resizeIFrame);

@@ -35,7 +35,7 @@
 
         -->
 
-        <link rel="stylesheet" href="css/app.css"/>
+        <!--<link rel="stylesheet" href="css/app.css"/>-->
         <!-- Bootstrap -->
         <link href="css/bootstrap.css" rel="stylesheet" media="screen"/>
         <link href="css/bootstrap-theme.css" rel="stylesheet" media="screen"/>
@@ -64,11 +64,11 @@
                     </ul>
                   </div><!-- /.navbar-collapse -->
                 </nav>
-
-
+            </header>
+            <article class="view-content">
                 <form id="formArticleSearch" class="container">
                     <div class="row">
-                        <span class="nopadding col-md-offset-1 col-sm-offset-1 col-md-8 col-sm-8 col-xs-7">
+                        <span >
                             <span class="input-group">
                                 <input type="search" id="prefix" placeholder="Search..." class="form-control" />
                                 <span class="input-group-btn">
@@ -77,16 +77,20 @@
                                     <a class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
                                 </span>
                             </span>
+                            <!-- List of articles matching the typed prefix -->
+                            <div id="articleListWithHeader">
+                                <span id="articleListHeaderMessage"></span>
+                                <div id="articleList" class="list-group">
+                                </div>
+                            </div>
                         </span>
                     </div>
                     <div id="searchingForArticles" class="floating" style="display: none;">
                         <img src="img/spinner.gif" alt="Please wait..." />
                     </div>
                 </form>
-                
-            </header>
-            <article class="view-content">
-                <div id="about" style="display: none;" class="category-padding">
+
+                <div id="about" style="display: none;" class="container">
                     <h2>
                     <img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
                     Kiwix : offline Wikipedia viewer
@@ -215,28 +219,21 @@
                         </label> 
                         <small> ( Recommended For Wikipedia ZIM )</small>
                     </p>
-                <h4>Expert Settings</h4>
+                    <h4>Expert Settings</h4>
                     <div id="contentInjectionModeDiv">
                         Content injection mode <small>(Don't touch unless you know what you're doing) </small>: <br/>
-                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; JQuery</label> (slow and memory hungry, but safer)
+                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; Document Parsing Based Injection</label> (slow and memory hungry, but safer)
                             <br>
-                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; ServiceWorker</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
+                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; Request Interception Based Injection</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
                     </div>
-                <div id="serviceWorkerStatus"></div>
-                <div id="messageChannelStatus"></div>
-                <br />
-            </div> 
+                    <div id="serviceWorkerStatus"></div>
+                    <div id="messageChannelStatus"></div>
+                    <br />
+                </div> 
 
                 <div id="welcomeText" class="container category-padding">
                     You can search the content of your ZIM archive by typing in the above search field.
                     <br />It will propose articles starting with what you typed
-                </div>
-
-                <!-- List of articles matching the typed prefix -->
-                <div id="articleListWithHeader" class="container">
-                    <span id="articleListHeaderMessage"></span>
-                    <div id="articleList" class="list-group">
-                    </div>
                 </div>
                 <div id="readingArticle" style="display: none;" class="container">
                     Reading article <span id="articleName"></span> from archive... Please wait <img src="img/spinner.gif" alt="Please wait..." />
@@ -244,19 +241,14 @@
                 <!--<div id="articleContent" src="A/dummyArticle.html" class="articleIFrame">&nbsp;
                     <div id="body"></div>
 				</div>-->
-                <iframe id="articleContent" src="A/dummyArticle.html" class="articleIFrame">&nbsp;</iframe>
+                <iframe id="articleContent" src="A/dummyArticle.html" style="width:100%;border:0;">&nbsp;</iframe>
 			</article>
             <footer>
-                <div id="navigationButtons" class="btn-toolbar">
-                    <!-- We need to restrict the size of this navbar,
-                    to avoid the top button to be in the scrollbar area :
-                    on a device, it can trigger a "page down" of the scrollbar -->
-                    <div class="restrictedSize">
+                <div id="navigationButtons" style="background:rgba(0,0,0,0.2);" class="navbar-fixed-bottom text-center">
                         <a class="btn btn-lg pull-left" id="btnHomeBottom" title="Home"><span class="glyphicon glyphicon-home"></span></a>
                         <a class="btn btn-lg" id="btnBack" title="Back"><span class="glyphicon glyphicon-circle-arrow-left"></span></a>
                         <a class="btn btn-lg" id="btnForward" title="Forward"><span class="glyphicon glyphicon-circle-arrow-right"></span></a>
                         <a class="btn btn-lg pull-right" id="btnTop" title="Top" href="#top"><span class="glyphicon glyphicon-arrow-up"></span></a>
-                    </div>
                 </div>
             </footer>
         </section>
