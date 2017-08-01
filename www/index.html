@@ -43,86 +43,112 @@
     <body role="application">
         <section id="search-article" role="region">
             <header id="top">
-                <nav class="navbar navbar-default" role="navigation">
-                  <!-- Brand and toggle get grouped for better mobile display -->
-                  <div class="navbar-header">
-                    <button type="button" id="navbarToggle" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
-                      <span class="sr-only">Toggle navigation</span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                      <span class="icon-bar"></span>
-                    </button>
-                    <a class="navbar-brand">Kiwix 2.2-WIP</a>
-                  </div>
-
-                  <!-- Collect the nav links, forms, and other content for toggling -->
-                  <div class="collapse navbar-collapse navbar-ex1-collapse">
-                    <ul class="nav navbar-nav">
-                      <li id="liHomeNav" class="active"><a href="#" id="btnHome">Home</a></li>
-                      <li id="liConfigureNav"><a href="#" id="btnConfigure">Configure</a></li>
-                      <li id="liAboutNav"><a href="#" id="btnAbout">About</a></li>
-                    </ul>
-                  </div><!-- /.navbar-collapse -->
-                </nav>
-            </header>
-            <article class="view-content">
-                <form id="formArticleSearch" class="container">
-                    <div class="row">
-                        <span >
+                <nav role="navigation">
+                    <!-- Still useful as a reference if navbar toggle is required 
+                    <div class="navbar-header">
+                        <button type="button" id="navbarToggle"  
+                        class="navbar-toggle btn btn-default" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                          <span class="sr-only">Toggle navigation</span>
+                          <span class="icon-bar"></span>
+                          <span class="icon-bar"></span>
+                          <span class="icon-bar"></span>
+                        </button>
+                        <form id="formArticleSearchnew" role="search" >
                             <span class="input-group">
-                                <input type="search" id="prefix" placeholder="Search..." class="form-control" />
+                                <span class="input-group-btn">
+                                    <button id="btnHome" class="btn btn-default">
+                                    <img src="./img/icons/kiwix-19.png"/> 2.2-WIP
+                                    </button>
+                                </span>
+                                <input type="search" id="prefix" placeholder="Search..." 
+                                class="form-control" />
+                                <span class="input-group-btn">
+                                    <a class="btn btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
+                                    <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
+                                </span>
+                            </span>
+                        </form>
+                    </div>
+                    <div class="navbar-nav">
+                        <div class="collapse navbar-collapse navbar-ex1-collapse">
+                            <span class="btn-group" role="group">
+                              <a href="#" class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
+                              <a href="#" class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>
+                              <a href="#" class="btn btn-default" title="About" id="btnAbout"><span class="glyphicon glyphicon-info-sign"></span></a>
+                            </span>
+                        </div>
+                    </div> -->
+                    <!-- Collect the nav links, forms, and other content for toggling -->
+                    <!-- /.navbar-collapse -->
+                    <!-- Issue here is for some small screens search bar can get small. Can be handled by shrinking buttons collapse. 
+                    Use "container" in div to center the toolbar if reqd --> 
+                    <div class="">    
+                        <form id="formArticleSearchnew">
+                            <span class="input-group">
+                                <span class="input-group-btn">
+                                    <button id="btnHome" class="btn btn-default">
+                                    <img src="./img/icons/kiwix-19.png"/>
+                                    </button>
+                                </span>
+                                <input type="search" id="prefix" placeholder="Search..." 
+                                class="form-control" />
                                 <span class="input-group-btn">
                                     <a class="btn btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
                                     <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
                                     <a class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
+                                    <a class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>
+                                    <a class="btn btn-default" title="About" id="btnAbout"><span class="glyphicon glyphicon-info-sign"></span></a>
                                 </span>
-                            </span>
-                            <!-- List of articles matching the typed prefix -->
-                            <div id="articleListWithHeader">
-                                <span id="articleListHeaderMessage"></span>
-                                <div id="articleList" class="list-group">
-                                </div>
+                            </span>                                
+                        </form>
+                    </div>
+                </nav>
+            </header>
+            <article class="view-content">
+                <div id="formArticleSearchResults" class="container">
+                    <div class="row">                       
+                        <!-- List of articles matching the typed prefix -->
+                        <div id="articleListWithHeader">
+                            <span id="articleListHeaderMessage"></span>
+                            <div id="articleList" class="list-group">
                             </div>
-                        </span>
+                        </div>     
                     </div>
                     <div id="searchingForArticles" class="floating" style="display: none;">
                         <img src="img/spinner.gif" alt="Please wait..." />
                     </div>
-                </form>
+                </div>
 
                 <div id="about" style="display: none;" class="container">
                     <h2>
                     <img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    Kiwix : offline Wikipedia viewer
+                    Kiwix : offline Wikipedia viewer <small>(Version:2.2-WIP)</small>
                     </h2>
-                    <br />Official site : <a href="http://www.kiwix.org/" target="_blank">http://www.kiwix.org/</a>
-                    <br />
-                    <br />If your Internet access is expensive/rare/slow/unreliable/watched/censored, you still can browse amazing amounts of knowledge and culture.
-                    <br />The content is packages in file archives called ZIM files.
-                    <br />Once you have downloaded material from the Kiwix website, you will be able to read material from Wikipedia and many other sources.
-                    <br />You can search among the article titles, and read any of these articles offline, without needing Internet access.
-                    <br />All the content of Wikipedia is inside your device (including the images). It might also work with any content in the <a href="http://www.openzim.org//wiki/OpenZIM">OpenZIM format</a>, but has been only tested on the Wikipedia ones.
-                    <br />
-                    <br />Note : version 1.x of this application was designed for <a href="http://dumpathome.evopedia.info/dumps/finished/">Evopedia archives</a> and it's still compatible with it, but this format and <a href="http://www.evopedia.info">project</a> are now discontinued.
+                    <p class="lead"> Official Site : <a href="http://www.kiwix.org/" target="_blank">www.kiwix.org</a>
+                    </p>
+                    <p>If your Internet access is expensive, rare, slow, unreliable, watched, censored, you still can browse amazing amounts of knowledge and culture offline. The content is packaged in file archives called ZIM files. Once you have downloaded material from the <a href="http://download.kiwix.org" target="_blank">Kiwix</a> website, you will be able to read material from Wikipedia and many other sources.
+                    <p>You can search among the article titles, and read any of these articles offline, without needing Internet access. All the content of Wikipedia is inside your device (including the images). It might also work with any content in the <a href="http://www.openzim.org//wiki/OpenZIM">OpenZIM format</a>, but the app has been mainly tested with Wikipedia archives.</p>
+                    <p>Note : Version 1.x of this application was designed for <a href="http://dumpathome.evopedia.info/dumps/finished/">Evopedia archives</a> and it's still compatible with it, but this format and <a href="http://www.evopedia.info">project</a> are now discontinued.</p>
+                    
                     <h3>Usage</h3>
-                    <h4>Step 1 : download some content</h4>
+                    <h4>Step 1 : Download some content</h4>
                     from <a href="http://download.kiwix.org/zim" target="_blank">http://download.kiwix.org/zim/</a>, with a regular computer.
-                    <strong>Currently only Wikimedia contents (ZIM files in wiki* subdirectories, for instance <a href="http://download.kiwix.org/zim/wikipedia/" target="_blank">http://download.kiwix.org/zim/wikipedia/</a>) have been tested</strong>.
-                    There are known bugs when reading other contents; and audio/video/dynamic contents are not supported for now.
-                    <br />For a quick test, you can start with the <a href="http://download.kiwix.org/zim/wikipedia/wikipedia_en_ray_charles_2015-06.zim" target="_blank">"Ray Charles" ZIM file</a> : it contains some wikipedia articles about Ray Charles.
-                    <br />After that, you can download materials in your language. Check the size before you download files as many of the files are large (several Gigabytes).
-                    <br />If the file is larger than 2 GB, it might not be supported by your device if your storage is formatted using a FAT filesystem. If so, it's possible to split the material into several 2GB files : see <a href="http://www.kiwix.org/wiki/FAQ">the Kiwix FAQ</a>
-                    <br />
-                    <h4>Step 2 : copy the content onto your device</h4>
+                    <p>For a quick test, you can start with the <a href="http://download.kiwix.org/zim/wikipedia/wikipedia_en_ray_charles_2015-06.zim" target="_blank">"Ray Charles" ZIM file</a> : it contains some wikipedia articles about Ray Charles.
+                    </p>
+                    <p>Try downloading materials in your language. Check the size before you download files as many of the files are large (several Gigabytes). If the file is larger than 2 GB, it might not be supported by your device if your storage is formatted using a FAT filesystem. If so, it's possible to split the material into several 2GB files : see <a href="http://www.kiwix.org/wiki/FAQ">the Kiwix FAQ</a>
+                    </p>
+                    <h4>Step 2 : Copy the content onto your device</h4>
                     If you have enough space, you can put several archives.
-                    <h4>Step 3 : open the extension, go to the "Configure" menu and select your ZIM file</h4>
-                    <h4>Step 4 : enjoy Wikipedia offline!</h4>
+                    <h4>Step 3 : Open the extension, go to the "Configure" menu and select your ZIM file</h4>
+                    <h4>Step 4 : Enjoy Wikipedia offline!</h4>
+                    
                     <h3>Privacy policy</h3>
                     <h4>Short answer :</h4>
-                    This application works offline. We do not collect any of your personal data and don't even know what you are doing with this application.
-                    <br /><h4>Longer answer :</h4>
-                    Anyway, if you think your Internet access can be watched and/or if you are paranoid, you should shut down your 3G and Wifi access before using the application.
-                    <br />This application only reads the archive files of your device : it does not read any other files.
+                    <p>This application works offline. We do not collect any of your personal data and don't even know what you are doing with this application.
+                    </p>
+                    <h4>Longer answer :</h4>
+                    <p>Anyway, if you think your Internet access can be watched and/or if you are paranoid, you should shut down your 3G and Wifi access before using the application. This application only reads the archive files of your device : it does not read any other files.
+                    </p>
                     <h3>Feedback / helping / contributing</h3>
                     This application is still a work in progress. There are many bugs and improvements that need to be done. In particular :
                     <ul>
