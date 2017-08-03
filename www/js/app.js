@@ -820,7 +820,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             selectedArchive.resolveRedirect(dirEntry, readArticle);
         }
         else {
-            selectedArchive.readArticle(dirEntry, displayArticleInForm);
+            selectedArchive.readArticle(dirEntry, displayArticleInFrame);
         }
     }
     
@@ -849,7 +849,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         selectedArchive.resolveRedirect(dirEntry, readFile);
                     } else {
                         console.log("Reading binary file...");
-                        selectedArchive.readBinaryFile(dirEntry, function(readableTitle, content) {
+                        selectedArchive.readBinaryFile(dirEntry, function(content) {
                             messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': content});
                             console.log("content sent to ServiceWorker");
                         });
@@ -874,6 +874,69 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
     // This regular expression matches the href of all <link> tags containing rel="stylesheet" in raw HTML
     var regexpSheetHref = /(<link\s+(?=[^>]*rel\s*=\s*["']stylesheet)[^>]*href\s*=\s*["'])([^"']+)(["'][^>]*>)/ig;
+    // Stores a url to direntry mapping and is refered to/updated anytime there is a css lookup 
+    var cssDirEntryCache = new Map();
+    var cssBlobCache = new Map();
+    // Promise that gets resolved after css load used to control article loading
+    var cssLoaded;
+
+    function applyCSS(link, content) 
+    {
+        var cssContent = util.uintToString(content);
+        // For some reason, Firefox OS does not accept the syntax <link rel="stylesheet" href="data:text/css,...">
+        // So we replace the tag with a <style type="text/css">...</style>
+        // while copying some attributes of the original tag
+        // Cf http://jonraasch.com/blog/javascript-style-node
+        var cssElement = document.createElement('style');
+        cssElement.type = 'text/css';
+
+        if (cssElement.styleSheet) {
+            cssElement.styleSheet.cssText = cssContent;
+        } else {
+            cssElement.appendChild(document.createTextNode(cssContent));
+        }
+        var mediaAttributeValue = link.attr('media');
+        if (mediaAttributeValue) {
+            cssElement.media = mediaAttributeValue;
+        }
+        var disabledAttributeValue = link.attr('media');
+        if (disabledAttributeValue) {
+            cssElement.disabled = disabledAttributeValue;
+        }
+        link.replaceWith(cssElement);
+        console.timeEnd("css-load");
+        return Promise.resolve();
+    }
+
+    /* Relaces link pointing to a css stylesheet with a style tag containing css blob from ZIM file
+     * @param {jQueryNode} link tag 
+     * @param {String} link tag's href attribute
+     */
+    function loadCSS(link, hrefURL){
+        console.time("css-load");
+        // It's a CSS file contained in the ZIM file
+        var url = uiUtil.removeUrlParameters(decodeURIComponent(hrefURL));
+        var cssLoadingPromise;
+        if(cssBlobCache && cssBlobCache.has(url)){
+            //console.log("blob hit");
+            cssLoadingPromise = Promise.resolve().then(() => applyCSS(link, cssBlobCache.get(url)));            
+        }else{
+            cssLoadingPromise = selectedArchive.getDirEntryByURL(url, cssDirEntryCache)
+            .then(function(dirEntry) 
+            {
+                // promise reolved on readData completion is passed back to cssLoadingPromise
+                return selectedArchive.readBinaryFile(dirEntry, function (content){
+                    applyCSS(link, content);
+                    if(cssBlobCache)
+                        cssBlobCache.set(url, content); 
+                });
+            }).catch(function (e) {
+                console.error("could not find DirEntry for CSS : " + url, e);
+            });
+        }
+        cssLoaded.push(cssLoadingPromise);
+        //console.log("added css promise");    
+    }
 
     /**
      * Display the the given HTML article in the web page,
@@ -882,7 +945,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {DirEntry} dirEntry [BUG] Really title I think
      * @param {String} htmlArticle
      */
-    function displayArticleInForm(dirEntry, htmlArticle) {
+    function displayArticleInFrame(dirEntry, htmlArticle) {
         $("#readingArticle").hide();
         $("#articleContent").show();
         // Scroll the iframe to its top
@@ -890,14 +953,19 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         // Display the article inside the web page.
 	    // Prevents unnecessary 404's being produced when iframe loads images
-        var $body = $(htmlArticle);
-        $body.find('img').each(function(){
+        //var $body = $(htmlArticle);
+        //console.log("before data-src");
+        /*$body.find('img').each(function(){
             var image = $(this);
             $(image).attr("data-src", $(image).attr("src"));
             $(image).removeAttr("src");
-        });
+        });*/
+        htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
+        //console.log("after data-src");
         // 404's should now only be produced on loading css and js
-        $('#articleContent').contents().find('body').html($body);//.html(htmlContent);
+        var $body = $(htmlArticle);
+        
+        $('#articleContent').contents().find('body').html($body);
        
         // If the ServiceWorker is not useable, we need to fallback to parse the DOM
         // to inject math images, and replace some links with javascript calls
@@ -959,7 +1027,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             });
 
             // Load images
-            var cssLoaded, imageLoadCompletions = [];
+            var imageLoadCompletions = [];
             var AboveTheFold = module.config().initialImageLoad;
             var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
             if(imgNodes.length > 0)
@@ -989,57 +1057,31 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         imageLoadCompletions.push(p);
                     },
                     onFirstWorkerCompletion: function(){
-                        return cssLoaded.then(()=>console.timeEnd("TimeToFirstPaint"));
+                        return Promise.all(cssLoaded).then(()=>console.timeEnd("TimeToFirstPaint"));
                     }, 
                     onAllWorkersCompletion: function(resultsCount){
                         Promise.all(imageLoadCompletions).then(function (){
                             console.log("Images loaded:" + resultsCount);
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
+                            //console.log("fetches: "+performance.getEntriesByType("resource").length);
+                            //console.log(" time: "+ performance.getEntries()[0]);
                         });
                     }
                 });
             }
-            
+
             // Load CSS content
+            // initialize the promise array
+            cssLoaded = [];
             $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
-                //console.log("loading css");
                 var link = $(this);
                 // We try to find its name (from an absolute or relative URL)
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);
                 if (hrefMatch) {
-                    // It's a CSS file contained in the ZIM file
-                    var url = uiUtil.removeUrlParameters(decodeURIComponent(hrefMatch[1]));
-                    cssLoaded = selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
-                        return selectedArchive.readBinaryFile(dirEntry, function (readableTitle, content) {
-                            var cssContent = util.uintToString(content);
-                            // For some reason, Firefox OS does not accept the syntax <link rel="stylesheet" href="data:text/css,...">
-                            // So we replace the tag with a <style type="text/css">...</style>
-                            // while copying some attributes of the original tag
-                            // Cf http://jonraasch.com/blog/javascript-style-node
-                            var cssElement = document.createElement('style');
-                            cssElement.type = 'text/css';
-
-                            if (cssElement.styleSheet) {
-                                cssElement.styleSheet.cssText = cssContent;
-                            } else {
-                                cssElement.appendChild(document.createTextNode(cssContent));
-                            }
-                            var mediaAttributeValue = link.attr('media');
-                            if (mediaAttributeValue) {
-                                cssElement.media = mediaAttributeValue;
-                            }
-                            var disabledAttributeValue = link.attr('media');
-                            if (disabledAttributeValue) {
-                                cssElement.disabled = disabledAttributeValue;
-                            }
-                            link.replaceWith(cssElement);
-                            return Promise.resolve();
-                        });
-                    }).fail(function (e) {
-                        console.error("could not find DirEntry for CSS : " + url, e);
-                    });
+                    loadCSS(link, hrefMatch[1]);
                 }
             });
+            console.log("# of css files loading:" + cssLoaded.length);
         }
     }
 

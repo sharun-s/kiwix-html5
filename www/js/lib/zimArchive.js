@@ -348,7 +348,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
                     return dirEntries;
                 return that._file.dirEntryByTitleIndex(index).then(function(dirEntry) {
                     if (dirEntry.title.slice(0, prefix.length) === prefix && dirEntry.namespace === "A"){
-                        console.log(dirEntry.title + " added");
+                        //console.log(dirEntry.title + " added");
                         dirEntries.push(dirEntry);
                     }else{
                         console.log(dirEntry.title);
@@ -399,12 +399,10 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
     /**
      * Read a binary file.
      * @param {DirEntry} dirEntry
-     * @param {callbackBinaryContent} callback
+     * @param {callbackBinaryContent} callback is called with data as only argument
      */
     ZIMArchive.prototype.readBinaryFile = function(dirEntry, callback) {
-        return dirEntry.readData().then(function(data) {
-            callback(dirEntry.title, data);
-        });
+        return dirEntry.readData().then(callback);
     };
     
     var regexpTitleWithoutNameSpace = /^[^\/]+$/;
@@ -422,6 +420,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
             url= "A/" + url;
         }
         if (cache && cache.has(url)){
+            //console.log("cache hit");
             return Promise.resolve().then(() => cache.get(url));
         }
         return util.binarySearch(0, this._file.articleCount, function(i) {

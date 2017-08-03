@@ -256,7 +256,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8'],
                 assert.ok(dirEntry !== null, "DirEntry found");
                 if (dirEntry !== null) {
                     assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "I/m/RayCharles_AManAndHisSoul.jpg", "URL is correct.");
-                    localZimArchive.readBinaryFile(dirEntry, function(title, data) {
+                    localZimArchive.readBinaryFile(dirEntry, function(data) {
                         assert.equal(data.length, 4951, "Data length is correct.");
                         var beginning = new Uint8Array([255, 216, 255, 224, 0, 16, 74, 70,
                                                          73, 70, 0, 1, 1, 0, 0, 1]);
@@ -276,7 +276,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8'],
                 assert.ok(dirEntry !== null, "DirEntry found");
                 if (dirEntry !== null) {
                     assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "-/s/style.css", "URL is correct.");
-                    localZimArchive.readBinaryFile(dirEntry, function(dirEntry, data) {
+                    localZimArchive.readBinaryFile(dirEntry, function(data) {
                         assert.equal(data.length, 104495, "Data length is correct.");
                         data = utf8.parse(data);
                         var beginning = "\n/* start http://en.wikipedia.org/w/load.php?debug=false&lang=en&modules=site&only=styles&skin=vector";
@@ -295,7 +295,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8'],
                 assert.ok(dirEntry !== null, "DirEntry found");
                 if (dirEntry !== null) {
                     assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "-/j/local.js", "URL is correct.");
-                    localZimArchive.readBinaryFile(dirEntry, function(dirEntry, data) {
+                    localZimArchive.readBinaryFile(dirEntry, function(data) {
                         assert.equal(data.length, 41, "Data length is correct.");
                         data = utf8.parse(data);
                         var beginning = "console.log( \"mw.loader";
