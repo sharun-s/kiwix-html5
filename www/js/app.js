@@ -100,6 +100,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     $("#btnRandomArticle").on("click", function(e) {
         $('#prefix').val("");
         goToRandomArticle();
+        $("#about").hide();
+        $("#configuration").hide();
         $("#welcomeText").hide();
         $('#articleList').hide();
         $('#articleListHeaderMessage').hide();
