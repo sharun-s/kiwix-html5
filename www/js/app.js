@@ -620,6 +620,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     function setLocalArchiveFromFileList(files) {
+        // Reset the cssDirEntryCache and cssBlobCache. Must be done when archive changes.
+        if(cssBlobCache) 
+            cssBlobCache = new Map();
+        if(cssDirEntryCache) 
+            cssDirEntryCache = new Map();
         selectedArchive = zimArchiveLoader.loadArchiveFromFiles(files, function (archive) {
             // The archive is set : go back to home page to start searching
             $("#btnHome").click();
@@ -877,6 +882,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // This regular expression matches the href of all <link> tags containing rel="stylesheet" in raw HTML
     var regexpSheetHref = /(<link\s+(?=[^>]*rel\s*=\s*["']stylesheet)[^>]*href\s*=\s*["'])([^"']+)(["'][^>]*>)/ig;
     // Stores a url to direntry mapping and is refered to/updated anytime there is a css lookup 
+    // When archive changes these caches should be reset. 
+    // Currently happens only in setLocalArchiveFromFileList.
     var cssDirEntryCache = new Map();
     var cssBlobCache = new Map();
     // Promise that gets resolved after css load used to control article loading
@@ -906,7 +913,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             cssElement.disabled = disabledAttributeValue;
         }
         link.replaceWith(cssElement);
-        console.timeEnd("css-load");
+        // console.timeEnd("css-load");
+        // Returns a promise in case some loading op is waiting for CSS load complete
         return Promise.resolve();
     }
 
@@ -915,7 +923,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} link tag's href attribute
      */
     function loadCSS(link, hrefURL){
-        console.time("css-load");
+        //console.time("css-load");
         // It's a CSS file contained in the ZIM file
         var url = uiUtil.removeUrlParameters(decodeURIComponent(hrefURL));
         var cssLoadingPromise;
@@ -1083,7 +1091,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     loadCSS(link, hrefMatch[1]);
                 }
             });
-            console.log("# of css files loading:" + cssLoaded.length);
+            //console.log("# of css files loading:" + cssLoaded.length);
         }
     }
 
