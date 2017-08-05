@@ -11,6 +11,6 @@ The latest code is on the ["dev"](https://github.com/sharun-s/kiwix-html5/tree/d
 
 **NOTE:** This is aimed at only developers conducting experiments on the Kiwix-js repo. As these experiments mature code will be pushed back into the Kiwix-js repo. For stable more time-tested platform-specific versions checkout the main [Kiwix](https://github.com/kiwix) page       
 
-**Browser Compatibility:**
+**Browser Compatibility:**  
 This code has been tested on Firefox and Edge.   
 For Chrome start the browser with the [--allow-file-access-from-files](https://stackoverflow.com/questions/18586921/how-to-launch-html-using-chrome-at-allow-file-access-from-files-mode) paramater. It's convenient to create a shortcut to Chrome with this option set.    
