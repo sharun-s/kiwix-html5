@@ -1100,14 +1100,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:"", dup:""});
         }
 
-        // Display the article inside the web page.
-        // Prevents unnecessary 404's being produced when iframe loads images
+        // TODO: Not required as its not going to be set to frame src
+        htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
         var $body = $(htmlArticle);
-        $body.find('img').each(function(){
-            var image = $(this);
-            $(image).attr("data-src", $(image).attr("src"));
-            $(image).removeAttr("src");
-        });
         var imgNodes = $body.contents().find('img').filter(function(index){
             return $(this).attr('width') > 50
         } );//$('#articleContent img');
@@ -1115,7 +1110,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         {
             console.log(foundDirEntry.title +" no images found");
             return;
-        }    
+        }
+        //var snippet = new uiUtil.snippet($body.contents().find("p")).parse();
         var imageURLs = [].slice.call(imgNodes)
                            .map(el => decodeURIComponent(el.getAttribute('data-src')
                                         .match(regexpImageUrl)[1]));
@@ -1148,6 +1144,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     }).then(() => Promise.resolve());
                     imageLoadCompletions.push(p);
                 }, 
+                /* Adding Image Snippet Test
+                onFirstWorkerCompletion: function(){
+                    $("#articleContent").contents().find('.grid').append("<p>"+snippet+"</p>");
+                },*/
                 onAllWorkersCompletion: function(resultsCount){
                     Promise.all(imageLoadCompletions).then(function (){
                         console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
