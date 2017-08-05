@@ -2,10 +2,10 @@
 //Speed is achieved by using a cache that minimizes repeating binary search steps during lookup 
 
 var archive, articleCount, urlPtrPos, readSlice, wid;
-//Comment out for logs and timing    
-//console.log = function(){}     
-//console.time = function(){};
-//console.timeEnd =function(){};
+//Comment out to disable logs and timing    
+console.log = function(){}     
+console.time = function(){};
+console.timeEnd =function(){};
 
 function readInt(data, offset, size)
 {

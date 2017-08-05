@@ -93,7 +93,7 @@
                                 <input type="search" id="prefix" placeholder="Search..." 
                                 class="form-control" />
                                 <span class="input-group-btn">
-                                    <a class="btn btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
+                                    <a class="btn btn-primary btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
                                     <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
                                     <a class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
                                     <a class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>
@@ -114,9 +114,9 @@
                             </div>
                         </div>     
                     </div>
-                    <div id="searchingForArticles" class="floating" style="display: none;">
+                    <!-- <div id="searchingForArticles" class="floating" style="display: none;">
                         <img src="img/spinner.gif" alt="Please wait..." />
-                    </div>
+                    </div> -->
                 </div>
 
                 <div id="about" style="display: none;" class="container">
@@ -229,7 +229,7 @@
                         <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
                         <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
                     </div>
-                    <h4>Display</h4>
+                    <!-- <h4>Display</h4>
                     <p>
                         <b>Style </b>
                          For Wikipedia Files: 
@@ -251,18 +251,14 @@
                         <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; Document Parsing Based Injection</label> (slow and memory hungry, but safer)
                             <br>
                         <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; Request Interception Based Injection</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
-                    </div>
+                    </div> 
                     <div id="serviceWorkerStatus"></div>
-                    <div id="messageChannelStatus"></div>
-                    <br />
+                    <div id="messageChannelStatus"></div> -->
                 </div> 
 
                 <div id="welcomeText" class="container category-padding">
                     You can search the content of your ZIM archive by typing in the above search field.
                     <br />It will propose articles starting with what you typed
-                </div>
-                <div id="readingArticle" style="display: none;" class="container">
-                    Reading article <span id="articleName"></span> from archive... Please wait <img src="img/spinner.gif" alt="Please wait..." />
                 </div>
                 <!--<div id="articleContent" src="A/dummyArticle.html" class="articleIFrame">&nbsp;
                     <div id="body"></div>
@@ -271,10 +267,10 @@
 			</article>
             <footer>
                 <div id="navigationButtons" style="background:rgba(0,0,0,0.2);" class="navbar-fixed-bottom text-center">
-                        <a class="btn btn-lg pull-left" id="btnHomeBottom" title="Home"><span class="glyphicon glyphicon-home"></span></a>
-                        <a class="btn btn-lg" id="btnBack" title="Back"><span class="glyphicon glyphicon-circle-arrow-left"></span></a>
-                        <a class="btn btn-lg" id="btnForward" title="Forward"><span class="glyphicon glyphicon-circle-arrow-right"></span></a>
-                        <a class="btn btn-lg pull-right" id="btnTop" title="Top" href="#top"><span class="glyphicon glyphicon-arrow-up"></span></a>
+                        <a class="btn btn-primary btn-sm pull-left" id="btnHomeBottom" title="Home"><span class="glyphicon glyphicon-home"></span></a>
+                        <a class="btn btn-sm" id="btnBack" title="Back"><span class="glyphicon glyphicon-circle-arrow-left"></span></a><span id="appStatus"></span>
+                        <a class="btn btn-sm" id="btnForward" title="Forward"><span class="glyphicon glyphicon-circle-arrow-right"></span></a>
+                        <a class="btn btn-primary btn-sm pull-right" id="btnTop" title="Top" href="#top"><span class="glyphicon glyphicon-arrow-up"></span></a>
                 </div>
             </footer>
         </section>

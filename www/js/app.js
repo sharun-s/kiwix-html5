@@ -57,36 +57,58 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 - $("#top").outerHeight(true)
                 //- $("#articleListWithHeader").outerHeight(true)
                 // TODO : this 5 should be dynamically computed, and not hard-coded
-                - 5;
+                - $("#navigationButtons").outerHeight(true);
         $("#articleContent").css("height", height + "px");
     }
     $(document).ready(resizeIFrame);
     $(window).resize(resizeIFrame);
     
+    function statusUpdate(text, type){
+        if(type)
+            $("#appStatus").removeClass().addClass(type).text(text);
+        else
+        {
+            $("#appStatus").removeClass().addClass("btn-danger").text(text);
+            $('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+        }    
+    }
+
+    function statusUpdateHTML(html){
+        $("#appStatus").removeClass().html(html);
+    }
+
+    function archiveStatusUpdate(type){
+        if(module.config().mode ==="file"){
+            statusUpdate(selectedArchive._file._files[0].name, type);
+        }else{
+            statusUpdate(selectedArchive._file._files[0].name, type);
+        }
+    }
+    function resetUI(){
+        statusUpdate("");
+        $('#about').hide();
+        $('#configuration').hide();
+        $("#welcomeText").hide();
+        $('#articleList').hide();
+        $('#articleListHeaderMessage').hide();
+        $('#articleContent').hide();
+        $("#articleList").empty();
+        $('#articleListHeaderMessage').empty();
+        $("#articleContent").hide();
+        $("#articleContent").contents().empty();
+    }
+
     // Define behavior of HTML elements
     $('#searchArticles').on('click', function(e) {
         pushBrowserHistoryState(null, $('#prefix').val());
         $("title").html($('#prefix').val());
         searchDirEntriesFromPrefix($('#prefix').val());
-        $("#welcomeText").hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
     });
     $('#searchImages').on('click', function(e) {
         pushBrowserHistoryState(null, null, $('#prefix').val());
         $("title").html($('#prefix').val());
         searchDirEntriesFromImagePrefix($('#prefix').val());
-        $("#welcomeText").hide();
-        $("#readingArticle").hide();
-        //$("#articleContent").hide();
-        $("#articleList").hide();
-        $('#articleListHeaderMessage').hide();
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
+        $("#articleContent").show();
     });
     $('#formArticleSearch').on('submit', function(e) {
         document.getElementById("searchArticles").click();
@@ -98,18 +120,19 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
     });
     $("#btnRandomArticle").on("click", function(e) {
-        $('#prefix').val("");
-        goToRandomArticle();
-        $("#about").hide();
-        $("#configuration").hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $('#searchingForArticles').hide();
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
+        if (selectedArchive !== null && selectedArchive.isReady()) {
+            goToRandomArticle();
+            resetUI();
+            $("#articleContent").show();
+            archiveStatusUpdate("btn-success" );
+        } else {
+            //$('#searchingForArticles').hide();
+            // We have to remove the focus from the search field,
+            // so that the keyboard does not stay above the message
+            $("#searchArticles").focus();
+            statusUpdate("Archive not set!");
+            $("#btnConfigure").click();
+        }        
     });
     
     $('#btnRescanDeviceStorage').on("click", function(e) {
@@ -136,15 +159,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // Top menu :
     $('#btnHome').on('click', function(e) {
         // Highlight the selected section in the navbar
-        $('#liHomeNav').attr("class","active");
+        /*$('#liHomeNav').attr("class","active");
         $('#liConfigureNav').attr("class","");
         $('#liAboutNav').attr("class","");
         if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
             $('#navbarToggle').click();
-        }
+        }*/
         // Show the selected content in the page
-        $('#about').hide();
-        $('#configuration').hide();
+        resetUI();
         $('#formArticleSearch').show();
         $("#welcomeText").show();
         $('#articleList').show();
@@ -153,61 +175,28 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // Give the focus to the search field, and clean up the page contents
         $("#prefix").val("");
         $('#prefix').focus();
-        $("#articleList").empty();
-        $('#articleListHeaderMessage').empty();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $("#articleContent").contents().empty();
-        $('#searchingForArticles').hide();
         if (selectedArchive !== null && selectedArchive.isReady()) {
+            $("#articleList").hide();
+            $('#articleListHeaderMessage').hide();
             $("#welcomeText").hide();
             goToMainArticle();
+            archiveStatusUpdate("btn-success" );
         }
         return false;
     });
     $('#btnConfigure').on('click', function(e) {
-        // Highlight the selected section in the navbar
         $("title").html("Kiwix");
-        $('#liHomeNav').attr("class","");
-        $('#liConfigureNav').attr("class","active");
-        $('#liAboutNav').attr("class","");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
         // Show the selected content in the page
-        $('#about').hide();
+        resetUI();
         $('#configuration').show();
-        $('#formArticleSearch').hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $('#articleContent').hide();
-        $('#searchingForArticles').hide();
-        refreshAPIStatus();
+        statusUpdate("");
         return false;
     });
     $('#btnAbout').on('click', function(e) {
-        // Highlight the selected section in the navbar
         $("title").html("Kiwix");
-        $('#liHomeNav').attr("class","");
-        $('#liConfigureNav').attr("class","");
-        $('#liAboutNav').attr("class","active");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }
-        // Show the selected content in the page
+        resetUI();
         $('#about').show();
-        $('#configuration').hide();
-        $('#formArticleSearch').hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $("#readingArticle").hide();
-        $("#articleContent").hide();
-        $('#articleContent').hide();
-        $('#searchingForArticles').hide();
+        statusUpdate("");
         return false;
     });
     $('input:radio[name=contentInjectionMode]').on('change', function(e) {
@@ -448,12 +437,21 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         displayFileSelect();
         var params={};
         // TODO: Create a map of all known zims that can be loaded
-        var wikipedia_en_all_2016_12 = '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}'; 
+        var knownArchives = { 
+               so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
+             wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}' 
+        };
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
         if(params["archive"]) // == wiki_en_2016-12
-        {  
+        {
             $("#welcomeText").hide();
-            selectedArchive = zimArchiveLoader.loadArchiveFromString(wikipedia_en_all_2016_12);
+            $("#articleList").hide();
+            $('#articleListHeaderMessage').hide();
+        
+            // TEMP: This allows for shortcuts but breaks ability to mention full name of ZIM in www
+            var archiveToLoad = knownArchives[params["archive"]] ? knownArchives[params["archive"]] : knownArchives["wiki"];
+            selectedArchive = zimArchiveLoader.loadArchiveFromString(archiveToLoad);
+            archiveStatusUpdate("btn-success");
             if(params["title"]){
                 goToArticle(params["title"]);                
             }else if(params["titleSearch"]){
@@ -493,18 +491,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var titleSearch = event.state.titleSearch;
             var imageSearch = event.state.imageSearch;
             
-            $('#prefix').val("");
-            $("#welcomeText").hide();
-            $("#readingArticle").hide();
-            if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-                $('#navbarToggle').click();
-            }
-            $('#searchingForArticles').hide();
-            $('#configuration').hide();
-            $('#articleList').hide();
-            $('#articleListHeaderMessage').hide();
-            $('#articleContent').contents().empty();
-            
+            resetUI();
+
             if (title && !(""===title)) {
                 goToArticle(title);
             }
@@ -683,7 +671,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 $('#searchArticles').click();
             }
         }
-        ,500);
+        ,700);
     }
 
 
@@ -693,17 +681,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} prefix
      */
     function searchDirEntriesFromPrefix(prefix) {
-        $('#searchingForArticles').show();
-        $('#configuration').hide();
-        $('#articleContent').contents().empty();
+        resetUI();
+        statusUpdate("Searching...", "btn-info")
         if (selectedArchive !== null && selectedArchive.isReady()) {
             selectedArchive.findDirEntriesWithPrefix(prefix.trim(), MAX_SEARCH_RESULT_SIZE, populateListOfArticles);
         } else {
-            $('#searchingForArticles').hide();
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            alert("Archive not set : please select an archive");
+            //alert("Archive not set : please select an archive");
+            statusUpdate("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -712,15 +699,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         return ResultSet;
     }
     function searchDirEntriesFromImagePrefix(keyword) {
+        resetUI();
+        statusUpdate("Searching...", "btn-info")
         //var keyword = decodeURIComponent(prefix); 
         ResultSet = new Map();
-        /* TODO Show Progress
-        $('#searchingForArticles').show();
-        $('#searchingForArticles').hide();*/
-        $('#configuration').hide();
-        $('#articleContent').contents().empty();
-        $("#readingArticle").hide();
-        $("#articleContent").show();
+        /* TODO Show Progress */
         // Scroll the iframe to its top
         $("#articleContent").attr('src', "A/imageResults.html")
         $("#articleContent").contents().scrollTop(0);            
@@ -732,7 +715,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            alert("Archive not set : please select an archive");
+            //alert("Archive not set : please select an archive");
+            statusUpdate("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -759,23 +743,19 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (nbDirEntry === 0) {
             message = "No articles found.";
         }
-              
-        articleListHeaderMessageDiv.html(message);
+        statusUpdate(message, "btn-success")
         
 
         var articleListDiv = $('#articleList');
         var articleListDivHtml = "";
         for (var i = 0; i < dirEntryArray.length; i++) {
             var dirEntry = dirEntryArray[i];
-            
             articleListDivHtml += "<a href='#' dirEntryId='" + dirEntry.toStringId().replace(/'/g,"&apos;")
                     + "' class='list-group-item'>" + dirEntry.title + "</a>";
         }
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
-        $('#searchingForArticles').hide();
         $('#articleList').show();
-        $('#articleListHeaderMessage').show();
     }
     
     /**
@@ -785,9 +765,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      */
     function handleTitleClick(event) {       
         var dirEntryId = event.target.getAttribute("dirEntryId");
-        $("#articleList").empty();
-        $('#articleListHeaderMessage').empty();
-        $("#prefix").val("");
+        resetUI();
         findDirEntryFromDirEntryIdAndLaunchArticleRead(dirEntryId);
         var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
         pushBrowserHistoryState(dirEntry.url);
@@ -948,6 +926,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         //console.log("added css promise");    
     }
 
+    function setupTableOfContents(){
+        var iframe = document.getElementById('articleContent');
+        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+        var tableOfContents = new uiUtil.toc(innerDoc);
+        var headings = tableOfContents.getHeadingObjects();
+        var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Table Of Contents <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
+        headings.forEach(function(heading){
+            if(heading.tagName == "H1" || heading.tagName == "H2")
+                dropup = dropup + '<li><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+            else
+                dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+        });
+        dropup = dropup + '</ul></span>'
+        statusUpdateHTML(dropup);
+    }
+
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -1092,6 +1086,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
             });
             //console.log("# of css files loading:" + cssLoaded.length);
+            setupTableOfContents();    
         }
     }
 
@@ -1210,12 +1205,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 $("#readingArticle").hide();
-                alert("Article with url " + url + " not found in the archive");
+                //alert("Article with url " + url + " not found in the archive");
+                statusUpdate("Article not found:"+ url);
             }
             else {
                 injectContent(dirEntry);
             }
-        }).fail(function() { alert("Error reading article with title " + url); });
+        }).fail(function() { 
+            //alert("Error reading article with title " + url);
+            statusUpdate("Error reading " + url); 
+        });
     }
     
     function goToRandomArticle() {
@@ -1238,6 +1237,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     function goToMainArticle() {
+        resetUI();
+        archiveStatusUpdate("btn-primary");
         selectedArchive.getMainPageDirEntry(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 console.error("Error finding main article.");
