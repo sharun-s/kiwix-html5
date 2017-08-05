@@ -1,29 +1,16 @@
-Kiwix JS
-==============
+This is a fork of the [Kiwix-js](https://github.com/kiwix/kiwix-js) project, mainly to test new features with a focus on "Standalone" mode on Desktop. In this mode all you need to read and search a ZIM Archive (an **offline** full archive of Wikipedia/Stackoverflow/KhanAcademy etc) is a browser. 
 
-Kiwix is an offline Wikipedia viewer. See the official site: http://www.kiwix.org/
+1. Find and download an offline archive [here](http://www.kiwix.org/downloads/)
+2. Download the code [here](https://github.com/sharun-s/kiwix-html5/archive/dev.zip)  
+Unzip to a folder and click on index.html
+3. Point the app at the location of the ZIM file downloaded in step 1.  
+  
+**Thats it!** You are ready to start browsing an offline version of Wikipedia.
 
-This is a browser extension developed in HTML5/Javascript.
+The latest code is on the ["dev"](https://github.com/sharun-s/kiwix-html5/tree/dev) Branch. 
 
-You can search among the article titles, and read any of them without any Internet access.
-All the content of Wikipedia is inside your device (including the images).
-It might also works with other content in the OpenZIM format: http://www.openzim.org/wiki/OpenZIM , but has been only tested on the Wikipedia ones.
+**NOTE:** This is aimed at only developers conducting experiments on the Kiwix-js repo. As these experiments mature code will be pushed back into the Kiwix-js repo. For stable more time-tested platform-specific versions checkout the main [Kiwix](https://github.com/kiwix) page.       
 
-If your Internet access is expensive/rare/slow/unreliable/watched/censored, you still can browse this amazing amount of knowledge and culture.
-
-It uses ZIM files that you can download from http://download.kiwix.org/
-You have to download them separately, store them in your filesystem, and manually select them after starting the application.
-It is unfortunately not technically possible to "remember" the selected ZIM file and open it automatically (the browsers refuse that for security reasons).
-
-Technically, after reading an article from a ZIM file, there is a need to "inject" the dependencies (images, css etc). For compatibility reasons, there are several ways to do it :
-- the "jQuery" mode parses the DOM to find the HTML tags of these dependencies, and modifies them to put the Base64 content in it. It is compatible with any browser, but is slow and can use a lot of memory. It works well on Wikimedia content, but can miss some dependencies on some contents
-- the "ServiceWorker" mode uses a Service Worker to catch any HTTP request the page would send, and reply with content read from the ZIM file. It is a generic and much cleaner way than jQuery mode, but it does not work on all browsers. And ServiceWorkers are disabled by Mozilla in Firefox extensions
-- maybe a "webRequest" mode will appear, which would use the webRequest API inside the Firefox extension (when the necessary APIs will be implemented by Mozilla)
-
-This application is released under the GPL v3 license. See http://www.gnu.org/licenses/ or the included LICENSE-GPLv3.txt file
-The source code can be found at https://github.com/kiwix/kiwix-js
-Unit tests can be run by opening tests.html file on Firefox (or Chromium/Chrome with some tweaks).
-
-The first versions of this application were originally part of the Evopedia project: http://www.evopedia.info (now discontinued). There was a "articles nearby" feature, that was able to find articles around your location. It has been deleted from the source code with everything related to Evopedia (but still in git history in versions<=2.0.0)
-These first versions were targeting Firefox OS (now discontinued too : we're not lucky ;-) ).
-Some Phonegap/Cordova port had been started but never finished (see in git history in versions<=2.0.0).
+**Browser Compatibility:**  
+This code has been tested on Firefox and Edge.   
+For Chrome start the browser with the [--allow-file-access-from-files](https://stackoverflow.com/questions/18586921/how-to-launch-html-using-chrome-at-allow-file-access-from-files-mode) paramater. It's convenient to create a shortcut to Chrome with this option set.    
