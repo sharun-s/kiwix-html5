@@ -1,6 +1,6 @@
 This is a fork of the [Kiwix-js](https://github.com/kiwix/kiwix-js) project, mainly to test new features with a focus on "Standalone" mode on Desktop. In this mode all you need to read and search a ZIM Archive (an **offline** full archive of Wikipedia/Stackoverflow/KhanAcademy etc) is a browser. 
 
-1. Find and download an offline archive [here](http://download.kiwix.org/)
+1. Find and download an offline archive [here](http://www.kiwix.org/downloads/)
 2. Download the code [here](https://github.com/sharun-s/kiwix-html5/archive/dev.zip)  
 Unzip to a folder and click on the index.html
 3. Point the app at the location of the ZIM file downloaded in step 1.  
