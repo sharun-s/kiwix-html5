@@ -439,7 +439,9 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // TODO: Create a map of all known zims that can be loaded
         var knownArchives = { 
                so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
-             wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}' 
+             wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
+             quotes: '{"_file":{"_files":[{"name":"wikiquote_en_all_nopic_2017-03.zim","size":121026170}],"articleCount":53511,"clusterCount":252,"urlPtrPos":168,"titlePtrPos":428256,"clusterPtrPos":3359985,"mimeListPos":80,"mainPage":30342,"layoutPage":4294967295},"_language":""}',
+             dict: '{"_file":{"_files":[{"name":"wiktionary_en_simple_all_nopic_2017-01.zim","size":6001233}],"articleCount":25444,"clusterCount":41,"urlPtrPos":168,"titlePtrPos":203720,"clusterPtrPos":1292216,"mimeListPos":80,"mainPage":12520,"layoutPage":4294967295},"_language":""}' 
         };
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
         if(params["archive"]) // == wiki_en_2016-12
@@ -462,10 +464,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 var keyword = decodeURIComponent(params["imageSearch"]);
                 $("title").html("ImageSearch Results for "+keyword);
                 searchDirEntriesFromImagePrefix(keyword);
-            }else{
+            }else if("random" in params){
+                goToRandomArticle();
+            }
+            else{
                 selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
                     selectedArchive.readArticle(dirEntry, 
-                        (de,content) => $('#articleContent').contents().find('body').html("Loaded archive: wikipedia_en_all_2016_12. It contains:<br>"+
+                        (de,content) => $('#articleContent').contents().find('body').html("Loaded archive:"+selectedArchive._file._files[0].name+". It contains:<br>"+
                             content.split(';').join('<br>')+
                             "<br>Total Article Count:" + selectedArchive._file.articleCount));
                 });
@@ -624,11 +629,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function setLocalArchiveFromFileSelect() {
         // if firefox is started in xhrff mode loading archive from url 
         // and then user switches to archive via fileselctor change the mode to file 
-        // for readslice to use the right mode. This is because init.js wont get reloaded in this case. 
+        // for readslice to use the right mode. This is because init.js won't get reloaded in this case. 
         if(module.config().mode=="xhrFF"){
-            // this is not enough as mode must be set in util and finder too 
+            // module.config().mode="file"; is not enough as mode must be set in util and finder too 
             // so trigger a reload
-            // module.config().mode="file";
             // [TODO] This is temp hack - find a way to set mode across modules
             location.replace(uiUtil.removeUrlParameters(location.href));
         } 
@@ -1167,19 +1171,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         var stateObj = {};
         var urlParameters;
         var stateLabel;
+        // This will ensure in url mode (as opposed to file selector mode)
+        // archive parameter becomes part of the url string. 
+        // Bookmarking links & Setting home page to a url will also be possible.
+        var appendArchive = module.config().mode == "file" ? "" : "&archive="+ selectedArchive._file._files[0].name;
+
         if (title && !(""===title)) {
             stateObj.title = title;
-            urlParameters = "?title=" + title;
+            urlParameters = "?title=" + title + appendArchive;
             stateLabel = "Article : " + title;
         }
         else if (titleSearch && !(""===titleSearch)) {
             stateObj.titleSearch = titleSearch;
-            urlParameters = "?titleSearch=" + titleSearch;
+            urlParameters = "?titleSearch=" + titleSearch + appendArchive;
             stateLabel = "Keyword search : " + titleSearch;
         }
         else if (imageSearch && !(""===imageSearch)) {
             stateObj.imageSearch = imageSearch;
-            urlParameters = "?imageSearch=" + imageSearch;
+            urlParameters = "?imageSearch=" + imageSearch + appendArchive;
             stateLabel = "Image search : " + imageSearch;
         }
         else {
@@ -1224,7 +1233,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else {
                 if (dirEntry.namespace === 'A') {
-                    pushBrowserHistoryState(dirEntry.url);
+                    //pushBrowserHistoryState(dirEntry.url);
                     injectContent(dirEntry);
                 }
                 else {
@@ -1256,7 +1265,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     // Converts selectedArchive object to string. The string can be saved and used later to recreate the object  
-    // eg: on console > var a;require({baseUrl:'js/lib'},['../app'], function(z){a=z.stringifyArchive()};
+    // eg: on console > var a;require({baseUrl:'js/lib'},['../app'], function(z){a=z.stringifyArchive()});console.log(a);
     function stringifyArchive(){
         if (selectedArchive !== null && selectedArchive.isReady()) {
             var filenames = []; 
