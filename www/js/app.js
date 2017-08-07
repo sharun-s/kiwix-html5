@@ -744,15 +744,56 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         for (var i = 0; i < dirEntryArray.length; i++) {
             var dirEntry = dirEntryArray[i];
             var snip_id = dirEntry.cluster +"_"+ dirEntry.blob; 
-            articleListDivHtml += "<a href='#' dirEntryId='" + dirEntry.toStringId().replace(/'/g,"&apos;")
-                    + "' class='list-group-item'>" + dirEntry.title + "<p class='small' id='"+ snip_id + "'></p></a>";
-            fillSnippet(dirEntry, snip_id);    
+            articleListDivHtml += "<a href='#' dirEntryId='" 
+                    + dirEntry.toStringId().replace(/'/g,"&apos;")
+                    + "' class='list-group-item'>" + dirEntry.title 
+                    + "<p class='small' id='"+ snip_id + "'></p></a>";
         }
+        
+        // Get 3 snippets at a time
+        asyncJobController(3, dirEntryArray, fillSnippet);
+        
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
         $('#articleList').show();
     }
     
+    // List of N elements have to be processed. Split them among C chains.
+    // If C = 1 list is processed sequentially. 
+    // If C > 1, atmost C processes will be initiated at the same time. 
+    // If C is too high all will get bogged down
+    // process returns a promise that is resolved when its work is done 
+    function asyncJobController(chainCount, list, process){
+        var queue;
+
+        function makeIterator(list){
+            var index = 0;
+            return { next: function (){ return index < list.length ? list[index++] : null; }
+            }
+        }
+
+        if (list && list.length > 0 && chainCount > 0 && process)
+            queue = makeIterator(list);
+        else
+            return;
+
+        function next(){
+            var job = queue.next();
+            if (job)
+                return process(job).then(next);
+            else
+                return Promise.resolve(); //ends the chain 
+        }
+
+        for(var i=0; i < chainCount; i++){
+            var job = queue.next();
+            if (job){
+                process(job).then(next);    
+            }
+        }
+    }
+
+
     /**
      * Handles the click on the title of an article in search results
      * @param {Event} event
@@ -760,7 +801,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      */
     function handleTitleClick(event) {
         // TODO: Can be refactored/reused? url->DirEnt step gets skipped by saving dirent in search result link        
-        var dirEntryId = event.target.getAttribute("dirEntryId");
+        var dirEntryId = event.currentTarget.getAttribute("dirEntryId");
         resetUI();
         findDirEntryFromDirEntryIdAndLaunchArticleRead(dirEntryId);
         var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
@@ -779,7 +820,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
             $("title").html(dirEntry.title);
             statusUpdate("Reading...", "bg-warning");
-            $("#articleContent").contents().html("");
+            //$("#articleContent").contents().html("");
             if (dirEntry.isRedirect()) {
                 selectedArchive.resolveRedirect(dirEntry, readArticle);
             }
@@ -792,20 +833,27 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
     }
 
-    function fillSnippet(dirEntry, snip_id) {
-        
+    function fillSnippet(dirEntry) {
+        var snip_id = dirEntry.cluster + "_" + dirEntry.blob;
         //if (dirEntry.isRedirect()) {
         //    selectedArchive.resolveRedirect(dirEntry, readArticle);
         //}
         //else {
             // The only reason this doesn't work is utf8 would be reqd dep here
             //dirEntry.readData().then(function (data){
+        return new Promise(function(resolve, reject){
+            console.time("snip" + dirEntry.title);
             selectedArchive.readArticle(dirEntry, function(title, data){
                 //TODO: too heavy duty - optimize
-                var snippet = new uiUtil.snippet($(data).find("p")).parse();
+                //var top = $(data); 
+                var b = data.search(/<body/);
+                var top = data.slice(b, b+3000);
+                var snippet = new uiUtil.snippet($(top).find("p")).parse();
                 $("#"+snip_id).html(snippet + "...");
+                resolve();
+                console.timeEnd("snip"+ dirEntry.title);
             });
-        //}
+        });
     }
 
 

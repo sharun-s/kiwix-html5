@@ -81,9 +81,9 @@ define([], function() {
                 var localSnippet = this.extractCleanText(this.elements[i]);
                 if (snippet != '') {snippet += ' ';}
                 snippet += localSnippet;
-                if (snippet.length > 140) {break;}
+                if (snippet.length > 200) {break;}
             }
-            return snippet.slice(0, 140);
+            return snippet.slice(0, 200);
         }
 
         this.extractCleanText = function (element) {
