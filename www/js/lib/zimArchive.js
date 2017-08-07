@@ -93,7 +93,6 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
     /* As js doesn't have constructor overloading and a 3 arg constructor is already exposed
        Eg: new zimArchive.ZIMArchive().create(fromString) creates the object from a String  
     */
-
     ZIMArchive.prototype.set = function(fromString){
         this._file = zimfile.create(fromString);
         return this;

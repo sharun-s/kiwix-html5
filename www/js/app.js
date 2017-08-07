@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'transformStyles'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, transformStyles) {
+define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module'],
+ function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module) {
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -68,8 +68,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#appStatus").removeClass().addClass(type).text(text);
         else
         {
-            $("#appStatus").removeClass().addClass("btn-danger").text(text);
-            $('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+            $("#appStatus").removeClass().addClass("bg-danger").text(text);
+            //$('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
         }    
     }
 
@@ -77,29 +77,38 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("#appStatus").removeClass().html(html);
     }
 
-    function archiveStatusUpdate(type){
-        if(module.config().mode ==="file"){
-            statusUpdate(selectedArchive._file._files[0].name, type);
+    function archiveStatusUpdate(){
+        var name = selectedArchive._file._files[0].name;
+        if(name && name !=="undefined"){
+            statusUpdate(selectedArchive._file._files[0].name, "bg-success");
         }else{
-            statusUpdate(selectedArchive._file._files[0].name, type);
+            statusUpdate("Archive not set!!", "btn-danger");
+            // TODO: remove urlparams, goto config screen
+            throw {name:"KiwixError", message:"Archive Undefined"};    
         }
     }
+
     function resetUI(){
         statusUpdate("");
         $('#about').hide();
         $('#configuration').hide();
         $("#welcomeText").hide();
         $('#articleList').hide();
-        $('#articleListHeaderMessage').hide();
-        $('#articleContent').hide();
         $("#articleList").empty();
-        $('#articleListHeaderMessage').empty();
-        $("#articleContent").hide();
-        $("#articleContent").contents().empty();
+        try{
+            // .empty() doesnt seem to clear the frame
+            $("#articleContent").contents().find("body").html('');   
+        }catch(e){
+            if(e.name === "SecurityError"){
+                statusUpdate("ERROR: Set flag allow-file-access-from-files!!!", "btn-danger");
+                throw "Error";
+            }
+        }
     }
 
-    // Define behavior of HTML elements
+    // Both search bar key presses and submit button press handled here.
     $('#searchArticles').on('click', function(e) {
+        resetUI();
         pushBrowserHistoryState(null, $('#prefix').val());
         $("title").html($('#prefix').val());
         searchDirEntriesFromPrefix($('#prefix').val());
@@ -108,7 +117,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         pushBrowserHistoryState(null, null, $('#prefix').val());
         $("title").html($('#prefix').val());
         searchDirEntriesFromImagePrefix($('#prefix').val());
-        $("#articleContent").show();
     });
     $('#formArticleSearch').on('submit', function(e) {
         document.getElementById("searchArticles").click();
@@ -123,8 +131,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (selectedArchive !== null && selectedArchive.isReady()) {
             goToRandomArticle();
             resetUI();
-            $("#articleContent").show();
-            archiveStatusUpdate("btn-success" );
+            archiveStatusUpdate();
         } else {
             //$('#searchingForArticles').hide();
             // We have to remove the focus from the search field,
@@ -170,17 +177,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $('#formArticleSearch').show();
         $("#welcomeText").show();
         $('#articleList').show();
-        $('#articleListHeaderMessage').show();
-        $('#articleContent').show();
         // Give the focus to the search field, and clean up the page contents
         $("#prefix").val("");
         $('#prefix').focus();
         if (selectedArchive !== null && selectedArchive.isReady()) {
             $("#articleList").hide();
-            $('#articleListHeaderMessage').hide();
             $("#welcomeText").hide();
             goToMainArticle();
-            archiveStatusUpdate("btn-success" );
+            archiveStatusUpdate();
         }
         return false;
     });
@@ -436,24 +440,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // when switching from url based loading to file based ensures UI is visible    
         displayFileSelect();
         var params={};
-        // TODO: Create a map of all known zims that can be loaded
-        var knownArchives = { 
-               so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
-             wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
-             quotes: '{"_file":{"_files":[{"name":"wikiquote_en_all_nopic_2017-03.zim","size":121026170}],"articleCount":53511,"clusterCount":252,"urlPtrPos":168,"titlePtrPos":428256,"clusterPtrPos":3359985,"mimeListPos":80,"mainPage":30342,"layoutPage":4294967295},"_language":""}',
-             dict: '{"_file":{"_files":[{"name":"wiktionary_en_simple_all_nopic_2017-01.zim","size":6001233}],"articleCount":25444,"clusterCount":41,"urlPtrPos":168,"titlePtrPos":203720,"clusterPtrPos":1292216,"mimeListPos":80,"mainPage":12520,"layoutPage":4294967295},"_language":""}' 
-        };
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
         if(params["archive"]) // == wiki_en_2016-12
         {
-            $("#welcomeText").hide();
-            $("#articleList").hide();
-            $('#articleListHeaderMessage').hide();
-        
-            // TEMP: This allows for shortcuts but breaks ability to mention full name of ZIM in www
-            var archiveToLoad = knownArchives[params["archive"]] ? knownArchives[params["archive"]] : knownArchives["wiki"];
-            selectedArchive = zimArchiveLoader.loadArchiveFromString(archiveToLoad);
-            archiveStatusUpdate("btn-success");
+            resetUI();    
+            selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
+            archiveStatusUpdate();
+
             if(params["title"]){
                 goToArticle(params["title"]);                
             }else if(params["titleSearch"]){
@@ -686,7 +679,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      */
     function searchDirEntriesFromPrefix(prefix) {
         resetUI();
-        statusUpdate("Searching...", "btn-info")
+        statusUpdate("Searching...", "btn-warning")
         if (selectedArchive !== null && selectedArchive.isReady()) {
             selectedArchive.findDirEntriesWithPrefix(prefix.trim(), MAX_SEARCH_RESULT_SIZE, populateListOfArticles);
         } else {
@@ -704,14 +697,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
     function searchDirEntriesFromImagePrefix(keyword) {
         resetUI();
-        statusUpdate("Searching...", "btn-info")
-        //var keyword = decodeURIComponent(prefix); 
-        ResultSet = new Map();
-        /* TODO Show Progress */
-        // Scroll the iframe to its top
         $("#articleContent").attr('src', "A/imageResults.html")
         $("#articleContent").contents().scrollTop(0);            
-
+        /* TODO Show Progress */
+        statusUpdate("Searching...", "btn-warn")
+        //var keyword = decodeURIComponent(prefix); 
+        ResultSet = new Map();
         if (selectedArchive !== null && selectedArchive.isReady()) {
             selectedArchive.findDirEntriesAndContent(keyword, MAX_SEARCH_RESULT_SIZE, 
                 displayImagesInFrame);
@@ -731,7 +722,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {Integer} maxArticles
      */
     function populateListOfArticles(dirEntryArray, maxArticles) {       
-        var articleListHeaderMessageDiv = $('#articleListHeaderMessage');
         var nbDirEntry = 0;
         if (dirEntryArray) {
             nbDirEntry = dirEntryArray.length;
@@ -749,13 +739,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         statusUpdate(message, "btn-success")
         
-
         var articleListDiv = $('#articleList');
         var articleListDivHtml = "";
         for (var i = 0; i < dirEntryArray.length; i++) {
             var dirEntry = dirEntryArray[i];
+            var snip_id = dirEntry.cluster +"_"+ dirEntry.blob; 
             articleListDivHtml += "<a href='#' dirEntryId='" + dirEntry.toStringId().replace(/'/g,"&apos;")
-                    + "' class='list-group-item'>" + dirEntry.title + "</a>";
+                    + "' class='list-group-item'>" + dirEntry.title + "<p class='small' id='"+ snip_id + "'></p></a>";
+            fillSnippet(dirEntry, snip_id);    
         }
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
@@ -767,7 +758,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {Event} event
      * @returns {Boolean}
      */
-    function handleTitleClick(event) {       
+    function handleTitleClick(event) {
+        // TODO: Can be refactored/reused? url->DirEnt step gets skipped by saving dirent in search result link        
         var dirEntryId = event.target.getAttribute("dirEntryId");
         resetUI();
         findDirEntryFromDirEntryIdAndLaunchArticleRead(dirEntryId);
@@ -785,8 +777,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function findDirEntryFromDirEntryIdAndLaunchArticleRead(dirEntryId) {
         if (selectedArchive.isReady()) {
             var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
-            $("#articleName").html(dirEntry.title);
-            $("#readingArticle").show();
+            $("title").html(dirEntry.title);
+            statusUpdate("Reading...", "bg-warning");
             $("#articleContent").contents().html("");
             if (dirEntry.isRedirect()) {
                 selectedArchive.resolveRedirect(dirEntry, readArticle);
@@ -799,6 +791,23 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             alert("Data files not set");
         }
     }
+
+    function fillSnippet(dirEntry, snip_id) {
+        
+        //if (dirEntry.isRedirect()) {
+        //    selectedArchive.resolveRedirect(dirEntry, readArticle);
+        //}
+        //else {
+            // The only reason this doesn't work is utf8 would be reqd dep here
+            //dirEntry.readData().then(function (data){
+            selectedArchive.readArticle(dirEntry, function(title, data){
+                //TODO: too heavy duty - optimize
+                var snippet = new uiUtil.snippet($(data).find("p")).parse();
+                $("#"+snip_id).html(snippet + "...");
+            });
+        //}
+    }
+
 
     /**
      * Read the article corresponding to the given dirEntry
@@ -935,12 +944,15 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
         var tableOfContents = new uiUtil.toc(innerDoc);
         var headings = tableOfContents.getHeadingObjects();
-        var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Table Of Contents <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
+        var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> In This Article <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
         headings.forEach(function(heading){
-            if(heading.tagName == "H1" || heading.tagName == "H2")
+            if(heading.tagName == "H1")
                 dropup = dropup + '<li><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
-            else
+            else if(heading.tagName == "H2")
                 dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+            //else
+                //Currently skip smaller headings until toc scrolling works
+                //dropup = ...
         });
         dropup = dropup + '</ul></span>'
         statusUpdateHTML(dropup);
@@ -954,8 +966,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} htmlArticle
      */
     function displayArticleInFrame(dirEntry, htmlArticle) {
-        $("#readingArticle").hide();
-        $("#articleContent").show();
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
 
@@ -992,7 +1002,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 if (cssClass === "new") {
                     // It's a link to a missing article : display a message
                     $(this).on('click', function(e) {
-                        alert("Missing article in Wikipedia");
+                        statusUpdate("Missing article");
                         return false;
                     });
                 }
@@ -1096,6 +1106,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
     function displayImagesInFrame(dirEntry, htmlArticle) {
         var foundDirEntry = dirEntry;
+        var totalCount = 0;
         if (ResultSet.has(dirEntry.title)){
             ResultSet.set(foundDirEntry.title, {images:[], redirectedFrom:"", dup:"skipped"});
             console.log(dirEntry.title + " already processed, skipping...")
@@ -1143,6 +1154,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         $("#articleContent").contents().find('.grid').append(
                                 tmpnode.append($(imgNodes[index])));
                         console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
+                        //statusUpdate("Found pages:" + ResultSet.size + " images:"+imageLoadCompletions.length, "btn-info");
                     },function (){
                         console.error("Failed loading " + dirEntry.url );
                     }).then(() => Promise.resolve());
@@ -1154,6 +1166,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 },*/
                 onAllWorkersCompletion: function(resultsCount){
                     Promise.all(imageLoadCompletions).then(function (){
+                        totalCount = totalCount + imageLoadCompletions.length;
+                        statusUpdate("Found pages:"+ ResultSet.size + " images:"+totalCount, "btn-primary");
                         console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
                     });
                 }
@@ -1199,9 +1213,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
     // common code used by gotoArticle/gotoMainArticle/gotoRandomArticle
     function injectContent(dirEntry){
-        $("#articleName").html(dirEntry.title);
         $("title").html(dirEntry.title);
-        $("#readingArticle").show();
+        statusUpdate("Reading...", "bg-warning");
         $('#articleContent').contents().find('body').html("");
         readArticle(dirEntry);
     }
@@ -1213,7 +1226,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function goToArticle(url) {
         selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
-                $("#readingArticle").hide();
                 //alert("Article with url " + url + " not found in the archive");
                 statusUpdate("Article not found:"+ url);
             }
@@ -1233,7 +1245,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
             else {
                 if (dirEntry.namespace === 'A') {
-                    //pushBrowserHistoryState(dirEntry.url);
+                    pushBrowserHistoryState(dirEntry.url);
                     injectContent(dirEntry);
                 }
                 else {
@@ -1247,7 +1259,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
     function goToMainArticle() {
         resetUI();
-        archiveStatusUpdate("btn-primary");
+        archiveStatusUpdate();
         selectedArchive.getMainPageDirEntry(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 console.error("Error finding main article.");

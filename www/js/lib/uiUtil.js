@@ -83,7 +83,7 @@ define([], function() {
                 snippet += localSnippet;
                 if (snippet.length > 140) {break;}
             }
-            return snippet;
+            return snippet.slice(0, 140);
         }
 
         this.extractCleanText = function (element) {
