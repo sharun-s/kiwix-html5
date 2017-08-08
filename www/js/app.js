@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module) {
+define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control'],
+ function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control) {
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -751,49 +751,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         
         // Get 3 snippets at a time
-        asyncJobController(3, dirEntryArray, fillSnippet);
+        control.asyncJobs(3, dirEntryArray, fillSnippet);
         
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
         $('#articleList').show();
     }
     
-    // List of N elements have to be processed. Split them among C chains.
-    // If C = 1 list is processed sequentially. 
-    // If C > 1, atmost C processes will be initiated at the same time. 
-    // If C is too high all will get bogged down
-    // process returns a promise that is resolved when its work is done 
-    function asyncJobController(chainCount, list, process){
-        var queue;
-
-        function makeIterator(list){
-            var index = 0;
-            return { next: function (){ return index < list.length ? list[index++] : null; }
-            }
-        }
-
-        if (list && list.length > 0 && chainCount > 0 && process)
-            queue = makeIterator(list);
-        else
-            return;
-
-        function next(){
-            var job = queue.next();
-            if (job)
-                return process(job).then(next);
-            else
-                return Promise.resolve(); //ends the chain 
-        }
-
-        for(var i=0; i < chainCount; i++){
-            var job = queue.next();
-            if (job){
-                process(job).then(next);    
-            }
-        }
-    }
-
-
     /**
      * Handles the click on the title of an article in search results
      * @param {Event} event
@@ -1103,23 +1067,32 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                             .match(regexpImageUrl)[1]));
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
+
+                function injectImage(index, dirEntry){
+                    var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                    p.then(function (content) {
+                        if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
+                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
+                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
+                        }else{
+                            //console.error("Unrecognized image format: " + dirEntry.url);
+                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
+                        }
+                    },function (){
+                        console.error("Failed loading " + dirEntry.url );
+                    }).then(() => Promise.resolve());
+                    return p;
+                }
+
+                // atmost 5 async injectImage calls can run at a time
+                var controller = new control.asyncJobQueue(5, injectImage);
+
                 var f = selectedArchive.findImages(imageURLs, {
                     onEachResult: function(index, dirEntry){
-                        var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                        p.then(function (content) {
-                            if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
-                            }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
-                            }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
-                            }else{
-                                //console.error("Unrecognized image format: " + dirEntry.url);
-                                uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                            }
-                        },function (){
-                            console.error("Failed loading " + dirEntry.url );
-                        }).then(() => Promise.resolve());
+                        var p = controller.processORAddToQueue(index, dirEntry);
                         imageLoadCompletions.push(p);
                     },
                     onFirstWorkerCompletion: function(){
