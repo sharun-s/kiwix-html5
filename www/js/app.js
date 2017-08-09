@@ -37,6 +37,51 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // In any case, that would have been blocked by CSP for package applications
         console.log("jQuery tried to run some javascript with eval(), which is not allowed in packaged applications");
     };
+
+    //$.getJSON( "library-1617-en.json", function( data ) {
+    $.getJSON( "library8Aug2017-1617-en.json", function( data ) {    
+        // Add links to ZIM on disk. Onclick change selected archive
+        var onDisk = zimArchiveLoader.onDiskMatches(data);
+        $("#zims").append("<h4>Detected Archives On Disk: </h4>");
+        var items = [];
+        $.each( onDisk, function( i, item ) {
+            items.push( "<li class='list-group-item small' id='" + i + "'>" + "<img width='24px' height='24px' src='data:"+item.faviconMimeType
+            +";base64,"+item.favicon+ "'><strong>" + item.title +"</strong> "
+            +item.date+ " " +" <button onclick=''>load</button></li>");
+        });
+        $("#zims").append(items.join( "" ));
+        // Add downloadable ZIM's
+        $("#zims").append("<h5>Download Links:</h5>");
+        var groups = {};
+
+        $.each( data, function( i, item ) {
+            if(item.title in groups)
+                groups[item.title].push(item);
+            else
+                groups[item.title] = [item];
+        });
+        // group links by title, sort groups by lenth, sort links in group by date
+        var groupHTML = '<ul id="accordian" class="list-group">';
+        for(var group in groups){
+            groups[group].sort(function(a,b){return new Date(b.date) - new Date(a.date);});
+        }
+        var groupsSorted = Object.keys(groups).sort(function(a,b){return groups[b].length - groups[a].length});
+        // generate subGroup HTML 
+        for(var i=0;i<groupsSorted.length;i++){
+            var items = [], subGroup = groups[groupsSorted[i]];
+            // Group Header
+            var groupHeader = '<a class="list-group-item" data-toggle="collapse" href="#g'+i+'" ><span class="badge">'+ subGroup.length+'</span><strong> '+groupsSorted[i]+'</strong> <span class="small"> <em>'
+            +subGroup[0].description+'</em> - Creator:<strong>'+ subGroup[0].creator+'</strong> Publisher:<strong>'+ subGroup[0].publisher+'</strong></span></a><ul style="padding:2px" id="g'+i+'" class="collapse  list-group">'; 
+            for(var j=0;j<subGroup.length;j++){
+                var item = subGroup[j];
+                items.push( "<li class ='list-group-item small' style='padding:2px'><span class='label label-primary'>"+item.date+"</span> Articles:"+item.articleCount+ " Media:"+item.mediaCount + "<a href='"+item.url +"'>download</a> <a href=''>torrent</a> </li>");                
+            }
+            groupHTML = groupHTML + groupHeader + items.join( "" ) +"</ul>";
+        }
+        groupHTML = groupHTML + '</ul>';
+        $("#zims").append(groupHTML); 
+    });
+
     
     /**
      * Maximum number of articles to display in a search
@@ -59,6 +104,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 // TODO : this 5 should be dynamically computed, and not hard-coded
                 - $("#navigationButtons").outerHeight(true);
         $("#articleContent").css("height", height + "px");
+        // Collapses all the download groups - maybe push to on config click?
+        //$(".collapse").collapse();
     }
     $(document).ready(resizeIFrame);
     $(window).resize(resizeIFrame);
@@ -806,7 +853,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // The only reason this doesn't work is utf8 would be reqd dep here
             //dirEntry.readData().then(function (data){
         return new Promise(function(resolve, reject){
-            console.time("snip" + dirEntry.title);
+            //console.time("snip" + dirEntry.title);
             selectedArchive.readArticle(dirEntry, function(title, data){
                 //TODO: too heavy duty - optimize
                 //var top = $(data); 
@@ -815,7 +862,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 var snippet = new uiUtil.snippet($(top).find("p")).parse();
                 $("#"+snip_id).html(snippet + "...");
                 resolve();
-                console.timeEnd("snip"+ dirEntry.title);
+                //console.timeEnd("snip"+ dirEntry.title);
             });
         });
     }
@@ -980,29 +1027,22 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function displayArticleInFrame(dirEntry, htmlArticle) {
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
-
-        // Display the article inside the web page.
-	    // Prevents unnecessary 404's being produced when iframe loads images
-        //var $body = $(htmlArticle);
-        //console.log("before data-src");
-        /*$body.find('img').each(function(){
-            var image = $(this);
-            $(image).attr("data-src", $(image).attr("src"));
-            $(image).removeAttr("src");
-        });*/
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
-        //console.log("after data-src");
-        // 404's should now only be produced on loading css and js
-        var $body = $(htmlArticle);
-        
-        $('#articleContent').contents().find('body').html($body);
+        var iframe = document.getElementById('articleContent');
+        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+        var $iframe = $('#articleContent').contents();
+        // NOTE:keepScripts set to false so no js 404's but change to true to if reqd
+        var $body = $.parseHTML(htmlArticle, innerDoc ,false);
+        // To get links - $body.filter((j) => { return j.nodeName == "LINK"})
+        var $iframeBody = $iframe.find('body');
+        $iframeBody.html($body);
        
         // If the ServiceWorker is not useable, we need to fallback to parse the DOM
         // to inject math images, and replace some links with javascript calls
         if (contentInjectionMode === 'jquery') {
 
             // Convert links into javascript calls
-            $('#articleContent').contents().find('body').find('a').each(function() {    
+            $iframeBody.find('a').each(function() {    
                 // Store current link's url
                 var url = $(this).attr("href");
                 if (url === null || url === undefined) {
@@ -1059,7 +1099,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // Load images
             var imageLoadCompletions = [];
             var AboveTheFold = module.config().initialImageLoad;
-            var imgNodes = $('#articleContent').contents().find('img');//$('#articleContent img');
+            var imgNodes = $iframeBody.find('img');//$('#articleContent img');
             if(imgNodes.length > 0)
             {
                 var imageURLs = [].slice.call(imgNodes)
@@ -1102,8 +1142,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         Promise.all(imageLoadCompletions).then(function (){
                             console.log("Images loaded:" + resultsCount);
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
-                            //console.log("fetches: "+performance.getEntriesByType("resource").length);
-                            //console.log(" time: "+ performance.getEntries()[0]);
                         });
                     }
                 });
@@ -1112,7 +1150,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // Load CSS content
             // initialize the promise array
             cssLoaded = [];
-            $('#articleContent').contents().find('body').find('link[rel=stylesheet]').each(function() {
+            $iframeBody.find('link[rel=stylesheet]').each(function() {
                 var link = $(this);
                 // We try to find its name (from an absolute or relative URL)
                 var hrefMatch = link.attr("href").match(regexpMetadataUrl);

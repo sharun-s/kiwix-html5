@@ -62,6 +62,14 @@ define(['zimArchive', 'jquery'],
         "wikivoyage_en_all_2017-08.zim": '{"_file":{"_files":[{"name":"wikivoyage_en_all_2017-08.zim","size":731527966}],"articleCount":97674,"clusterCount":581,"urlPtrPos":225,"titlePtrPos":781617,"clusterPtrPos":5992414,"mimeListPos":80,"mainPage":46890,"layoutPage":4294967295},"_language":""}' 
     };
 
+    function onDiskMatches(library){
+        function filename(fromURL){ return fromURL.url.split("/").slice(-1)[0].slice(0,-6); };
+        return library.filter((i) => knownArchives.hasOwnProperty(filename(i)));
+        
+        //onDiskAll = []; 
+        //for(i in knownArchives){ if (i === filename(onDiskMatches.url) return i};
+    }
+
     // Allows for shortcuts or full filename of ZIM in URL
     function loadArchiveFromURL(urlArchiveParam){
         var archiveToLoad = knownArchives[urlArchiveParam] ? knownArchives[urlArchiveParam] : '{"_file":{"_files":[{"name":"undefined"}]}}';
@@ -114,6 +122,7 @@ define(['zimArchive', 'jquery'],
         loadArchiveFromFiles: loadArchiveFromFiles,
         loadArchiveFromString: loadArchiveFromString,
         loadArchiveFromURL: loadArchiveFromURL,
-        scanForArchives: scanForArchives
+        scanForArchives: scanForArchives,
+        onDiskMatches: onDiskMatches
     };
 });
