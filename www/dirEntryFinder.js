@@ -88,14 +88,22 @@ function makeIterator(array) {
 
 function readFileSlice(file, begin, size) {
     return new Promise(function (resolve, reject){
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            resolve(new Uint8Array(e.target.result));
-        };
-        reader.onerror = reader.onabort = function(e) {
-            reject(e);
-        };
-        reader.readAsArrayBuffer(file.slice(begin, begin + size));
+        if (FileReaderSync) {
+            var reader = new FileReaderSync();
+            var arrayBuffer = reader.readAsArrayBuffer(file.slice(begin, begin + size));
+            var uintArray = new Uint8Array(arrayBuffer);
+            resolve(uintArray);
+        }
+        else {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                resolve(new Uint8Array(e.target.result));
+            };
+            reader.onerror = reader.onabort = function(e) {
+                reject(e);
+            };
+            reader.readAsArrayBuffer(file.slice(begin, begin + size));
+        }
     });    
 }
 
