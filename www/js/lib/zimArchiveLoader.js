@@ -63,9 +63,11 @@ define(['zimArchive', 'jquery'],
     };
 
     function onDiskMatches(library){
-        function filename(fromURL){ return fromURL.url.split("/").slice(-1)[0].slice(0,-6); };
-        return library.filter((i) => knownArchives.hasOwnProperty(filename(i)));
-        
+        function filename(obj){ return obj.url.split("/").slice(-1)[0].slice(0,-6); };
+        var onDisk = library.filter((i) => knownArchives.hasOwnProperty(filename(i)));
+        // Adding just filename without full path. Reqd to be passed to ?archive= during a zim reload.
+        onDisk.forEach(function(obj) { obj.filename = filename(obj); });
+        return onDisk;
         //onDiskAll = []; 
         //for(i in knownArchives){ if (i === filename(onDiskMatches.url) return i};
     }

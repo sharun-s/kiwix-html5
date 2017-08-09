@@ -47,7 +47,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $.each( onDisk, function( i, item ) {
             items.push( "<li class='list-group-item small' id='" + i + "'>" + "<img width='24px' height='24px' src='data:"+item.faviconMimeType
             +";base64,"+item.favicon+ "'><strong>" + item.title +"</strong> "
-            +item.date+ " " +" <button onclick=''>load</button></li>");
+            +item.date+ " " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item.filename+"&random=&apos;);'> LOAD</button></li>");
         });
         $("#zims").append(items.join( "" ));
         // Add downloadable ZIM's
