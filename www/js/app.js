@@ -1108,7 +1108,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
-                function injectImage(index, dirEntry){
+                var injectImage = function (index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
                         if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){

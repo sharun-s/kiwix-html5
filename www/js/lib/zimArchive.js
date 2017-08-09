@@ -216,7 +216,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
                     console.log(articleDirEntry.title + " saved for later");
                     matchedArticles.push(articleDirEntry);
                 }else{
-                    function read(articleDirEntry){
+                    var read = function(articleDirEntry){
                         console.log(articleDirEntry.title + " reading...");
                         waitForArticleReadCompletion = articleDirEntry.readData();
                         waitForArticleReadCompletion.then(function(data) {
