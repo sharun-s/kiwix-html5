@@ -104,8 +104,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 // TODO : this 5 should be dynamically computed, and not hard-coded
                 - $("#navigationButtons").outerHeight(true);
         $("#articleContent").css("height", height + "px");
-        // Collapses all the download groups - maybe push to on config click?
-        //$(".collapse").collapse();
     }
     $(document).ready(resizeIFrame);
     $(window).resize(resizeIFrame);
@@ -495,13 +493,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             archiveStatusUpdate();
 
             if(params["title"]){
+                pushBrowserHistoryState(params["title"]);
                 goToArticle(params["title"]);                
             }else if(params["titleSearch"]){
                 var keyword = decodeURIComponent(params["titleSearch"]);
+                pushBrowserHistoryState(null, keyword, null);
                 $("title").html("Search Results for "+keyword);
                 searchDirEntriesFromPrefix(keyword);
             }else if(params["imageSearch"]){
                 var keyword = decodeURIComponent(params["imageSearch"]);
+                pushBrowserHistoryState(null, null, keyword);
                 $("title").html("ImageSearch Results for "+keyword);
                 searchDirEntriesFromImagePrefix(keyword);
             }else if("random" in params){
