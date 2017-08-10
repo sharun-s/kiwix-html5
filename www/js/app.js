@@ -791,16 +791,49 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         var articleListDivHtml = "";
         for (var i = 0; i < dirEntryArray.length; i++) {
             var dirEntry = dirEntryArray[i];
-            var snip_id = dirEntry.cluster +"_"+ dirEntry.blob; 
+            // HACK - won't work if more than one level of redirection
+            var snip_id = dirEntry.redirect ? dirEntry.redirectTarget : dirEntry.cluster+"_"+dirEntry.blob; 
             articleListDivHtml += "<a href='#' dirEntryId='" 
                     + dirEntry.toStringId().replace(/'/g,"&apos;")
-                    + "' class='list-group-item'>" + dirEntry.title 
-                    + "<p class='small' id='"+ snip_id + "'></p></a>";
+                    + "' class='list-group-item' style='padding:2px'>" + dirEntry.title 
+                    + "<strong> -- </strong><span class='small' id='"+ snip_id + "'></span></a>";
         }
         
         // Get 3 snippets at a time
-        control.asyncJobs(3, dirEntryArray, fillSnippet);
-        
+        //control.asyncJobs(3, dirEntryArray, fillSnippet);
+        var controller = new control.asyncJobQueue(5, fillSnippet);
+        dirEntryArray.forEach((o) => controller.processORAddToQueue(o)); 
+
+        // TODO: Handle multiple results resolving to the same snip_id
+        // Overlaps with how image search handles dups and resolves - can be generalized
+        function fillSnippet(dirEntry) {
+            return new Promise(function(resolve, reject){
+                // This will be undefined_undefined if de is a redirect
+                // Need to be updated on resolve
+                var snip_id = dirEntry.cluster + "_"+ dirEntry.blob;
+                if (dirEntry.isRedirect()) {
+                    console.log("REDIRECT "+ snip_id + " "+ dirEntry.title);
+                    var tmp_snip = dirEntry.redirectTarget;
+                    selectedArchive.resolveRedirect(dirEntry, function(de){
+                        // On resolving de, update the snip_id in HTML
+                        $("#"+tmp_snip).attr("id", de.cluster + "_" + de.blob);
+                        controller.processORAddToQueue(de);
+                        resolve();
+                    });
+                } else {
+                    selectedArchive.readArticle(dirEntry, function(title, data){
+                        //TODO: too heavy duty - optimize
+                        //var top = $(data); <== gives the best snips tho
+                        var b = data.search(/<body/);
+                        var top = data.slice(b, b+10000);
+                        var snippet = new uiUtil.snippet($(top).find("p")).parse();
+                        $("#"+snip_id).html(snippet + "...");
+                        resolve();
+                    });
+                }
+            });
+        }
+
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
         $('#articleList').show();
@@ -845,29 +878,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
     }
 
-    function fillSnippet(dirEntry) {
-        var snip_id = dirEntry.cluster + "_" + dirEntry.blob;
-        //if (dirEntry.isRedirect()) {
-        //    selectedArchive.resolveRedirect(dirEntry, readArticle);
-        //}
-        //else {
-            // The only reason this doesn't work is utf8 would be reqd dep here
-            //dirEntry.readData().then(function (data){
-        return new Promise(function(resolve, reject){
-            //console.time("snip" + dirEntry.title);
-            selectedArchive.readArticle(dirEntry, function(title, data){
-                //TODO: too heavy duty - optimize
-                //var top = $(data); 
-                var b = data.search(/<body/);
-                var top = data.slice(b, b+3000);
-                var snippet = new uiUtil.snippet($(top).find("p")).parse();
-                $("#"+snip_id).html(snippet + "...");
-                resolve();
-                //console.timeEnd("snip"+ dirEntry.title);
-            });
-        });
-    }
-
+    
 
     /**
      * Read the article corresponding to the given dirEntry

@@ -59,9 +59,11 @@ define([], function() {
     }
 
     // In the asyncJobController number of jobs to schedule is set at the begining 
-    // Here jobs get added to the queue as they arrive
+    // Here jobs get added to the queue as they arrive. 
+    // This is also useful when fixed number of async jobs spawn child aync jobs or are recursive
     // @param maxActive is basically chainCount as defined in asyncJobController
-    // @param process must return a promise immediately that resolves when its work is done 
+    // @param process is a function that must return a promise immediately that resolves when its work is done
+    // [TODO] if the process fn does not resolve controller can get stuck  
     function asyncJobDynamicQueueController(maxActive, process){
         this.queue = []; // contains waiting jobs
         this.active = new Map(); // contains promises of active processes
@@ -72,9 +74,8 @@ define([], function() {
                 var promise = process.apply(null, arguments).then(()=>{
                                                 // process done, remove from active, check for waiting jobs
                                                 this.active.delete(arguments);
-                                                // if jobs are queued pop on off for process it
+                                                // if jobs are queued pop one off and process it
                                                 if (this.queue.length > 0){
-                                                     console.count("queuedup");
                                                     // sigh...refactor 
                                                     return this.processORAddToQueue.apply(this, [].slice.call(this.queue.pop()));
                                                 }   
