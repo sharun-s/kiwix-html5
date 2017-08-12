@@ -88,14 +88,30 @@ function makeIterator(array) {
 
 function readFileSlice(file, begin, size) {
     return new Promise(function (resolve, reject){
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            resolve(new Uint8Array(e.target.result));
-        };
-        reader.onerror = reader.onabort = function(e) {
-            reject(e);
-        };
-        reader.readAsArrayBuffer(file.slice(begin, begin + size));
+        try {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                resolve(new Uint8Array(e.target.result));
+            };
+            reader.onerror = reader.onabort = function(e) {
+                reject(e);
+            };
+            reader.readAsArrayBuffer(file.slice(begin, begin + size));
+        }
+        catch (e) {
+            // At least on Firefox OS 2.5, the instanciation of a FileReader
+            // fails for some reason.
+            // The FileReaderSync API works in this case, and would seem more
+            // adequate to me in all cases (no need of asynchronous callbacks as
+            // we are not on the main thread). But it seems to cause some
+            // crashes on Firefox (at least version 54)
+            if (FileReaderSync) {
+                var reader = new FileReaderSync();
+                var arrayBuffer = reader.readAsArrayBuffer(file.slice(begin, begin + size));
+                var uintArray = new Uint8Array(arrayBuffer);
+                resolve(uintArray);
+            }
+        }
     });    
 }
 
