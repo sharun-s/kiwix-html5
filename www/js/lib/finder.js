@@ -20,13 +20,12 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(["module"], function(module) {
+define([], function() {
 
-    function finder(urllist, callbacks, archive){
+    function finder(urllist, callbacks, archive, mode, workerCount){
         this.resultstrack=0;
-        this.N=2;
-        this.firstpaint=0;
-        this.AboveTheFold = module.config().initialImageLoad;
+        this.N = workerCount;
+        //this.firstpaint=0;
         
         this.workerCompletions = 0;
         this.urlArray = urllist;
@@ -40,12 +39,14 @@ define(["module"], function(module) {
         this.file = archive._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
+        
+        this.mode = mode;
    }
 
     // This is a way to pick distribution of url to worker strategy
-    finder.prototype.run = function(type){
-        if (type && type == "quick") //"quickImageLoad"
-            this.workerStartwithFold();
+    finder.prototype.run = function(settings){
+        if (settings && settings.type && settings.type == "quick") //"quickImageLoad"
+            this.workerStartwithFold(settings.initialImageLoad);
         else
             this.workerStart(); 
     };    
@@ -79,15 +80,15 @@ define(["module"], function(module) {
                 // worker id (TODO: include article title)
                 _startIndex+"-"+Math.floor(endIndex),
                 that.urlArray.slice( startIndex, endIndex), 
-                module.config().mode]);
+                that.mode]);
         });
     }
 
-    finder.prototype.workerStartwithFold = function(){
+    finder.prototype.workerStartwithFold = function(AboveTheFold){
         var that= this;
         var step = this.urlArray.length/this.N;
-        if (step > 0 && this.urlArray.length > this.AboveTheFold){ 
-            var p = this.createDirEntryFinder(0, this.AboveTheFold);
+        if (step > 0 && this.urlArray.length > AboveTheFold){ 
+            var p = this.createDirEntryFinder(0, AboveTheFold);
             p.then(that.onFirstWorkerCompletion).then(function startTheRest(){
                 //BUG: creates an extra do nothing (harmless) worker if step<=abv the fold  
                 that.createDirEntryFinder(that.AboveTheFold, step);
@@ -107,17 +108,17 @@ define(["module"], function(module) {
      //Even split if greater than 10
      finder.prototype.workerStart = function(){
         //console.time("All Image Lookup+Read Time");
-        var step = imageArray.length/N;
-        if (imageArray.length > 10){                    
-            for (var k = 0; k < N; k += 1){
+        var step = this.urlArray.length/this.N;
+        if (this.urlArray.length > 10){                    
+            for (var k = 0; k < this.N; k += 1){
                 var start = k*step;
                 var end = start+step;
-                createDirEntryFinder(start, end);
+                this.createDirEntryFinder(start, end);
                 //console.log(start +" "+ end);
             }    
         }else{
-            N=1;
-            createDirEntryFinder(0, imageArray.length);
+            this.N=1;
+            this.createDirEntryFinder(0, this.urlArray.length);
         }                
     }
 

@@ -26,8 +26,10 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control) {
+define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder'],
+ function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder) {
+
+    var settings = module.config().settings;
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -74,20 +76,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             +subGroup[0].description+'</em> - Creator:<strong>'+ subGroup[0].creator+'</strong> Publisher:<strong>'+ subGroup[0].publisher+'</strong></span></a><ul style="padding:2px" id="g'+i+'" class="collapse  list-group">'; 
             for(var j=0;j<subGroup.length;j++){
                 var item = subGroup[j];
-                items.push( "<li class ='list-group-item small' style='padding:2px'><span class='label label-primary'>"+item.date+"</span> Articles:"+item.articleCount+ " Media:"+item.mediaCount + "<a href='"+item.url +"'>download</a> <a href=''>torrent</a> </li>");                
+                items.push( "<li class ='list-group-item small' style='padding:2px'><span class='label label-primary'>"+item.date+"</span> Articles:"+item.articleCount+ "    Media:"+item.mediaCount + "    <a href='"+item.url +"'> <span class='glyphicon glyphicon-download'></span></a> <a href=''> <span class='glyphicon glyphicon-magnet'></span></a> </li>");                
             }
             groupHTML = groupHTML + groupHeader + items.join( "" ) +"</ul>";
         }
         groupHTML = groupHTML + '</ul>';
         $("#zims").append(groupHTML); 
     });
-
-    
-    /**
-     * Maximum number of articles to display in a search
-     * @type Integer
-     */
-    var MAX_SEARCH_RESULT_SIZE = module.config().results;
 
     /**
      * @type ZIMArchive
@@ -123,13 +118,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     function archiveStatusUpdate(){
-        var name = selectedArchive._file._files[0].name;
-        if(name && name !=="undefined"){
-            statusUpdate(selectedArchive._file._files[0].name, "bg-success");
-        }else{
+        try{
+            var name = selectedArchive._file._files[0].name;
+            if(name && name !=="undefined")
+                statusUpdate(selectedArchive._file._files[0].name, "bg-success");
+        }catch (e){
             statusUpdate("Archive not set!!", "btn-danger");
-            // TODO: remove urlparams, goto config screen
-            throw {name:"KiwixError", message:"Archive Undefined"};    
+            //throw {name:"KiwixError", message:"Archive Undefined"};    
         }
     }
 
@@ -239,6 +234,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         resetUI();
         $('#configuration').show();
         statusUpdate("");
+        archiveStatusUpdate();
         return false;
     });
     $('#btnAbout').on('click', function(e) {
@@ -257,17 +253,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             setContentInjectionMode('jquery');
         }
     });
-    /*$('input:checkbox[name=cssCacheMode]').on('change', function (e) {
-        module.config().cssCache = this.checked ? true : false;
-    });
-    $('input:radio[name=cssInjectionMode]').on('change', function (e) {
-        module.config().cssSource = this.value;
-    });
-    $(document).ready(function (e) {
-        // Set checkbox for cssCache and radio for cssSource
-        document.getElementById('cssCacheModeCheck').checked = module.config().cssCache;
-    });*/
-    
+        
     /**
      * Displays or refreshes the API status shown to the user
      */
@@ -671,7 +657,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // if firefox is started in xhrff mode loading archive from url 
         // and then user switches to archive via fileselctor change the mode to file 
         // for readslice to use the right mode. This is because init.js won't get reloaded in this case. 
-        if(module.config().mode=="xhrFF"){
+        if(module.config().mode !== "file"){
             // module.config().mode="file"; is not enough as mode must be set in util and finder too 
             // so trigger a reload
             // [TODO] This is temp hack - find a way to set mode across modules
@@ -716,7 +702,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 $('#searchArticles').click();
             }
         }
-        ,700);
+        , settings.autoCompleteResubmitTimer);
     }
 
 
@@ -729,7 +715,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         resetUI();
         statusUpdate("Searching...", "btn-warning")
         if (selectedArchive !== null && selectedArchive.isReady()) {
-            selectedArchive.findDirEntriesWithPrefix(prefix.trim(), MAX_SEARCH_RESULT_SIZE, populateListOfArticles);
+            selectedArchive.findDirEntriesWithPrefix(prefix.trim(), settings.maxResults, populateListOfArticles);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -748,11 +734,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("#articleContent").attr('src', "A/imageResults.html")
         $("#articleContent").contents().scrollTop(0);            
         /* TODO Show Progress */
-        statusUpdate("Searching...", "btn-warn")
+        statusUpdate("Searching...", "btn-warning")
         //var keyword = decodeURIComponent(prefix); 
         ResultSet = new Map();
         if (selectedArchive !== null && selectedArchive.isReady()) {
-            selectedArchive.findDirEntriesAndContent(keyword, MAX_SEARCH_RESULT_SIZE, 
+            selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, 
                 displayImagesInFrame);
         } else {
             // We have to remove the focus from the search field,
@@ -806,13 +792,16 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
         // TODO: Handle multiple results resolving to the same snip_id
         // Overlaps with how image search handles dups and resolves - can be generalized
+        // NOTE: fillSnippet had to be move into this fn because controller is used within it.
+        // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates more do more work
+        // A thanable would be used to check this and call processORaddtoqueue
         function fillSnippet(dirEntry) {
             return new Promise(function(resolve, reject){
                 // This will be undefined_undefined if de is a redirect
                 // Need to be updated on resolve
                 var snip_id = dirEntry.cluster + "_"+ dirEntry.blob;
                 if (dirEntry.isRedirect()) {
-                    console.log("REDIRECT "+ snip_id + " "+ dirEntry.title);
+                    //console.log("REDIRECT "+ snip_id + " "+ dirEntry.title);
                     var tmp_snip = dirEntry.redirectTarget;
                     selectedArchive.resolveRedirect(dirEntry, function(de){
                         // On resolving de, update the snip_id in HTML
@@ -822,10 +811,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     });
                 } else {
                     selectedArchive.readArticle(dirEntry, function(title, data){
-                        //TODO: too heavy duty - optimize
+                        // TODO: too heavy duty - optimize
                         //var top = $(data); <== gives the best snips tho
-                        var b = data.search(/<body/);
-                        var top = data.slice(b, b+10000);
+                        var b = data.search(/<body/); 
+                        // TODO: Issue here is when infoboxes are present first para 
+                        // can get pushed way down into the article
+                        var top = data.slice(b, b+4000);
                         var snippet = new uiUtil.snippet($(top).find("p")).parse();
                         $("#"+snip_id).html(snippet + "...");
                         resolve();
@@ -1110,7 +1101,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 
             // Load images
             var imageLoadCompletions = [];
-            var AboveTheFold = module.config().initialImageLoad;
             var imgNodes = $iframeBody.find('img');//$('#articleContent img');
             if(imgNodes.length > 0)
             {
@@ -1120,7 +1110,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
-                function injectImage(index, dirEntry){
+                var injectImage = function (index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
                         if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
@@ -1139,10 +1129,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     return p;
                 }
 
-                // atmost 5 async injectImage calls can run at a time
-                var controller = new control.asyncJobQueue(5, injectImage);
-
-                var f = selectedArchive.findImages(imageURLs, {
+                // [TODO] this can be a much higher number if no/few svg files detected 
+                // The number of async injectImage that will run at a time is controlled by maxAsyncImageReads 
+                var controller = new control.asyncJobQueue(settings.maxAsyncImageReads, injectImage);
+                // finder divides the url list among workers, callbacks handle finder "events"
+                var f = new finder.init(imageURLs, {
                     onEachResult: function(index, dirEntry){
                         var p = controller.processORAddToQueue(index, dirEntry);
                         imageLoadCompletions.push(p);
@@ -1156,7 +1147,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
-                });
+                }, selectedArchive, module.config().mode, settings.workerCount);
+                f.run({type:"quick", initialImageLoad: settings.initialImageLoad});
             }
 
             // Load CSS content
@@ -1176,6 +1168,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     function displayImagesInFrame(dirEntry, htmlArticle) {
+        if(!dirEntry && !htmlArticle){
+            statusUpdate("No matches found", "btn-success");
+            return;
+        }
         var foundDirEntry = dirEntry;
         var totalCount = 0;
         if (ResultSet.has(dirEntry.title)){
@@ -1185,7 +1181,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }else{
             ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:"", dup:""});
         }
-
+        
         // TODO: Not required as its not going to be set to frame src
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
         var $body = $(htmlArticle);
@@ -1205,8 +1201,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.time(foundDirEntry.title+" "+imageURLs.length+" Image Lookup+Read+Inject Time");
         }
         var imageLoadCompletions = [];
-        var AboveTheFold = module.config().initialImageLoad;
-        var f = selectedArchive.findImages(imageURLs, {
+        var f = new finder.init(imageURLs, {
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
@@ -1238,12 +1233,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 onAllWorkersCompletion: function(resultsCount){
                     Promise.all(imageLoadCompletions).then(function (){
                         totalCount = totalCount + imageLoadCompletions.length;
-                        statusUpdate("Found pages:"+ ResultSet.size + " images:"+totalCount, "btn-primary");
+                        statusUpdate("Found pages:"+ ResultSet.size + " images:"+totalCount, "btn-success");
                         console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
                     });
                 }
-            }
+            }, selectedArchive, module.config().mode, settings.workerCount 
         );
+        f.run();
     }
 
     /**

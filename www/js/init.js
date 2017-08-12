@@ -41,20 +41,27 @@ if (params["archive"] && mode === "file") {
         mode = "xhr";
 };
 
-var results = params['results'] || 10;
-var initialImageLoad = 5; // Number of images initially searched for and loaded
-var cssSource = params['cssSource'] || "desktop"; //Set default to "desktop" or "mobile"
-var cssCache = params['cssCache'] || true; //Set default to true to use cached CSS, false to use Zim only
-
+var appSettings = {
+    // Search Settings
+    maxResults : params['results'] || 10,
+    autoComplete : false,
+    autoCompleteResubmitTimer: 700,
+    includeSnippet: true,
+    maxAsyncSnippetReads: 5,
+    includeThumb: true,
+    // Article Loader Settings
+    // Number of images initially searched for and loaded 
+    initialImageLoad: 5, 
+    maxAsyncImageReads: 3,
+    // In above the fold mode i.e. "quick" mode workerCount+1 workers will run
+    workerCount: 2 
+}
+// TODO: Since mode is passed to different modules. 
+// Anytime it changes it needs to be updated in each. How?
 require.config({
     baseUrl: 'js/lib',
     config: {  'util':{mode: mode}, 
-             'finder':{mode: mode, initialImageLoad: initialImageLoad},
-             '../app':{mode: mode, 
-                        results: results, initialImageLoad: initialImageLoad, 
-                        isFirefox:isFirefox, 
-                        cssSource:cssSource, 
-                        cssCache:cssCache}
+             '../app':{mode: mode, settings: appSettings}
     },
     paths: {
         'jquery': 'jquery-2.1.4',

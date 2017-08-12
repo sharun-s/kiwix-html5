@@ -19,8 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
-define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8'],
- function($, zimArchive, zimDirEntry, util, utf8) {
+define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
+ function($, zimArchive, zimDirEntry, util, utf8, finder) {
     
     var localZimArchive;
 
@@ -268,6 +268,24 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8'],
                 }
             });
         });
+        /*QUnit.test("Finder", function(assert) {
+            var done = assert.async();
+            var urlList = ["I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg"];
+            assert.expect((2*urlList.length) + 1 );
+            var callbacks = { 
+                onEachResult : function(index, dirEntry) {
+                                    assert.ok(dirEntry !== null, "DirEntry found");
+                                    assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "I/m/RayCharles_AManAndHisSoul.jpg", "URL is correct.");
+                                },
+                onAllWorkersCompletion : function(resultsCount){
+                                    assert.ok(resultsCount, urlList.length);
+                                    done();
+                                }
+            };
+            var f = new finder.init(urlList, callbacks, localZimArchive, "xhr", 2);
+            f.run({type:"quick", initialImageLoad: 2}); 
+        });*/
+        
         QUnit.test("Stylesheet '-/s/style.css' can be loaded", function(assert) {
             var done = assert.async();
             

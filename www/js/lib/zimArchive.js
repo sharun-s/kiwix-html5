@@ -216,7 +216,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
                     console.log(articleDirEntry.title + " saved for later");
                     matchedArticles.push(articleDirEntry);
                 }else{
-                    function read(articleDirEntry){
+                    var read = function(articleDirEntry){
                         console.log(articleDirEntry.title + " reading...");
                         waitForArticleReadCompletion = articleDirEntry.readData();
                         waitForArticleReadCompletion.then(function(data) {
@@ -240,6 +240,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 if (prefixVariants.length === 0 || articlesWithTitleMatchingKeyword >= resultSize) {
                     console.log("Matched Articles Found Across Variants:" + articlesWithTitleMatchingKeyword);
                     console.timeEnd("search");
+                    callback(null, null);
                 }else{
                     searchNextVariant();
                 }                
@@ -450,13 +451,6 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
         var index = Math.floor(Math.random() * this._file.articleCount);
         this._file.dirEntryByUrlIndex(index).then(callback);
     };
-
-    // Takes a list of image urls, starts N workers distributing urls among them
-    // When results are ready onResultCallbacks are called. Look at finder module for details 
-    ZIMArchive.prototype.findImages = function(urllist, onResultCallbacks){
-        var f = new finder.init(urllist, onResultCallbacks, this);
-        f.run("quick");
-    }
 
     /**
      * Functions and classes exposed by this module
