@@ -84,14 +84,15 @@ define([], function() {
         });
     }
 
-    finder.prototype.workerStartwithFold = function(AboveTheFold){
+    finder.prototype.workerStartwithFold = function(abv){
+        var AboveTheFold = abv;
         var that= this;
         var step = this.urlArray.length/this.N;
         if (step > 0 && this.urlArray.length > AboveTheFold){ 
             var p = this.createDirEntryFinder(0, AboveTheFold);
             p.then(that.onFirstWorkerCompletion).then(function startTheRest(){
                 //BUG: creates an extra do nothing (harmless) worker if step<=abv the fold  
-                that.createDirEntryFinder(that.AboveTheFold, step);
+                that.createDirEntryFinder(AboveTheFold, step);
                 for (var k = 1; k < that.N; k += 1) {
                     var start = k*step;
                     var end = start+step;
