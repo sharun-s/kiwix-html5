@@ -158,15 +158,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("title").html($('#prefix').val());
         searchDirEntriesFromImagePrefix($('#prefix').val());
     });
-    $('#formArticleSearch').on('submit', function(e) {
+    $('#formArticleSearchnew').on('submit', function(e) {
+        //console.count("formsubmit");
         document.getElementById("searchArticles").click();
         return false;
     });
-    $('#prefix').on('keyup', function(e) {
-        if (selectedArchive !== null && selectedArchive.isReady()) {
-            onKeyUpPrefix(e);
-        }
-    });
+    if(settings.autoComplete)
+        $('#prefix').on('keyup', function(e) {
+            if (selectedArchive !== null && selectedArchive.isReady()) {
+                onKeyUpPrefix(e);
+            }
+        });
     $("#btnRandomArticle").on("click", function(e) {
         if (selectedArchive !== null && selectedArchive.isReady()) {
             goToRandomArticle();
@@ -485,6 +487,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 var keyword = decodeURIComponent(params["titleSearch"]);
                 pushBrowserHistoryState(null, keyword, null);
                 $("title").html("Search Results for "+keyword);
+                // TODO set searchbar value to keyword ensuring it doesn't trigger keypress/form submit and god knows whatelse
                 searchDirEntriesFromPrefix(keyword);
             }else if(params["imageSearch"]){
                 var keyword = decodeURIComponent(params["imageSearch"]);
@@ -793,7 +796,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // TODO: Handle multiple results resolving to the same snip_id
         // Overlaps with how image search handles dups and resolves - can be generalized
         // NOTE: fillSnippet had to be move into this fn because controller is used within it.
-        // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates more do more work
+        // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates do more work
         // A thanable would be used to check this and call processORaddtoqueue
         function fillSnippet(dirEntry) {
             return new Promise(function(resolve, reject){
@@ -812,13 +815,23 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 } else {
                     selectedArchive.readArticle(dirEntry, function(title, data){
                         // TODO: too heavy duty - optimize
-                        //var top = $(data); <== gives the best snips tho
-                        var b = data.search(/<body/); 
-                        // TODO: Issue here is when infoboxes are present first para 
+                        // var top = $(data); <== gives the best snips tho
+                        // TODO: Issue here is, when infoboxes are present first para 
                         // can get pushed way down into the article
+                        //console.time(title);
+                        var b = data.search(/<body/); 
                         var top = data.slice(b, b+4000);
+                        // get rid of 404s
+                        top = top.replace("src=","nosrc=");
                         var snippet = new uiUtil.snippet($(top).find("p")).parse();
+                        /* Testing jaifroid's regex
+                        var firstpara = /((?:<span\s*>\s*)?<p\b[^>]*>(?:(?=([^<]+))\3|<(?!p\b[^>]*>))*?<\/p>(?:<span\s*>)?)/i ;
+                        var snippet = top.match(firstpara);
+                        if (snippet)
+                            snippet = snippet[0].slice(0, 500);
+                        */
                         $("#"+snip_id).html(snippet + "...");
+                        //console.timeEnd(title);
                         resolve();
                     });
                 }
