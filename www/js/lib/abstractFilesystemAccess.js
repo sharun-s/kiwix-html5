@@ -25,7 +25,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['q', 'jquery'], function(q, jQuery) {
+define(['jquery'], function(jQuery) {
     
     /**
      * Storage implemented by Firefox OS
@@ -50,11 +50,11 @@ define(['q', 'jquery'], function(q, jQuery) {
      *         rejected with an error message.
      */
     StorageFirefoxOS.prototype.get = function(path) {
-        var deferred = q.defer();
-        var request = this._storage.get(path);
-        request.onsuccess = function() { deferred.resolve(this.result); };
-        request.onerror = function() { deferred.reject(this.error.name); };
-        return deferred.promise;
+        return new Promise(function(resolve, reject){
+            var request = this._storage.get(path);
+            request.onsuccess = function() { resolve(this.result); };
+            request.onerror = function() { reject(this.error.name); };            
+        });
     };
     
     // We try to match both a standalone ZIM file (.zim) or

@@ -1312,7 +1312,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             else {
                 injectContent(dirEntry);
             }
-        }).fail(function() { 
+        }).catch(function() { 
             //alert("Error reading article with title " + url);
             statusUpdate("Error reading " + url); 
         });

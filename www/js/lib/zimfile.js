@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util, utf8, Q, zimDirEntry) {
+define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry'], function(xz, util, utf8, zimDirEntry) {
 
     var readInt = function(data, offset, size)
     {
@@ -93,13 +93,13 @@ define(['xzdec_wrapper', 'util', 'utf8', 'q', 'zimDirEntry'], function(xz, util,
             }
         }
         if (readRequests.length == 0) {
-            return Q(new Uint8Array(0).buffer);
+            return Promise.resolve().then(() => {return new Uint8Array(0).buffer;});
         } else if (readRequests.length == 1) {
             return readRequests[0];
         } else {
             // Wait until all are resolved and concatenate.
             console.log("CONCAT");
-            return Q.all(readRequests).then(function(arrays) {
+            return Promise.all(readRequests).then(function(arrays) {
                 var concatenated = new Uint8Array(size);
                 var sizeSum = 0;
                 for (var i = 0; i < arrays.length; ++i) {

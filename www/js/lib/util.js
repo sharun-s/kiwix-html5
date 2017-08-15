@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['q', 'module'], function(q, module) {
+define(['module'], function(module) {
     /**
      * Utility function : return true if the given string ends with the suffix
      * @param {String} str
@@ -209,64 +209,63 @@ define(['q', 'module'], function(q, module) {
      * @returns {Promise} Promise
      */
     function readFileSlice(file, begin, size) {
-        var deferred = q.defer();
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            deferred.resolve(new Uint8Array(e.target.result));
-        };
-        reader.onerror = reader.onabort = function(e) {
-            deferred.reject(e);
-        };
-        reader.readAsArrayBuffer(file.slice(begin, begin + size));
-        return deferred.promise;
+        return new Promise(function (resolve, reject){
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                resolve(new Uint8Array(e.target.result));
+            };
+            reader.onerror = reader.onabort = function(e) {
+                reject(e);
+            };
+            reader.readAsArrayBuffer(file.slice(begin, begin + size));    
+        });        
     }
 
     function readXHRSlice(file, begin, size) {
-        var deferred = q.defer();
-        var req = new XMLHttpRequest();
-        req.onload = function(e){            
-            deferred.resolve(new Uint8Array(e.target.response));
-        };
-        req.onerror = req.onabort = function(e) {
-            deferred.reject(e);
-        }; 
-        req.open('GET', file.name, true); 
-        req.responseType = "arraybuffer";
-        var end = begin + size;
-        req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
-        req.send(null);
-
-        return deferred.promise;
-    }
-
-    function readFFXHRSlice(file, begin, size){
-        var deferred = q.defer()  
-        var req = new XMLHttpRequest();
-        req.open('GET', file.name, true); 
-        if (location.protocol == 'file:') {
-            //console.log("blobloader");
-            req.responseType = "blob";
-            req.onload = function(e) {
-                var sliced = e.target.response.slice(begin, begin+size);
-                var fr = new FileReader();
-                fr.readAsArrayBuffer(sliced);
-                fr.addEventListener("load", function() {
-                    deferred.resolve(new Uint8Array(fr.result));
-                });
+        return new Promise(function(resolve, reject){
+            var req = new XMLHttpRequest();
+            req.onload = function(e){            
+                resolve(new Uint8Array(e.target.response));
             };
-        } else {
+            req.onerror = req.onabort = function(e) {
+                reject(e);
+            }; 
+            req.open('GET', file.name, true); 
             req.responseType = "arraybuffer";
             var end = begin + size;
             req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
-            req.onload = function(e) {
-                deferred.resolve(new Uint8Array(e.target.response));
-            };
-        }
-        req.onerror = req.onabort = function(e) {
-            deferred.reject(e);
-        }; 
-        req.send(null);
-        return deferred.promise;
+            req.send(null);
+        });
+    }
+
+    function readFFXHRSlice(file, begin, size){
+        return new Promise(function(resolve, reject){
+            var req = new XMLHttpRequest();
+            req.open('GET', file.name, true); 
+            if (location.protocol == 'file:') {
+                //console.log("blobloader");
+                req.responseType = "blob";
+                req.onload = function(e) {
+                    var sliced = e.target.response.slice(begin, begin+size);
+                    var fr = new FileReader();
+                    fr.readAsArrayBuffer(sliced);
+                    fr.addEventListener("load", function() {
+                        resolve(new Uint8Array(fr.result));
+                    });
+                };
+            } else {
+                req.responseType = "arraybuffer";
+                var end = begin + size;
+                req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
+                req.onload = function(e) {
+                    resolve(new Uint8Array(e.target.response));
+                };
+            }
+            req.onerror = req.onabort = function(e) {
+                reject(e);
+            }; 
+            req.send(null);            
+        });  
     }
 
     /**

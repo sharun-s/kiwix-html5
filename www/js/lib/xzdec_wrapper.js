@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['q'], function(q) {
+define([], function() {
     var xzdec = Module; //@todo including via requirejs seems to not work
     xzdec._init();
     
@@ -110,7 +110,7 @@ define(['q'], function(q) {
      */
     Decompressor.prototype._fillInBufferIfNeeded = function() {
         if (!xzdec._input_empty(this._decHandle))
-            return q.when(0);
+            return Promise.resolve(0);
         var that = this;
         return this._reader(this._inStreamPos, this._chunkSize).then(function(data) {
             if (data.length > that._chunkSize)
