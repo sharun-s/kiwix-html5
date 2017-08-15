@@ -463,6 +463,17 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         });
     }
 
+    async function loadVid(){
+        var url = decodeURIComponent('I/m/-Pluto-FlyoverAnimation-20150918.webm.jpg');
+        //console.log(url); 
+        var dev = await selectedArchive.getDirEntryByURL(url);
+        var data = await dev.readData();
+        var blob = new Blob([data], {type: 'video'});
+        var url = URL.createObjectURL(blob);
+        $('#articleContent').contents().find('body').html('<img src='+url+'></img>');
+        //$('#articleContent').contents().find('body').html('<video src='+url+'></video>');                
+    }
+
     if (storages !== null && storages.length > 0) {
         // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
         // This way, it is only done once at this moment, instead of being done several times in callbacks
@@ -504,8 +515,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             content.split(';').join('<br>')+
                             "<br>Total Article Count:" + selectedArchive._file.articleCount));
                 });
-                
-                                
+                //loadVid();
             }
         }else{
 	        // If DeviceStorage is not available, we display the file select components
@@ -1033,6 +1043,20 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         statusUpdateHTML(dropup);
     }
 
+    function checkTypeAndInject(url, jQueryNode, imageBlob) {
+        if(util.endsWith(url, ".png")){
+            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/png');
+        }else if (util.endsWith(url, ".svg")){
+            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/svg+xml;');
+        }else if (util.endsWith(url, ".jpg")){
+            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/jpeg');
+        }else{
+            //console.error("Unrecognized image format: " + dirEntry.url);
+            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image');
+        }
+    }
+
+
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -1040,7 +1064,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {DirEntry} dirEntry [BUG] Really title I think
      * @param {String} htmlArticle
      */
-    function displayArticleInFrame(dirEntry, htmlArticle) {
+    async function displayArticleInFrame(dirEntry, htmlArticle) {
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
@@ -1123,23 +1147,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
-                var injectImage = function (index, dirEntry){
-                    var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                    p.then(function (content) {
-                        if(util.endsWith(dirEntry.url.toLowerCase(), ".png")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/png');
-                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
-                        }else if (util.endsWith(dirEntry.url.toLowerCase(), ".jpg")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/jpeg');
-                        }else{
-                            //console.error("Unrecognized image format: " + dirEntry.url);
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                        }
-                    },function (){
+                var injectImage = async function (index, dirEntry){
+                    try{
+                        var imageBlob = await selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
+                        checkTypeAndInject(dirEntry.url.toLowerCase(), $(imgNodes[index]), imageBlob);
+                    }catch(err){
+                        console.log(err);
                         console.error("Failed loading " + dirEntry.url );
-                    }).then(() => Promise.resolve());
-                    return p;
+                    }
                 }
 
                 // [TODO] this can be a much higher number if no/few svg files detected 
@@ -1149,6 +1164,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 var f = new finder.init(imageURLs, {
                     onEachResult: function(index, dirEntry){
                         var p = controller.processORAddToQueue(index, dirEntry);
+                        // To disable the controller [1]uncomment below [2]comment above line [3] comment controller definition line
+                        // var p = injectImage(index, dirEntry);
                         imageLoadCompletions.push(p);
                     },
                     onFirstWorkerCompletion: function(){
