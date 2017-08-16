@@ -183,7 +183,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry'], function(xz, util, utf8
      * 
      * @param {Integer} cluster
      * @param {Integer} blob
-     * @returns {String}
+     * @returns {Promise} that resolves to a String
      */
     ZIMFile.prototype.blob = function(cluster, blob)
     {

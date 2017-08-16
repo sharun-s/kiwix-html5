@@ -1139,6 +1139,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // Load images
             var imageLoadCompletions = [];
             var imgNodes = $iframeBody.find('img');//$('#articleContent img');
+            // Refer #278 & #297 - For math heavy page use the controller - TEMP Solution till ZIM files support mathjax
+            // No need for the controller otherwise
+            var svgmathload = imgNodes.filter(".mwe-math-fallback-image-inline").length;
+            var controller, controlledLoading = svgmathload/imgNodes.length > 0.5 ? true : false;
+            console.log("SVG Math Load:"+ (svgmathload/imgNodes.length)*100);
             if(imgNodes.length > 0)
             {
                 var imageURLs = [].slice.call(imgNodes)
@@ -1147,28 +1152,31 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
-                var injectImage = async function (index, dirEntry){
-                    try{
-                        var imageBlob = await selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
-                        checkTypeAndInject(dirEntry.url.toLowerCase(), $(imgNodes[index]), imageBlob);
-                    }catch(err){
-                        console.log(err);
-                        console.error("Failed loading " + dirEntry.url );
-                    }
+                var injectImage = function (index, dirEntry){
+                    return selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob)
+                        .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), $(imgNodes[index]), imageBlob))
+                        .catch((reason) => {
+                            console.log(reason);
+                            console.error("Failed loading " + dirEntry.url );
+                        });
                 }
 
-                // [TODO] this can be a much higher number if no/few svg files detected 
-                // The number of async injectImage that will run at a time is controlled by maxAsyncImageReads 
-                var controller = new control.asyncJobQueue(settings.maxAsyncImageReads, injectImage);
+                if(controlledLoading)
+                    // The number of async injectImage that will run at a time is controlled by maxAsyncImageReads 
+                    controller = new control.asyncJobQueue(settings.maxAsyncImageReads, injectImage);
                 // finder divides the url list among workers, callbacks handle finder "events"
                 var f = new finder.init(imageURLs, {
                     onEachResult: function(index, dirEntry){
-                        var p = controller.processORAddToQueue(index, dirEntry);
-                        // To disable the controller [1]uncomment below [2]comment above line [3] comment controller definition line
-                        // var p = injectImage(index, dirEntry);
+                        var p;
+                        if(controlledLoading)
+                            p = controller.processORAddToQueue(index, dirEntry);
+                        else
+                            // putting an await here will cause sequential blob read
+                            p = injectImage(index, dirEntry); 
                         imageLoadCompletions.push(p);
                     },
                     onFirstWorkerCompletion: function(){
+                        // NOTE: any waiting that is done here will hold up all other worker starts
                         return Promise.all(cssLoaded).then(()=>console.timeEnd("TimeToFirstPaint"));
                     }, 
                     onAllWorkersCompletion: function(resultsCount){
