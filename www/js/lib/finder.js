@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define([], function() {
+define(['util'], function(util) {
 
     function finder(urllist, callbacks, archive, mode, workerCount){
         this.resultstrack=0;
@@ -122,8 +122,69 @@ define([], function() {
             this.createDirEntryFinder(0, this.urlArray.length);
         }                
     }
+    // Calling this titleFinder rather than keywordFinder as the lookups are using an Index built of Article Titles. Need to refactor to clarify where to use keyword, title and prefix. All have great potential of being applied all over if not clearly defined. Right now trying to adhere to - keyword = what is typed in search bar. prefix = matching algo. title where title index is being used.
+    function titleFinder(keyword, maxResults, callbacks, archive, mode){
+        this.resultstrack=0;
+        this.workerCompletions = 0;
+        this.keyword = keyword;
+        this.maxResults = maxResults;
+        // [TODO] refactor
+        this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
+        this.onAllResults = callbacks.hasOwnProperty("onAllResults") ? callbacks["onAllResults"] : function (){};
+        this.file = archive._file._files[0]; 
+        this.articleCount = archive._file.articleCount; 
+        this.urlPtrPos =  archive._file.urlPtrPos;
+        this.titlePtrPos = archive._file.titlePtrPos;
+        this.mode = mode;        
+    }
+
+    titleFinder.prototype.run = function(settings){
+        // start a worker for each keyword variant
+        this.startWorkers(); 
+    };
+
+    titleFinder.prototype.startWorkers = function(){
+        console.time("search");
+        var prefixVariants = util.removeDuplicateStringsInSmallArray([ 
+            util.ucFirstLetter(this.keyword), 
+            util.lcFirstLetter(this.keyword), 
+            util.ucEveryFirstLetter(this.keyword),
+            this.keyword]);
+        console.log(prefixVariants);
+        var allworkers = prefixVariants.map((p) => this.createDirEntryFinder(p));
+        Promise.all(allworkers).then(()=>console.timeEnd("search"));
+    }
+
+    titleFinder.prototype.createDirEntryFinder = function(variant){
+        var that = this;
+        return new Promise(function (resolve,reject){
+            var def = new Worker("dirEntryFinder.js");
+            def.onmessage = function (e) {
+                if(e.data[0] == "done" ){
+                    resolve();
+                    that.workerCompletions++;
+                    //console.log("recvd done" + that.workerCompletions);
+                    def.terminate();
+                    that.onAllResults();
+                }else{
+                    //var index = e.data[0];                          
+                    var dirEntry = e.data[0];
+                    that.resultstrack++;   
+                    that.onEachResult(dirEntry);                            
+                }
+            };
+            def.postMessage( [ that.file, 
+                that.articleCount, 
+                that.urlPtrPos,
+                that.titlePtrPos,
+                variant,
+                that.maxResults, 
+                that.mode]);
+        });
+    }
 
     return {
-        init: finder
+        initURLSearch: finder,
+        initKeywordSearch: titleFinder
     };
 });

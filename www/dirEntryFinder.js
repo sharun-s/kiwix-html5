@@ -1,7 +1,8 @@
 //Takes a list of URL's and returns corresponding direntries
 //Speed is achieved by using a cache that minimizes repeating binary search steps during lookup 
 
-var archive, articleCount, urlPtrPos, readSlice, wid;
+var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
+var imageArray, keyword, maxResults;
 //Comment out to disable logs and timing    
 console.log = function(){}     
 console.time = function(){};
@@ -166,6 +167,16 @@ function dirEntryByUrlIndex(index, cache)
     });
 };
 
+function dirEntryByTitleIndex(index)
+{
+    return readSlice(archive, titlePtrPos + index * 4, 4).then(function(data){
+        return readInt(data, 0, 4);        
+    }).then(function(urlIndex)
+    {
+        return dirEntryByUrlIndex(urlIndex);
+    });
+};
+
 // formerly zimfile.dirEntry(offset)
 function dirEntryByOffset(offset)
 {
@@ -296,20 +307,104 @@ function init(){
         console.error("DirEntryFinder archive not set");
     }
 }
+
+function resolveRedirect(dirEntry, callback) {
+    dirEntryByUrlIndex(dirEntry.redirectTarget).then(callback);
+};
+
+function getNextN(firstIndex) {
+    //console.count(keyword);
+    var next = function(index) {
+        if (index >= firstIndex + maxResults || index >= articleCount){
+            postMessage(["done",null]);//signals end of search for this prefix variant;
+            return;
+        }
+
+        return dirEntryByTitleIndex(index)
+        .then(function resolveRedirects(de){
+            if(de.redirect){
+                var p = new Promise(function (resolve, reject){
+                    resolveRedirect(de, function(targetde){
+                        console.log(de.title +" redirected to " + targetde.title);
+                        resolve(addDEOnPrefixMatch(targetde, index));                    
+                    });    
+                });
+                return p;
+            }else{
+                //if(waitForArticleReadCompletion)
+                //    return waitForArticleReadCompletion.then(()=>addDEOnPrefixMatch(de, prefix, index));
+                //else
+                    return addDEOnPrefixMatch(de, index);   
+            }
+        }).then(next);
+    };
+    return next(firstIndex);
+}
+
+function addDEOnPrefixMatch(dirEntry, index) {
+    // added keyword.toLowerCase to normalize the comparision
+    // eg Game of thrones gets redirected to Game of Thrones but fails here without normalization
+    if (dirEntry.title.slice(0, keyword.length).toLowerCase() === keyword.toLowerCase() && dirEntry.namespace === "A"){
+        console.log(dirEntry.title + " matched");
+        postMessage([dirEntry]);
+    }else{
+        console.log(dirEntry.title);
+    }
+    return index + 1;
+}
+
+
+function initKeywordSearch(){
+    loadingCache = new Map();
+    binarySearch(0, articleCount, function(i) {
+        //console.count("binsearchsteps")
+        return dirEntryByTitleIndex(i).then(function(dirEntry) {
+            if (dirEntry.title === "")
+                return -1; // ZIM sorts empty titles (assets) to the end
+            else if (dirEntry.namespace < "A")
+                return 1;
+            else if (dirEntry.namespace > "A")
+                return -1;
+            return keyword <= dirEntry.title ? -1 : 1;
+        });
+    }, true)
+    .then(getNextN);
+}
+
     
 onmessage = function(e) {
-  archive = e.data[0]; 
-  articleCount = e.data[1];
-  urlPtrPos = e.data[2];
-  wid = e.data[3];
-  imageArray = e.data[4]; //Array.from(new Set(e.data[5])); // don't look up dups
-  if (e.data[5] == "file") {
-    readSlice = readFileSlice;
-  }else if( e.data[5] == "xhrFF"){
-  console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
-    readSlice = readFFXHRSlice;
-  }else{
-    readSlice = readXHRSlice;
-  } 
-  init();
+  // for url->dirents an array of urls is passed 
+  // for title->dirent a keyword is passed 
+  if (typeof e.data[4] !== 'string'){  
+      archive = e.data[0]; 
+      articleCount = e.data[1];
+      urlPtrPos = e.data[2];
+      wid = e.data[3];
+      imageArray = e.data[4]; //Array.from(new Set(e.data[5])); // don't look up dups
+      if (e.data[5] == "file") {
+        readSlice = readFileSlice;
+      }else if( e.data[5] == "xhrFF"){
+      console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
+        readSlice = readFFXHRSlice;
+      }else{
+        readSlice = readXHRSlice;
+      } 
+      init();
+    }else{
+      archive = e.data[0]; 
+      articleCount = e.data[1];
+      urlPtrPos = e.data[2];
+      titlePtrPos = e.data[3];
+      keyword = e.data[4];
+      maxResults = e.data[5]; 
+      if (e.data[6] == "file") {
+        readSlice = readFileSlice;
+      }else if( e.data[6] == "xhrFF"){
+      console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
+        readSlice = readFFXHRSlice;
+      }else{
+        readSlice = readXHRSlice;
+      }
+      initKeywordSearch(); 
+    }
 }

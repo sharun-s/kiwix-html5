@@ -20,8 +20,8 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
-    function(zimfile, zimDirEntry, util, utf8, finder) {
+define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
+    function(zimfile, zimDirEntry, util, utf8) {
     
     /**
      * ZIM Archive
@@ -194,8 +194,8 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8', 'finder'],
         var that = this;
         var matchedArticles = [];
         //var dupCache, redirectCache = new Map();
-        // The order in which variants are processed can seriosly effect performance
-        // Proccessing is done one at a time, when the time to find first match increases, time to first paint increase       
+        // The order in which variants are processed can seriosly effect performance - try paris VS Paris
+        // Processing is done one at a time, when the time to find first match increases, time to first paint increase       
         // So current approach - first variant processed is a exact match of what user typed
         var prefixVariants = util.removeDuplicateStringsInSmallArray([ 
             util.ucFirstLetter(prefix), 

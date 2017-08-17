@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder) {
+define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
+ function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
 
     var settings = module.config().settings;
      
@@ -718,17 +718,44 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         , settings.autoCompleteResubmitTimer);
     }
 
-
+    // snippetController - Controls rate of additions of snippets
+    // Not really required if maxResults < 10-20 with loadmore enabled on Desktop 
+    // Is handy when maxResults is set higher, as an async article read happens for each result  
+    // TODO: Controller is optional. 
+    var snippetController;  
+    function fillResult(dirEntry){         
+        var snip_id = dirEntry.redirect ? dirEntry.redirectTarget : dirEntry.cluster+"_"+dirEntry.blob;
+        var deToString = dirEntry.offset + '|' + dirEntry.mimetype + '|' + dirEntry.namespace + '|' + dirEntry.cluster + '|' +dirEntry.blob + '|' + dirEntry.url + '|' + dirEntry.title + '|' + dirEntry.redirect + '|' + dirEntry.redirectTarget;
+        var articleListDivHtml = "<a href='#' dirEntryId='" 
+        + deToString.replace(/'/g,"&apos;")
+        + "' class='list-group-item' style='padding:2px'>" + dirEntry.title 
+        + "<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";
+        $('#articleList').append(articleListDivHtml);
+        if (settings.includeSnippet && snippetController)
+            snippetController.processORAddToQueue(dirEntry);
+    }
     /**
      * Search the index for DirEntries with title that start with the given prefix (implemented
      * with a binary search inside the index file)
      * @param {String} prefix
      */
-    function searchDirEntriesFromPrefix(prefix) {
+    function searchDirEntriesFromPrefix(keyword) {
         resetUI();
-        statusUpdate("Searching...", "btn-warning")
+        statusUpdate("Searching...", "btn-warning");
+        // If incremental UI update of results is not desired move this inside onAllResults
+        $('#articleList').show();
         if (selectedArchive !== null && selectedArchive.isReady()) {
-            selectedArchive.findDirEntriesWithPrefix(prefix.trim(), settings.maxResults, populateListOfArticles);
+            if (settings.includeSnippet)
+                snippetController = new control.asyncJobQueue(settings.maxAsyncSnippetReads, fillSnippet);
+            var f = new finder.initKeywordSearch(keyword.trim(), settings.maxResults, 
+                            { onEachResult: fillResult, 
+                              onAllResults: function (){
+                                $("#articleList a").on("click",handleTitleClick);
+                                statusUpdate("Load More", "btn-success")
+                              },
+                            }, selectedArchive, module.config().mode, settings.workerCount );
+            // This maynot be required unless new title searching/worker allocation strategies develop
+            f.run("keyword");
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -751,8 +778,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         //var keyword = decodeURIComponent(prefix); 
         ResultSet = new Map();
         if (selectedArchive !== null && selectedArchive.isReady()) {
-            selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, 
-                displayImagesInFrame);
+            //var f = new finder.initKeywordSearch(keyword, settings.maxResults, {onEachResult: displayImagesInFrame}, 
+            //    selectedArchive, module.config().mode, settings.workerCount );
+            //f.run("keyword");
+            selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, displayImagesInFrame);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -762,12 +791,59 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
+
+    // TODO: Handle multiple results resolving to the same snip_id
+    // Overlaps with how image search handles dups and resolves - can be generalized
+    // NOTE: fillSnippet had to be move into this fn because controller is used within it.
+    // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates do more work
+    // A thanable would be used to check this and call processORaddtoqueue
+    function fillSnippet(dirEntry) {
+        return new Promise(function(resolve, reject){
+            // This will be undefined_undefined if de is a redirect
+            // Need to be updated on resolve
+            var snip_id = dirEntry.cluster + "_"+ dirEntry.blob;
+            if (dirEntry.redirect) {
+                //console.log("REDIRECT "+ snip_id + " "+ dirEntry.title);
+                var tmp_snip = dirEntry.redirectTarget;
+                selectedArchive.resolveRedirect(dirEntry, function(de){
+                    // On resolving de, update the snip_id in HTML
+                    $("#"+tmp_snip).attr("id", de.cluster + "_" + de.blob);
+                    controller.processORAddToQueue(de);
+                    resolve();
+                });
+            } else {
+                    selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob).then(function(data){
+                    // TODO: too heavy duty - optimize
+                    // var top = $(data); <== gives the best snips tho
+                    // TODO: Issue here is, when infoboxes are present first para 
+                    // can get pushed way down into the article
+                    //console.time(title);
+                    data = utf8.parse(data);
+                    var b = data.search(/<body/); 
+                    var top = data.slice(b, b+4000);
+                    // get rid of 404s
+                    top = top.replace("src=","nosrc=");
+                    var snippet = new uiUtil.snippet($(top).find("p")).parse();
+                    /* Testing jaifroid's regex
+                    var firstpara = /((?:<span\s*>\s*)?<p\b[^>]*>(?:(?=([^<]+))\3|<(?!p\b[^>]*>))*?<\/p>(?:<span\s*>)?)/i ;
+                    var snippet = top.match(firstpara);
+                    if (snippet)
+                        snippet = snippet[0].slice(0, 500);
+                    */
+                    $("#"+snip_id).html(snippet + "...");
+                    //console.timeEnd(title);
+                    resolve();
+                });
+            }
+        });
+    }
   
     /**
      * Display the list of articles with the given array of DirEntry
      * @param {Array.<DirEntry>} dirEntryArray
      * @param {Integer} maxArticles
      */
+    /*
     function populateListOfArticles(dirEntryArray, maxArticles) {       
         var nbDirEntry = 0;
         if (dirEntryArray) {
@@ -784,7 +860,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (nbDirEntry === 0) {
             message = "No articles found.";
         }
-        statusUpdate(message, "btn-success")
+        statusUpdate(message, "btn-success");
         
         var articleListDiv = $('#articleList');
         var articleListDivHtml = "";
@@ -802,57 +878,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         //control.asyncJobs(3, dirEntryArray, fillSnippet);
         var controller = new control.asyncJobQueue(5, fillSnippet);
         dirEntryArray.forEach((o) => controller.processORAddToQueue(o)); 
-
-        // TODO: Handle multiple results resolving to the same snip_id
-        // Overlaps with how image search handles dups and resolves - can be generalized
-        // NOTE: fillSnippet had to be move into this fn because controller is used within it.
-        // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates do more work
-        // A thanable would be used to check this and call processORaddtoqueue
-        function fillSnippet(dirEntry) {
-            return new Promise(function(resolve, reject){
-                // This will be undefined_undefined if de is a redirect
-                // Need to be updated on resolve
-                var snip_id = dirEntry.cluster + "_"+ dirEntry.blob;
-                if (dirEntry.isRedirect()) {
-                    //console.log("REDIRECT "+ snip_id + " "+ dirEntry.title);
-                    var tmp_snip = dirEntry.redirectTarget;
-                    selectedArchive.resolveRedirect(dirEntry, function(de){
-                        // On resolving de, update the snip_id in HTML
-                        $("#"+tmp_snip).attr("id", de.cluster + "_" + de.blob);
-                        controller.processORAddToQueue(de);
-                        resolve();
-                    });
-                } else {
-                    selectedArchive.readArticle(dirEntry, function(title, data){
-                        // TODO: too heavy duty - optimize
-                        // var top = $(data); <== gives the best snips tho
-                        // TODO: Issue here is, when infoboxes are present first para 
-                        // can get pushed way down into the article
-                        //console.time(title);
-                        var b = data.search(/<body/); 
-                        var top = data.slice(b, b+4000);
-                        // get rid of 404s
-                        top = top.replace("src=","nosrc=");
-                        var snippet = new uiUtil.snippet($(top).find("p")).parse();
-                        /* Testing jaifroid's regex
-                        var firstpara = /((?:<span\s*>\s*)?<p\b[^>]*>(?:(?=([^<]+))\3|<(?!p\b[^>]*>))*?<\/p>(?:<span\s*>)?)/i ;
-                        var snippet = top.match(firstpara);
-                        if (snippet)
-                            snippet = snippet[0].slice(0, 500);
-                        */
-                        $("#"+snip_id).html(snippet + "...");
-                        //console.timeEnd(title);
-                        resolve();
-                    });
-                }
-            });
-        }
-
         articleListDiv.html(articleListDivHtml);
         $("#articleList a").on("click",handleTitleClick);
         $('#articleList').show();
     }
-    
+    */
     /**
      * Handles the click on the title of an article in search results
      * @param {Event} event
@@ -1165,7 +1195,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     // The number of async injectImage that will run at a time is controlled by maxAsyncImageReads 
                     controller = new control.asyncJobQueue(settings.maxAsyncImageReads, injectImage);
                 // finder divides the url list among workers, callbacks handle finder "events"
-                var f = new finder.init(imageURLs, {
+                var f = new finder.initURLSearch(imageURLs, {
                     onEachResult: function(index, dirEntry){
                         var p;
                         if(controlledLoading)
@@ -1239,7 +1269,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.time(foundDirEntry.title+" "+imageURLs.length+" Image Lookup+Read+Inject Time");
         }
         var imageLoadCompletions = [];
-        var f = new finder.init(imageURLs, {
+        var f = new finder.initURLSearch(imageURLs, {
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
