@@ -2,11 +2,11 @@
 //Speed is achieved by using a cache that minimizes repeating binary search steps during lookup 
 
 var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
-var imageArray, keyword, maxResults;
+var imageArray, keyword, maxResults, matcherfn;
 //Comment out to disable logs and timing    
-//console.log = function(){}     
-//console.time = function(){};
-//console.timeEnd =function(){};
+console.log = function(){}     
+console.time = function(){};
+console.timeEnd =function(){};
 
 function readInt(data, offset, size)
 {
@@ -327,56 +327,66 @@ function getNextN(firstIndex) {
                     resolveRedirect(de, function(targetde){
                         console.log(de.title +" redirected to " + targetde.title);
                         targetde.redirectedFrom = de.title;
-                        resolve(addDEOnPrefixMatch(targetde, index));                    
+                        resolve(matchAndIncrement(targetde, index));                    
                     });    
                 });
                 return p;
             }else{
-                return addDEOnPrefixMatch(de, index);   
+                return matchAndIncrement(de, index);   
             }
         }).then(next);
     };
     return next(firstIndex);
 }
 
+// if no matcherfn return dirEntry and increment - allows for iterating over the whole index
+// if matcherfn returns true return dirEntry and increment 
+function matchAndIncrement(dirEntry, index){
+    if(matcherfn){
+        if(matcherfn(dirEntry)){
+            matchesFound++;
+            postMessage([dirEntry]);
+        }
+    }else{
+        matchesFound++;
+        postMessage([dirEntry]); 
+    }
+    return index + 1;
+}
+
 // TODO how much further should iteration continue if no match at all - in case of non prefix matching makes sense to continue till max_iteration_count|max_results|articleCount
-function addDEOnPrefixMatch(dirEntry, index) {
+function PrefixAndArticleMatch(dirEntry) {
     if (dirEntry.hasOwnProperty("redirectedFrom")){
         if ( dirEntry.redirectedFrom.slice(0, keyword.length) === keyword && dirEntry.title.slice(0, keyword.length) === keyword && dirEntry.namespace === "A" ){
             //Probable dup/disambiguation/spelling redirect
             console.log(dirEntry.title + " matched -- both orig & redirect");
-            matchesFound++;
-            postMessage([dirEntry]);
+            return true;
         } else if (dirEntry.redirectedFrom.slice(0, keyword.length) === keyword && dirEntry.namespace === "A"){
             console.log(dirEntry.title + " matched -- orig not redirect");
-            matchesFound++;
-            postMessage([dirEntry]);
+            return true;
         } else if (dirEntry.title.slice(0, keyword.length) === keyword && dirEntry.namespace === "A"){
             // TODO this case is probably unnecessary and can be removed.
             console.log(dirEntry.title + " matched -- weird case -- only redirect matched");  
-            matchesFound++;
-            postMessage([dirEntry]);
+            return true;
         } else {
             // TODO these cases shouldnt be happening - unnecessary.
             console.log("non matched redirect "+ dirEntry.redirectedFrom + " > "+ dirEntry.title);
         }      
     }else{
-        // NOT REQUIRED NOW as redirect case "should" handle it  
-        // added keyword.toLowerCase to normalize the comparision
-        // eg Game of thrones gets redirected to Game of Thrones but fails here without normalization
-        // if (dirEntry.title.slice(0, keyword.length).toLowerCase() === keyword.toLowerCase() && dirEntry.namespace === "A"){
-        // TODO This is really a 2 piece matcher - prefix + article type. Should be fn passed in from outside worker   
         if (dirEntry.title.slice(0, keyword.length) === keyword && dirEntry.namespace === "A"){
             console.log(dirEntry.title + " matched");
-            matchesFound++;
-            postMessage([dirEntry]);
+            return true;
         }else{
             // useful to see when variants aren't matching anything. 
-            // [TODO] Beyond a point (track number of iterations) should really disable search
+            // [TODO] Beyond a point should really disable search? (by tracking number of iterations)
             console.log(dirEntry.title);
         }
     }
-    return index + 1;
+    return false;
+}
+
+function IncludeMatch(dirEntry) {
+    return dirEntry.title.includes(keyword);
 }
 
 var matchesFound;
@@ -441,7 +451,17 @@ onmessage = function(e) {
       }else{
         readSlice = readXHRSlice;
       }
-      // Check if an loadmore index has been passed. If so return results from that index.
+
+      if (keyword == ""){
+        if(e.data[8])
+            matcherfn = PrefixAndArticleMatch;
+        else
+            matcherfn = undefined;
+      }else{
+        matcherfn = IncludeMatch; //PrefixAndArticleMatch;  
+      }
+
+      // Check if an index has been passed. If start titleindex traversal from that index.
       if(e.data[7]){ 
         initKeywordSearch(e.data[7]);
       }else

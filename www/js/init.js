@@ -43,7 +43,7 @@ if (params["archive"] && mode === "file") {
 
 var appSettings = {
     // Search Settings
-    maxResults : params['results'] || 10,
+    maxResults : params['results'] || 1000,
     // if false user has to hit enter or press the search button after typing
     autoComplete : false,
     autoCompleteResubmitTimer: 700,
