@@ -127,10 +127,13 @@ define(['util'], function(util) {
         this.resultstrack=0;
         this.workerCompletions = 0;
         this.keyword = keyword;
+        this.variantCount = 0;
         this.maxResults = maxResults;
-        // [TODO] refactor
+
         this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
         this.onAllResults = callbacks.hasOwnProperty("onAllResults") ? callbacks["onAllResults"] : function (){};
+        this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
+
         this.file = archive._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
@@ -138,34 +141,50 @@ define(['util'], function(util) {
         this.mode = mode;        
     }
 
-    titleFinder.prototype.run = function(settings){
+    //titleFinder.prototype.run = function(settings){
         // start a worker for each keyword variant
-        this.startWorkers(); 
-    };
+    //    this.startWorkers(); 
+    //};
 
-    titleFinder.prototype.startWorkers = function(){
+    titleFinder.prototype.run = function(settings){
+        var allworkers=[], prefixVariants=[];
+        var that = this;
         console.time("search");
-        var prefixVariants = util.removeDuplicateStringsInSmallArray([ 
-            util.ucFirstLetter(this.keyword), 
-            util.lcFirstLetter(this.keyword), 
-            util.ucEveryFirstLetter(this.keyword),
-            this.keyword]);
-        console.log(prefixVariants);
-        var allworkers = prefixVariants.map((p) => this.createDirEntryFinder(p));
-        Promise.all(allworkers).then(()=>console.timeEnd("search"));
+        // on loadmore continue search only with the variant with the most matches
+        if(settings && settings.continueFrom){
+            var p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
+            allworkers.push(p);
+            this.variantCount = 1; 
+        }else{
+            prefixVariants = util.removeDuplicateStringsInSmallArray([ 
+                util.ucFirstLetter(this.keyword), 
+                util.lcFirstLetter(this.keyword), 
+                util.ucEveryFirstLetter(this.keyword),
+                this.keyword]);
+            console.log(prefixVariants);
+            this.variantCount = prefixVariants.length;
+            allworkers = prefixVariants.map((p) => this.createDirEntryFinder(p));            
+        }
+        Promise.all(allworkers).then(()=>{
+            if(that.workerCompletions == that.variantCount)
+                that.onAllWorkersCompletion();
+            console.timeEnd("search")
+        });
     }
 
-    titleFinder.prototype.createDirEntryFinder = function(variant){
+    titleFinder.prototype.createDirEntryFinder = function(variant, continueFrom){
         var that = this;
         return new Promise(function (resolve,reject){
             var def = new Worker("dirEntryFinder.js");
             def.onmessage = function (e) {
-                if(e.data[0] == "done" ){
-                    resolve();
+                if(e.data[0] == "done" ){                    
                     that.workerCompletions++;
                     //console.log("recvd done" + that.workerCompletions);
                     def.terminate();
-                    that.onAllResults();
+                    // params are - matchesFound, loadmore-index
+                    // NOTE: This will happen for each worker i.e. variant
+                    that.onAllResults(variant, e.data[1], e.data[2]);
+                    resolve();
                 }else{
                     //var index = e.data[0];                          
                     var dirEntry = e.data[0];
@@ -173,13 +192,16 @@ define(['util'], function(util) {
                     that.onEachResult(dirEntry);                            
                 }
             };
-            def.postMessage( [ that.file, 
+            var msg =[ that.file, 
                 that.articleCount, 
                 that.urlPtrPos,
                 that.titlePtrPos,
                 variant,
                 that.maxResults, 
-                that.mode]);
+                that.mode];
+            if(continueFrom)
+                msg.push(continueFrom); 
+            def.postMessage(msg);
         });
     }
 

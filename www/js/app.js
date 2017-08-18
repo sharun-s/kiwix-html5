@@ -728,8 +728,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         var deToString = dirEntry.offset + '|' + dirEntry.mimetype + '|' + dirEntry.namespace + '|' + dirEntry.cluster + '|' +dirEntry.blob + '|' + dirEntry.url + '|' + dirEntry.title + '|' + dirEntry.redirect + '|' + dirEntry.redirectTarget;
         var articleListDivHtml = "<a href='#' dirEntryId='" 
         + deToString.replace(/'/g,"&apos;")
-        + "' class='list-group-item' style='padding:2px'>" + dirEntry.title 
-        + "<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";
+        + "' class='list-group-item' style='padding:2px'>" + dirEntry.title; 
+        if (dirEntry.hasOwnProperty("redirectedFrom")){
+            articleListDivHtml = articleListDivHtml + "<small style='color:red;'>("+dirEntry.redirectedFrom+")</small>"+"<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";       
+        }else{
+            articleListDivHtml = articleListDivHtml + "<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";
+        }
         $('#articleList').append(articleListDivHtml);
         if (settings.includeSnippet && snippetController)
             snippetController.processORAddToQueue(dirEntry);
@@ -739,9 +743,15 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * with a binary search inside the index file)
      * @param {String} prefix
      */
-    function searchDirEntriesFromPrefix(keyword) {
-        resetUI();
+    var totalCount; 
+    function searchDirEntriesFromPrefix(keyword, continueFrom) {
+        if(!continueFrom){
+            resetUI();
+            totalCount=0;
+        }
         statusUpdate("Searching...", "btn-warning");
+        var variantWithMostMatches, variantMatches=[];
+        
         // If incremental UI update of results is not desired move this inside onAllResults
         $('#articleList').show();
         if (selectedArchive !== null && selectedArchive.isReady()) {
@@ -749,13 +759,27 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 snippetController = new control.asyncJobQueue(settings.maxAsyncSnippetReads, fillSnippet);
             var f = new finder.initKeywordSearch(keyword.trim(), settings.maxResults, 
                             { onEachResult: fillResult, 
-                              onAllResults: function (){
+                              onAllResults: function (variant, matchCount, continueFromIndex){
                                 $("#articleList a").on("click",handleTitleClick);
-                                statusUpdate("Load More", "btn-success")
+                                variantMatches.push([variant, matchCount, continueFromIndex]);
+                                totalCount = totalCount + matchCount;
                               },
+                              onAllWorkersCompletion: function(){
+                                // TODO Is this the right way of updating the button and its handler?
+                                updateLoadMoreButton("Found:" +totalCount+ " Load More...");
+                                variantMatches.forEach((obj, i) => console.log(obj));
+                                variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
+                                $("#loadmore").on('click', function(e) {
+                                    searchDirEntriesFromPrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
+                                });
+                                //if(continueFrom)
+                                //    $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);
+                              }
                             }, selectedArchive, module.config().mode, settings.workerCount );
-            // This maynot be required unless new title searching/worker allocation strategies develop
-            f.run("keyword");
+            if(continueFrom)
+                f.run({"continueFrom": continueFrom});
+            else
+                f.run();
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -797,6 +821,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // NOTE: fillSnippet had to be move into this fn because controller is used within it.
     // One way to keep it seperate is if the job (ie fillSnippet) on resolve indicates do more work
     // A thanable would be used to check this and call processORaddtoqueue
+    // TODO: With worker now handling redirects, doing it here again seems unnecessary. Decide where it should be done long term.
     function fillSnippet(dirEntry) {
         return new Promise(function(resolve, reject){
             // This will be undefined_undefined if de is a redirect
@@ -1071,6 +1096,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         });
         dropup = dropup + '</ul></span>'
         statusUpdateHTML(dropup);
+    }
+
+    function updateLoadMoreButton(str){
+        var button = '<button class="btn btn-success btn-sm" type="button" id="loadmore">'+str+'</button>'
+        statusUpdateHTML(button);
     }
 
     function checkTypeAndInject(url, jQueryNode, imageBlob) {
