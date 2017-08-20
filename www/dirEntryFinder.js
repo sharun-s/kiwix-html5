@@ -398,6 +398,7 @@ function initKeywordSearch(index){
         console.log("continuing from: " + index);
         //debugger;
         //dirEntryByTitleIndex(index).then(getNextN);
+        // NOTE: NO NAMESPACE CHECK HAPPENS HERE - CAREFUL!!
         getNextN(index);
     }else{
         binarySearch(0, articleCount, function(i) {
@@ -451,16 +452,16 @@ onmessage = function(e) {
       }else{
         readSlice = readXHRSlice;
       }
-
+      // Allows the user to traverse the index without any matching i.e. every direntry is returned
       if (keyword == ""){
         if(e.data[8])
             matcherfn = PrefixAndArticleMatch;
         else
-            matcherfn = undefined;
+            matcherfn = function returnEverything(){return true;}//undefined;
       }else{
-        matcherfn = IncludeMatch; //PrefixAndArticleMatch;  
+        matcherfn = PrefixAndArticleMatch;// IncludeMatch;  
       }
-
+      console.log("MATCHER: " + matcherfn.name);
       // Check if an index has been passed. If start titleindex traversal from that index.
       if(e.data[7]){ 
         initKeywordSearch(e.data[7]);

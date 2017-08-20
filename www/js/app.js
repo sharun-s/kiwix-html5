@@ -729,6 +729,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         var articleListDivHtml = "<a href='#' dirEntryId='" 
         + deToString.replace(/'/g,"&apos;")
         + "' class='list-group-item' style='padding:2px'>" + dirEntry.title; 
+        if(dirEntry.namespace !== "A")
+            articleListDivHtml = articleListDivHtml + "<strong style='color:green;'>" +dirEntry.namespace+" "+ dirEntry.url.slice(-3)+" </strong>";
         if (dirEntry.hasOwnProperty("redirectedFrom")){
             articleListDivHtml = articleListDivHtml + "<small style='color:red;'>("+dirEntry.redirectedFrom+")</small>"+"<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";       
         }else{
@@ -738,16 +740,48 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (settings.includeSnippet && snippetController)
             snippetController.processORAddToQueue(dirEntry);
     }
+    var articleReadController;
+    function fillImages(dirEntry){         
+        //var snip_id = dirEntry.redirect ? dirEntry.redirectTarget : dirEntry.cluster+"_"+dirEntry.blob;
+        //var deToString = dirEntry.offset + '|' + dirEntry.mimetype + '|' + dirEntry.namespace + '|' + dirEntry.cluster + '|' +dirEntry.blob + '|' + dirEntry.url + '|' + dirEntry.title + '|' + dirEntry.redirect + '|' + dirEntry.redirectTarget;
+        //var articleListDivHtml = "<a href='#' dirEntryId='" 
+        //+ deToString.replace(/'/g,"&apos;")
+        //+ "' class='list-group-item' style='padding:2px'>" + dirEntry.title; 
+        //if (dirEntry.hasOwnProperty("redirectedFrom")){
+        //    articleListDivHtml = articleListDivHtml + "<small style='color:red;'>("+dirEntry.redirectedFrom+")</small>"+"<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";       
+        //}else{
+        //    articleListDivHtml = articleListDivHtml + "<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";
+        //}
+        //$('#articleList').append(articleListDivHtml);
+        //if (settings.includeSnippet && snippetController)
+        return new Promise(function (resolve, reject){
+            if (dirEntry.namespace !== "A"){
+                console.log("WARNING: Skipping Non-Article returned by finder:" + dirEntry.namespace, dirEntry.url.slice(-3));
+                nonArticlesMatchedProcessed++;
+                if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
+                    searchDone();
+                resolve();
+            }else{
+                selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob).then(function(data){
+                    var htmlArticle = utf8.parse(data);
+                    displayImagesInFrame(dirEntry, htmlArticle);
+                    resolve();
+                });
+            }
+        });
+    }
+
+
     /**
      * Search the index for DirEntries with title that start with the given prefix (implemented
      * with a binary search inside the index file)
      * @param {String} prefix
      */
-    var totalCount; 
+    var totalFound, totalImages, articlesMatchedProcessed, nonArticlesMatchedProcessed; 
     function searchDirEntriesFromPrefix(keyword, continueFrom) {
         if(!continueFrom){
             resetUI();
-            totalCount=0;
+            searchInit();
         }
         statusUpdate("Searching...", "btn-warning");
         var variantWithMostMatches, variantMatches=[];
@@ -762,11 +796,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                               onAllResults: function (variant, matchCount, continueFromIndex){
                                 $("#articleList a").on("click",handleTitleClick);
                                 variantMatches.push([variant, matchCount, continueFromIndex]);
-                                totalCount = totalCount + matchCount;
+                                totalFound = totalFound + matchCount;
                               },
                               onAllWorkersCompletion: function(){
                                 // TODO Is this the right way of updating the button and its handler?
-                                updateLoadMoreButton("Found:" +totalCount+ " Load More...");
+                                updateLoadMoreButton("Found:" +totalFound+ " Load More...");
                                 variantMatches.forEach((obj, i) => console.log(obj));
                                 variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
                                 $("#loadmore").on('click', function(e) {
@@ -775,7 +809,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 //if(continueFrom)
                                 //    $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);
                               }
-                            }, selectedArchive, module.config().mode, settings.workerCount );
+                            }, selectedArchive, module.config().mode);//, settings.workerCount );
             if(continueFrom)
                 f.run({"continueFrom": continueFrom});
             else
@@ -789,23 +823,72 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
-    var ResultSet;
+    var ResultSet, variantMatches=[];
     window.getSearchResults = function getSearchResults(){
         return ResultSet;
     }
-    function searchDirEntriesFromImagePrefix(keyword) {
-        resetUI();
-        $("#articleContent").attr('src', "A/imageResults.html")
-        $("#articleContent").contents().scrollTop(0);            
+
+    function processArticleForImages(dirEntry){
+        totalFound++;
+        articleReadController.processORAddToQueue(dirEntry);
+    }
+    function searchInit(){
+        ResultSet = new Map();
+        totalFound = 0;
+        totalImages = 0;
+        articlesMatchedProcessed = 0;
+        nonArticlesMatchedProcessed = 0;
+        variantMatches = [];
+    }
+    // TODO Remove Overlaps 
+    function keywordFinderDone(variant, matchCount, continueFromIndex){
+        //$("#articleList a").on("click",handleTitleClick);
+        variantMatches.push([variant, matchCount, continueFromIndex]);
+        // It's possible processing of articles completes before the above code runs so recheck.
+        // eg: wikivoyage keyword = "" 
+        if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
+            searchDone();
+        //totalFound = totalFound + matchCount;
+    }
+    function searchDone(){
+        // TODO Is this the right way of updating the button and its handler?
+        // for keywordsearch - updateLoadMoreButton("Found:" +totalCount+ " Load More...");
+        //var totImgCount from ResultSet
+        updateLoadMoreButton("Pages:"+ totalFound+" Uniq:"+ResultSet.size + " Images:"+totalImages, "btn-success");
+        // ResultSet.forEach((v,k) =>{ console.log(k); console.log(v.images.length, v.redirectedFrom, v.dup);})
+        variantMatches.forEach((obj, i) => console.log(obj));
+        var variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
+        $("#loadmore").on('click', function(e) {
+            // TODO: for keywordsearch this is searchDirEntriesFromPrefix
+            searchDirEntriesFromImagePrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
+        });
+    }
+
+    function searchDirEntriesFromImagePrefix(keyword, continueFrom) {
+        if(!continueFrom){
+            resetUI();
+            $("#articleContent").attr('src', "A/imageResults.html");
+            searchInit();            
+        }else{
+            variantMatches=[];
+        }
+        //$("#articleContent").contents().scrollTop(0);            
         /* TODO Show Progress */
         statusUpdate("Searching...", "btn-warning")
-        //var keyword = decodeURIComponent(prefix); 
-        ResultSet = new Map();
+        ////var keyword = decodeURIComponent(prefix); 
         if (selectedArchive !== null && selectedArchive.isReady()) {
-            //var f = new finder.initKeywordSearch(keyword, settings.maxResults, {onEachResult: displayImagesInFrame}, 
-            //    selectedArchive, module.config().mode, settings.workerCount );
-            //f.run("keyword");
-            selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, displayImagesInFrame);
+            // used in processArticleForImages TODO refactor
+            articleReadController = new control.asyncJobQueue(5, fillImages);
+            var f = new finder.initKeywordSearch(keyword, settings.maxResults, {
+                onEachResult: processArticleForImages,
+                // NOTE: this just means title index lookup is done for one variant not UI update completion
+                onAllResults: keywordFinderDone
+            }, selectedArchive, module.config().mode);
+            if(continueFrom)
+                f.run({"continueFrom":continueFrom});
+            else
+                f.run();
+            //selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, displayImagesInFrame);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -1268,18 +1351,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function displayImagesInFrame(dirEntry, htmlArticle) {
         if(!dirEntry && !htmlArticle){
             statusUpdate("No matches found", "btn-success");
+            console.log("FIX: add errorcnt to searchDone check");
+            // TODO errorcount++; add to searchDone condition 
             return;
         }
+        // for use inside callbacks
         var foundDirEntry = dirEntry;
-        var totalCount = 0;
         if (ResultSet.has(dirEntry.title)){
-            ResultSet.set(foundDirEntry.title, {images:[], redirectedFrom:"", dup:"skipped"});
-            console.log(dirEntry.title + " already processed, skipping...")
+            var result = ResultSet.get(dirEntry.title);
+            result.dup = true;
+            result.redirectedFrom = dirEntry.redirectedFrom;
+            ResultSet.set(dirEntry.title, result);
+            console.log(dirEntry.title + " already processed, skipping...");
+            articlesMatchedProcessed++;
+            if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
+                searchDone();
             return;
-        }else{
-            ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:"", dup:""});
         }
-        
+
         // TODO: Not required as its not going to be set to frame src
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
         var $body = $(htmlArticle);
@@ -1289,6 +1378,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if(imgNodes.length==0)
         {
             console.log(foundDirEntry.title +" no images found");
+            ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:foundDirEntry.redirectedFrom, dup:""});
+            articlesMatchedProcessed++;
+            if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
+                searchDone();
             return;
         }
         //var snippet = new uiUtil.snippet($body.contents().find("p")).parse();
@@ -1297,27 +1390,26 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                         .match(regexpImageUrl)[1]));
         if(imageURLs.length > 0){
             console.time(foundDirEntry.title+" "+imageURLs.length+" Image Lookup+Read+Inject Time");
+            ResultSet.set(foundDirEntry.title, {images:imageURLs, redirectedFrom:foundDirEntry.redirectedFrom, dup:""});
         }
         var imageLoadCompletions = [];
         var f = new finder.initURLSearch(imageURLs, {
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
-                        if(util.endsWith(dirEntry.url.toLowerCase(), ".svg")){
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image/svg+xml;');
-                        }else{
-                            uiUtil.feedNodeWithBlob($(imgNodes[index]), 'src', content, 'image');
-                        }
-                        var tmpnode = $('<span>', {class:"grid-item"});
-                        tmpnode.on('click', function(e) {
+                        // TODO lowercase bs push into checkType..
+                        checkTypeAndInject(dirEntry.url.toLowerCase(), $(imgNodes[index]), content)
+                        var wrapper = $('<span>', {class:"grid-item"});
+                        // TODO consolidate click handlers
+                        wrapper.on('click', function(e) {
                                 var decodedURL = decodeURIComponent(foundDirEntry.url);
                                 pushBrowserHistoryState(decodedURL);
                                 goToArticle(decodedURL);
                                 return false;
                         });
                         $("#articleContent").contents().find('.grid').append(
-                                tmpnode.append($(imgNodes[index])));
-                        console.log("img added "+foundDirEntry.title +" "+ dirEntry.url);
+                                wrapper.append($(imgNodes[index])));
+                        //console.log("img added "+foundDirEntry.offset+" "+ dirEntry.url);
                         //statusUpdate("Found pages:" + ResultSet.size + " images:"+imageLoadCompletions.length, "btn-info");
                     },function (){
                         console.error("Failed loading " + dirEntry.url );
@@ -1330,9 +1422,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 },*/
                 onAllWorkersCompletion: function(resultsCount){
                     Promise.all(imageLoadCompletions).then(function (){
-                        totalCount = totalCount + imageLoadCompletions.length;
-                        statusUpdate("Found pages:"+ ResultSet.size + " images:"+totalCount, "btn-success");
+                        totalImages = totalImages + imageLoadCompletions.length;
                         console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
+                        articlesMatchedProcessed++;
+                        console.log(totalFound, articlesMatchedProcessed, nonArticlesMatchedProcessed);
+                        if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
+                            searchDone(); 
                     });
                 }
             }, selectedArchive, module.config().mode, settings.workerCount 
