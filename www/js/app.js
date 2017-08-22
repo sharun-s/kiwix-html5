@@ -740,24 +740,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (settings.includeSnippet && snippetController)
             snippetController.processORAddToQueue(dirEntry);
     }
+
     var articleReadController;
     function fillImages(dirEntry){         
-        //var snip_id = dirEntry.redirect ? dirEntry.redirectTarget : dirEntry.cluster+"_"+dirEntry.blob;
-        //var deToString = dirEntry.offset + '|' + dirEntry.mimetype + '|' + dirEntry.namespace + '|' + dirEntry.cluster + '|' +dirEntry.blob + '|' + dirEntry.url + '|' + dirEntry.title + '|' + dirEntry.redirect + '|' + dirEntry.redirectTarget;
-        //var articleListDivHtml = "<a href='#' dirEntryId='" 
-        //+ deToString.replace(/'/g,"&apos;")
-        //+ "' class='list-group-item' style='padding:2px'>" + dirEntry.title; 
-        //if (dirEntry.hasOwnProperty("redirectedFrom")){
-        //    articleListDivHtml = articleListDivHtml + "<small style='color:red;'>("+dirEntry.redirectedFrom+")</small>"+"<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";       
-        //}else{
-        //    articleListDivHtml = articleListDivHtml + "<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";
-        //}
-        //$('#articleList').append(articleListDivHtml);
-        //if (settings.includeSnippet && snippetController)
         return new Promise(function (resolve, reject){
             if (dirEntry.namespace !== "A"){
                 console.log("WARNING: Skipping Non-Article returned by finder:" + dirEntry.namespace, dirEntry.url.slice(-3));
                 nonArticlesMatchedProcessed++;
+                // TODO: Should this be before or after the resolve?
                 if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
                     searchDone();
                 resolve();
@@ -770,7 +760,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
         });
     }
-
 
     /**
      * Search the index for DirEntries with title that start with the given prefix (implemented
@@ -798,7 +787,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 variantMatches.push([variant, matchCount, continueFromIndex]);
                                 totalFound = totalFound + matchCount;
                               },
-                              onAllWorkersCompletion: function(){
+                              onAllWorkersCompletion: function(allResults){
+                                // assert allResults.length against totalFound
                                 // TODO Is this the right way of updating the button and its handler?
                                 updateLoadMoreButton("Found:" +totalFound+ " Load More...");
                                 variantMatches.forEach((obj, i) => console.log(obj));
@@ -809,7 +799,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 //if(continueFrom)
                                 //    $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);
                               }
-                            }, selectedArchive, module.config().mode);//, settings.workerCount );
+                            }, selectedArchive, module.config().mode);
             if(continueFrom)
                 f.run({"continueFrom": continueFrom});
             else
@@ -832,6 +822,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         totalFound++;
         articleReadController.processORAddToQueue(dirEntry);
     }
+
     function searchInit(){
         ResultSet = new Map();
         totalFound = 0;
@@ -841,7 +832,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         variantMatches = [];
     }
     // TODO Remove Overlaps 
-    function keywordFinderDone(variant, matchCount, continueFromIndex){
+    function singleVariantDone(variant, matchCount, continueFromIndex){
         //$("#articleList a").on("click",handleTitleClick);
         variantMatches.push([variant, matchCount, continueFromIndex]);
         // It's possible processing of articles completes before the above code runs so recheck.
@@ -850,6 +841,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             searchDone();
         //totalFound = totalFound + matchCount;
     }
+    // BUG: end of search condition can cause searchDone to get called multiple times and before it actually done. Fix: Make displayImagesInFrame promise based.
     function searchDone(){
         // TODO Is this the right way of updating the button and its handler?
         // for keywordsearch - updateLoadMoreButton("Found:" +totalCount+ " Load More...");
@@ -862,9 +854,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             // TODO: for keywordsearch this is searchDirEntriesFromPrefix
             searchDirEntriesFromImagePrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
         });
+        console.timeEnd("ImageSearch Lookup+Inject+Load");
     }
 
     function searchDirEntriesFromImagePrefix(keyword, continueFrom) {
+        console.time("ImageSearch Lookup+Inject+Load");
         if(!continueFrom){
             resetUI();
             $("#articleContent").attr('src', "A/imageResults.html");
@@ -875,25 +869,24 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         //$("#articleContent").contents().scrollTop(0);            
         /* TODO Show Progress */
         statusUpdate("Searching...", "btn-warning")
-        ////var keyword = decodeURIComponent(prefix); 
+        //var keyword = decodeURIComponent(prefix); 
         if (selectedArchive !== null && selectedArchive.isReady()) {
             // used in processArticleForImages TODO refactor
-            articleReadController = new control.asyncJobQueue(5, fillImages);
+            articleReadController = new control.asyncJobQueue(settings.maxAsyncArticleReads, fillImages);
             var f = new finder.initKeywordSearch(keyword, settings.maxResults, {
                 onEachResult: processArticleForImages,
                 // NOTE: this just means title index lookup is done for one variant not UI update completion
-                onAllResults: keywordFinderDone
+                onAllResults: singleVariantDone
+                // onAllWorkerTODO: use to improve searchDone detection promise.all( all dislayinFrame resolved promises)
             }, selectedArchive, module.config().mode);
             if(continueFrom)
                 f.run({"continueFrom":continueFrom});
             else
                 f.run();
-            //selectedArchive.findDirEntriesAndContent(keyword, settings.maxResults, displayImagesInFrame);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            //alert("Archive not set : please select an archive");
             statusUpdate("Archive not set!");
             $("#btnConfigure").click();
         }
@@ -946,51 +939,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         });
     }
   
-    /**
-     * Display the list of articles with the given array of DirEntry
-     * @param {Array.<DirEntry>} dirEntryArray
-     * @param {Integer} maxArticles
-     */
-    /*
-    function populateListOfArticles(dirEntryArray, maxArticles) {       
-        var nbDirEntry = 0;
-        if (dirEntryArray) {
-            nbDirEntry = dirEntryArray.length;
-        }
-
-        var message;
-        if (maxArticles >= 0 && nbDirEntry >= maxArticles) {
-            message = maxArticles + " first articles below (refine your search).";
-        }
-        else {
-            message = nbDirEntry + " articles found.";
-        }
-        if (nbDirEntry === 0) {
-            message = "No articles found.";
-        }
-        statusUpdate(message, "btn-success");
-        
-        var articleListDiv = $('#articleList');
-        var articleListDivHtml = "";
-        for (var i = 0; i < dirEntryArray.length; i++) {
-            var dirEntry = dirEntryArray[i];
-            // HACK - won't work if more than one level of redirection
-            var snip_id = dirEntry.redirect ? dirEntry.redirectTarget : dirEntry.cluster+"_"+dirEntry.blob; 
-            articleListDivHtml += "<a href='#' dirEntryId='" 
-                    + dirEntry.toStringId().replace(/'/g,"&apos;")
-                    + "' class='list-group-item' style='padding:2px'>" + dirEntry.title 
-                    + "<strong> -- </strong><span class='small' id='"+ snip_id + "'></span></a>";
-        }
-        
-        // Get 3 snippets at a time
-        //control.asyncJobs(3, dirEntryArray, fillSnippet);
-        var controller = new control.asyncJobQueue(5, fillSnippet);
-        dirEntryArray.forEach((o) => controller.processORAddToQueue(o)); 
-        articleListDiv.html(articleListDivHtml);
-        $("#articleList a").on("click",handleTitleClick);
-        $('#articleList').show();
-    }
-    */
     /**
      * Handles the click on the title of an article in search results
      * @param {Event} event
@@ -1314,7 +1262,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                         if(controlledLoading)
                             p = controller.processORAddToQueue(index, dirEntry);
                         else
-                            // putting an await here will cause sequential blob read
                             p = injectImage(index, dirEntry); 
                         imageLoadCompletions.push(p);
                     },

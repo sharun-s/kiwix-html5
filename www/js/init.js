@@ -55,13 +55,16 @@ var appSettings = {
     initialImageLoad: 5, 
     maxAsyncImageReads: 3,
     // In above the fold mode i.e. "quick" mode workerCount+1 workers will run
-    workerCount: 2 
+    workerCount: 2, 
+    // ImageSearch
+    maxAsyncArticleReads: 2
 }
 // TODO: Since mode is passed to different modules. 
 // Anytime it changes it needs to be updated in each. How?
 require.config({
     baseUrl: 'js/lib',
-    config: {  'util':{mode: mode}, 
+    config: {  'util':{mode: mode},
+               'finder':{workerPath: 'dirEntryFinder.js'},  
              '../app':{mode: mode, settings: appSettings}
     },
     paths: {

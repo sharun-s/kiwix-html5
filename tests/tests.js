@@ -124,12 +124,10 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
         QUnit.test("ZIM archive is ready", function(assert) {
             assert.ok(localZimArchive.isReady() === true, "ZIM archive should be set as ready");
         });
-                
         QUnit.module("zim_direntry_search_and_read");
         QUnit.test("check DirEntry.fromStringId 'A Fool for You'", function(assert) {
             var done = assert.async();
             var aFoolForYouDirEntry = zimDirEntry.DirEntry.fromStringId(localZimArchive._file, "5856|7|A|0|2|A_Fool_for_You.html|A Fool for You|false|undefined");
-
             assert.expect(2);
             var callbackFunction = function(dirEntry, htmlArticle) {
                 assert.ok(htmlArticle && htmlArticle.length > 0, "Article not empty");
@@ -149,7 +147,9 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
                 done();
             };
-            localZimArchive.findDirEntriesWithPrefix('A', 5, callbackFunction);
+            //localZimArchive.findDirEntriesWithPrefix('A', 5, callbackFunction);
+            var f = new finder.initKeywordSearch('A', 5, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+            f.run();
         });
         QUnit.test("check findDirEntriesWithPrefix 'a'", function(assert) {
             var done = assert.async();            
@@ -160,7 +160,9 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
                 done();
             };
-            localZimArchive.findDirEntriesWithPrefix('a', 5, callbackFunction);
+            //localZimArchive.findDirEntriesWithPrefix('a', 5, callbackFunction);
+            var f = new finder.initKeywordSearch('a', 5, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+            f.run();
         });
         QUnit.test("check findDirEntriesWithPrefix 'blues brothers'", function(assert) {
             var done = assert.async();
@@ -168,10 +170,12 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
             var callbackFunction = function(dirEntryList) {
                 assert.ok(dirEntryList && dirEntryList.length === 3, "Article list with 3 result");
                 var firstDirEntry = dirEntryList[0];
-                assert.equal(firstDirEntry.title , 'Blues Brothers (film)', 'First result should be "Blues Brothers (film)"');
+                assert.equal(firstDirEntry.title , 'The Blues Brothers (film)', 'First result should be "Blues Brothers (film)"');
                 done();
             };
-            localZimArchive.findDirEntriesWithPrefix('blues brothers', 5, callbackFunction);
+            //localZimArchive.findDirEntriesWithPrefix('blues brothers', 5, callbackFunction);
+            var f = new finder.initKeywordSearch('blues brothers', 5, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+            f.run();
         });
         QUnit.test("article '(The Night Time Is) The Right Time' correctly redirects to 'Night Time Is the Right Time'", function(assert) {
             var done = assert.async();

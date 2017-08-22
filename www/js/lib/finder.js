@@ -20,7 +20,9 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['util'], function(util) {
+define(['util', 'module'], function(util, module) {
+    // this changes in test
+    var WORKERPATH = module.config().workerPath; 
 
     function finder(urllist, callbacks, archive, mode, workerCount){
         this.resultstrack=0;
@@ -55,7 +57,8 @@ define(['util'], function(util) {
         var that = this;
         var _startIndex = Math.floor(startIndex);
         return new Promise(function (resolve,reject){
-            var def = new Worker("dirEntryFinder.js");
+            // worker code is placed in the same location as server-worker so that tests.js work
+            var def = new Worker(WORKERPATH);
             def.onmessage = function (e) {
                 if(e.data[0] == "done" ){
                     resolve();
@@ -124,13 +127,14 @@ define(['util'], function(util) {
     }
     // Calling this titleFinder rather than keywordFinder as the lookups are using an Index built of Article Titles. Need to refactor to clarify where to use keyword, title and prefix. All have great potential of being applied all over if not clearly defined. Right now trying to adhere to - keyword = what is typed in search bar. prefix = matching algo. title where title index is being used.
     function titleFinder(keyword, maxResults, callbacks, archive, mode){
-        this.resultstrack=0;
+        this.allResults=[];
         this.workerCompletions = 0;
         this.keyword = keyword;
         this.variantCount = 0;
         this.maxResults = maxResults;
 
         this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
+        // TODO: Rename onAllResults and onAllWorkers to signal diff between on single variant done and on all variants done.
         this.onAllResults = callbacks.hasOwnProperty("onAllResults") ? callbacks["onAllResults"] : function (){};
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
 
@@ -167,7 +171,7 @@ define(['util'], function(util) {
         }
         Promise.all(allworkers).then(()=>{
             if(that.workerCompletions == that.variantCount)
-                that.onAllWorkersCompletion();
+                that.onAllWorkersCompletion(that.allResults);
             console.timeEnd("search")
         });
     }
@@ -175,7 +179,7 @@ define(['util'], function(util) {
     titleFinder.prototype.createDirEntryFinder = function(variant, continueFrom){
         var that = this;
         return new Promise(function (resolve,reject){
-            var def = new Worker("dirEntryFinder.js");
+            var def = new Worker(WORKERPATH);
             def.onmessage = function (e) {
                 if(e.data[0] == "done" ){                    
                     that.workerCompletions++;
@@ -188,7 +192,7 @@ define(['util'], function(util) {
                 }else{
                     //var index = e.data[0];                          
                     var dirEntry = e.data[0];
-                    that.resultstrack++;   
+                    that.allResults.push(dirEntry);   
                     that.onEachResult(dirEntry);                            
                 }
             };
