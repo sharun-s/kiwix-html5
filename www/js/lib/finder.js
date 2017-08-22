@@ -155,8 +155,14 @@ define(['util', 'module'], function(util, module) {
         var that = this;
         console.time("search");
         // on loadmore continue search only with the variant with the most matches
-        if(settings && settings.continueFrom){
-            var p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
+        if(settings){
+            var p;
+            if(settings.continueFrom && settings.noVariants)
+                p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
+            else if(settings.continueFrom)
+                p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
+            else
+                p = this.createDirEntryFinder(this.keyword);
             allworkers.push(p);
             this.variantCount = 1; 
         }else{

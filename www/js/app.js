@@ -149,7 +149,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // Both search bar key presses and submit button press handled here.
     $('#searchArticles').on('click', function(e) {
         resetUI();
-        pushBrowserHistoryState(null, $('#prefix').val());
+        pushBrowserHistoryState(null, {keyword:$('#prefix').val()});
         $("title").html($('#prefix').val());
         searchDirEntriesFromPrefix($('#prefix').val());
     });
@@ -494,12 +494,18 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             if(params["title"]){
                 pushBrowserHistoryState(params["title"]);
                 goToArticle(params["title"]);                
-            }else if(params["titleSearch"]){
+            }else if(params.hasOwnProperty("titleSearch")){
                 var keyword = decodeURIComponent(params["titleSearch"]);
-                pushBrowserHistoryState(null, keyword, null);
+                var continueFrom = parseInt(params["from"]);
+                var state = {"keyword":keyword, "continueFrom":continueFrom};
+                pushBrowserHistoryState(null, state, null);
                 $("title").html("Search Results for "+keyword);
+                searchInit();
                 // TODO set searchbar value to keyword ensuring it doesn't trigger keypress/form submit and god knows whatelse
-                searchDirEntriesFromPrefix(keyword);
+                if (continueFrom)
+                    searchDirEntriesFromPrefix(keyword, continueFrom);
+                else    
+                    searchDirEntriesFromPrefix(keyword);
             }else if(params["imageSearch"]){
                 var keyword = decodeURIComponent(params["imageSearch"]);
                 pushBrowserHistoryState(null, null, keyword);
@@ -541,10 +547,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             if (title && !(""===title)) {
                 goToArticle(title);
             }
-            else if (titleSearch && !(""===titleSearch)) {
-                $('#prefix').val(titleSearch);
-                $("title").html(titleSearch);
-                searchDirEntriesFromPrefix($('#prefix').val());
+            else if (titleSearch) {
+                $('#prefix').val(titleSearch.keyword);
+                $("title").html(titleSearch.keyword);
+                searchInit(); // when you pop old state should go
+                searchDirEntriesFromPrefix(titleSearch.keyword, titleSearch.continueFrom);
             }else if(imageSearch && !(""===imageSearch)){
                 //disable prefix change handler
                 //$('#prefix').val(imageSearch);
@@ -730,7 +737,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         + deToString.replace(/'/g,"&apos;")
         + "' class='list-group-item' style='padding:2px'>" + dirEntry.title; 
         if(dirEntry.namespace !== "A")
-            articleListDivHtml = articleListDivHtml + "<strong style='color:green;'>" +dirEntry.namespace+" "+ dirEntry.url.slice(-3)+" </strong>";
+            articleListDivHtml = articleListDivHtml + "<strong style='color:green;'>" +dirEntry.namespace+" "+ dirEntry.url+" </strong>";
         if (dirEntry.hasOwnProperty("redirectedFrom")){
             articleListDivHtml = articleListDivHtml + "<small style='color:red;'>("+dirEntry.redirectedFrom+")</small>"+"<strong style='color:blue;'> .. </strong><span class='small' id='"+ snip_id + "'></span></a>";       
         }else{
@@ -745,7 +752,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function fillImages(dirEntry){         
         return new Promise(function (resolve, reject){
             if (dirEntry.namespace !== "A"){
-                console.log("WARNING: Skipping Non-Article returned by finder:" + dirEntry.namespace, dirEntry.url.slice(-3));
+                console.log("WARNING: Skipping Non-Article returned by finder:" + dirEntry.namespace, dirEntry.url);
                 nonArticlesMatchedProcessed++;
                 // TODO: Should this be before or after the resolve?
                 if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
@@ -794,6 +801,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 variantMatches.forEach((obj, i) => console.log(obj));
                                 variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
                                 $("#loadmore").on('click', function(e) {
+                                    pushBrowserHistoryState(null, { keyword:variantWithMostMatches[0], continueFrom:variantWithMostMatches[2] });
+                                    $("title").html("Keyword:"+ variantWithMostMatches[0] +" FromIndex:"+ variantWithMostMatches[2]);
                                     searchDirEntriesFromPrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
                                 });
                                 //if(continueFrom)
@@ -803,7 +812,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             if(continueFrom)
                 f.run({"continueFrom": continueFrom});
             else
-                f.run();
+                f.run({"noVariants":true});
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -1402,10 +1411,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             urlParameters = "?title=" + title + appendArchive;
             stateLabel = "Article : " + title;
         }
-        else if (titleSearch && !(""===titleSearch)) {
+        else if (titleSearch) {
             stateObj.titleSearch = titleSearch;
-            urlParameters = "?titleSearch=" + titleSearch + appendArchive;
-            stateLabel = "Keyword search : " + titleSearch;
+            urlParameters = "?titleSearch=" + titleSearch.keyword + appendArchive;
+            if (titleSearch.continueFrom)
+                urlParameters = urlParameters + "&from=" + titleSearch.continueFrom;
+            stateLabel = "Keyword search : " + titleSearch.keyword;
         }
         else if (imageSearch && !(""===imageSearch)) {
             stateObj.imageSearch = imageSearch;
