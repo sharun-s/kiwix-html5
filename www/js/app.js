@@ -37,6 +37,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     var matchoptions = document.getElementsByName("match");
     function setMatchFn(event){
         searchContext.match = event.target.value;
+        $("#filterDropDown").dropdown("toggle");        
         console.log("MATCHER: " + searchContext.match);
     }
     for(var i = 0; i < matchoptions.length ; i++)
@@ -176,6 +177,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         searchDirEntriesFromImagePrefix($('#prefix').val());
     });
     $('#formArticleSearchnew').on('submit', function(e) {
+        document.getElementById("searchArticles").click();
+        return false;
+    });
+    $('#filters').on('submit', function(e){
+        searchContext.from = parseInt($("#from").val());
+        searchContext.upto = parseInt($("#upto").val());
+        $("#filterDropDown").dropdown("toggle");
         document.getElementById("searchArticles").click();
         return false;
     });
@@ -548,7 +556,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     function setupSearchUI(ctx){
         //$('#prefix').val(ctx.keyword);
         $("#from").val(ctx.from);
-        $("#traverse").val(ctx.upto);
+        $("#upto").val(ctx.upto);
         $("#caseSensitive").prop("checked", ctx.caseSensitive);
         $('input:radio[name=match]').prop('checked', false);
         $('input:radio[name=match]').filter('[value="' + ctx.match + '"]').prop('checked', true);
@@ -558,7 +566,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     window.onpopstate = function(event) {
         if (event.state) {
             var title = event.state.title;
-            var searchCtx = event.state.searchCtx;
+            var searchCtx = event.state.titleSearch;
             var imageSearch = event.state.imageSearch;
             
             resetUI();
@@ -566,7 +574,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             if (title && !(""===title)) {
                 goToArticle(title);
             }
-            else if (titleSearch) {
+            else if (searchCtx) {
                 searchContext = searchCtx;
                 $("title").html("Search Results for " + searchContext.keyword);
                 // whenever keyword resets loadmore has to reset.
@@ -824,6 +832,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 searchContext.keyword = variantWithMostMatches[0];
                                 searchContext.loadmore = true;
                                 searchContext.from = variantWithMostMatches[2];
+                                $("#from").val(searchContext.from);
                                 if(allResults.length == 0 || totalFound == 0){
                                     statusUpdate("Nothing Matched!");
                                     return;    
@@ -1435,9 +1444,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         }
         else if (titleSearch) {
             stateObj.titleSearch = titleSearch;
-            urlParameters = "?titleSearch=" + titleSearch.keyword + appendArchive;
-            if (titleSearch.continueFrom)
-                urlParameters = urlParameters + "&from=" + titleSearch.continueFrom;
+            urlParameters = "?titleSearch=" + titleSearch.keyword + "&from=" + titleSearch.from +"&upto=" + titleSearch.upto + "&match=" + titleSearch.match + appendArchive;
             stateLabel = "Keyword search : " + titleSearch.keyword;
         }
         else if (imageSearch && !(""===imageSearch)) {

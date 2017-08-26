@@ -54,7 +54,7 @@
                                     <button id="btnHome" type="button" class="btn btn-default">
                                     <img src="./img/icons/kiwix-19.png"/>
                                     </button>
-                                <button type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-filter small"></span> <span class="caret small"></span></button>
+                                <button id="filterDropDown" type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-filter small"></span> <span class="caret small"></span></button>
                                 <ul class="dropdown-menu">
                                   <li class="disabled small"><a href="#">Use URL Index</a></li>
                                   <li class="active small"><a href="#">Use Title Index</a></li>
@@ -75,8 +75,9 @@
                                   </li>
                                   <li class="input-group xs">
                                         <span class="input-group-addon" style="padding:2px 20px;font-size:12px;text-align:left;border-radius:0px 0px 0px 0px;" id="traverse-addon">Traverse Upto</span>
-                                        <input type="text" class="form-control" style="border-radius:0px 0px 4px 4px;" id="traverse" form="filters" aria-describedby="traverse-addon"></input>
+                                        <input type="text" class="form-control" style="border-radius:0px 0px 4px 4px;" id="upto" form="filters" aria-describedby="traverse-addon"></input>
                                   </li>
+                                  <input type="submit" form="filters" style="display:none;" />
                                 </ul>    
                                 </span>
                                 <input type="search" id="prefix" placeholder="Search..." 
