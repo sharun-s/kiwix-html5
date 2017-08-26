@@ -29,21 +29,27 @@ var isFirefox = typeof InstallTrigger !== 'undefined';
 
 // This value decides what "read" functions modules expose. 
 // Reads may be File based or XHR based.
-var mode = params['mode'] || "file";
-if (isFirefox && (mode !== "file")) {
-    mode = "xhrFF";
+var mode = params['mode'] || 'file';
+if (isFirefox && (mode !== 'file')) {
+    mode = 'xhrFF';
 };
 // If archive has been specified in URL always default to xhr mode as File object can't be created
-if (params["archive"] && mode === "file") {
+if (params['archive'] && mode === 'file') {
     if(isFirefox)
-        mode = "xhrFF";
+        mode = 'xhrFF';
     else
-        mode = "xhr";
+        mode = 'xhr';
 };
+
+// Convert string to bool if params["case"] exists else default to true
+var caseSense = params.hasOwnProperty('case') ? params['case'] == 'true'  : true;
 
 var appSettings = {
     // Search Settings
-    maxResults : params['results'] || 10,
+    maxResults : parseInt(params['upto']) || 10,
+    from: parseInt(params['from']) || 0,
+    match: params['match'] || 'PrefixAndArticleMatch',
+    caseSensitive: caseSense,
     // if false user has to hit enter or press the search button after typing
     autoComplete : false,
     autoCompleteResubmitTimer: 700,

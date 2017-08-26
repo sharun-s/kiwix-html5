@@ -4,7 +4,7 @@
 var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
 var imageArray, keyword, maxResults, matcherfn;
 //Comment out to disable logs and timing    
-console.log = function(){}     
+//console.log = function(){}     
 console.time = function(){};
 console.timeEnd =function(){};
 
@@ -315,8 +315,13 @@ function resolveRedirect(dirEntry, callback) {
 function getNextN(firstIndex) {
     //console.count(keyword);
     var next = function(index) {
-        if (index >= firstIndex + maxResults || index >= articleCount){
+        if (index >= firstIndex + maxResults){
             postMessage(["done", matchesFound, index]);//signals end of search for this prefix variant;
+            return;
+        }
+
+        if(index >= articleCount){
+            postMessage(["done", matchesFound, undefined]);
             return;
         }
 
@@ -354,7 +359,19 @@ function matchAndIncrement(dirEntry, index){
     return index + 1;
 }
 
+// DirEntry being read is passed to one of these matcherfn's
+// Matcherfn returns true on match and false on no match
+// Right now user specified keyword is global in the worker context and can be used within the function
+// Matching doesn't need to rely on keyword. Can be based on namespace, file extn, size, dimensions, regex etc. 
+// TODO Searchbar can/should provide a mechanism for UI (either thro spl reserved keywords or buttons/dropdowns) to pick the reqd matcherfn
+matcherTable = {
+    'PrefixAndArticleMatch' : PrefixAndArticleMatch,
+    'SubstringMatch' : IncludeMatch,
+    'All' : function MatchEverything(){return true},
+    'NoMatch' : function NoMatch(){return false}
+}
 // TODO how much further should iteration continue if no match at all - in case of non prefix matching makes sense to continue till max_iteration_count|max_results|articleCount
+// For case variants that are not showing any matches no need to keep traversing. 
 function PrefixAndArticleMatch(dirEntry) {
     if (dirEntry.hasOwnProperty("redirectedFrom")){
         if ( dirEntry.redirectedFrom.slice(0, keyword.length) === keyword && dirEntry.title.slice(0, keyword.length) === keyword && dirEntry.namespace === "A" ){
@@ -389,14 +406,14 @@ function IncludeMatch(dirEntry) {
     return dirEntry.title.includes(keyword);
 }
 
-var matchesFound;
+var matchesFound, loadmore;
 function initKeywordSearch(index){
     matchesFound = 0;
     loadingCache = new Map();
     // finder is requesting start search from index. If index not given, do a binarySearch with keyword to locate it.
-    if (index){
-        console.log("continuing from: " + index);
-        //debugger;
+    if (loadmore || keyword == ""){
+        console.log("from: " + index);
+        
         //dirEntryByTitleIndex(index).then(getNextN);
         // NOTE: NO NAMESPACE CHECK HAPPENS HERE - CAREFUL!!
         getNextN(index);
@@ -452,20 +469,12 @@ onmessage = function(e) {
       }else{
         readSlice = readXHRSlice;
       }
-      // Allows the user to traverse the index without any matching i.e. every direntry is returned
-      if (keyword == ""){
-        if(e.data[8])
-            matcherfn = PrefixAndArticleMatch;
-        else
-            matcherfn = function returnEverything(){return true;}//undefined;
-      }else{
-        matcherfn = PrefixAndArticleMatch;// IncludeMatch;  
-      }
+      matcherfn = matcherTable[e.data[8]];
       console.log("MATCHER: " + matcherfn.name);
-      // Check if an index has been passed. If start titleindex traversal from that index.
-      if(e.data[7]){ 
-        initKeywordSearch(e.data[7]);
-      }else
-        initKeywordSearch();
+      loadmore = e.data[9];
+      // e.data[7] from index
+      //debugger;
+      initKeywordSearch(e.data[7]);
+      
     }
 }

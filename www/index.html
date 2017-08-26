@@ -44,45 +44,10 @@
         <section id="search-article" role="region">
             <header id="top">
                 <nav role="navigation">
-                    <!-- Still useful as a reference if navbar toggle is required 
-                    <div class="navbar-header">
-                        <button type="button" id="navbarToggle"  
-                        class="navbar-toggle btn btn-default" data-toggle="collapse" data-target=".navbar-ex1-collapse">
-                          <span class="sr-only">Toggle navigation</span>
-                          <span class="icon-bar"></span>
-                          <span class="icon-bar"></span>
-                          <span class="icon-bar"></span>
-                        </button>
-                        <form id="formArticleSearchnew" role="search" >
-                            <span class="input-group">
-                                <span class="input-group-btn">
-                                    <button id="btnHome" class="btn btn-default">
-                                    <img src="./img/icons/kiwix-19.png"/> 2.2-WIP
-                                    </button>
-                                </span>
-                                <input type="search" id="prefix" placeholder="Search..." 
-                                class="form-control" />
-                                <span class="input-group-btn">
-                                    <a class="btn btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
-                                    <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
-                                </span>
-                            </span>
-                        </form>
-                    </div>
-                    <div class="navbar-nav">
-                        <div class="collapse navbar-collapse navbar-ex1-collapse">
-                            <span class="btn-group" role="group">
-                              <a href="#" class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
-                              <a href="#" class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>
-                              <a href="#" class="btn btn-default" title="About" id="btnAbout"><span class="glyphicon glyphicon-info-sign"></span></a>
-                            </span>
-                        </div>
-                    </div> -->
-                    <!-- Collect the nav links, forms, and other content for toggling -->
-                    <!-- /.navbar-collapse -->
-                    <!-- Issue here is for some small screens search bar can get small. Can be handled by shrinking buttons collapse. 
+                    <!-- Issue here is for some small screens search bar can get small. Can be handled by shrinking buttons collapse. Refer git history for sample code.
                     Use "container" in div to center the toolbar if reqd --> 
                     <div class="">
+                        <form id="filters"></form>
                         <form id="formArticleSearchnew">
                             <span class="input-group">
                                 <span class="input-group-btn">
@@ -91,17 +56,27 @@
                                     </button>
                                 <button type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-filter small"></span> <span class="caret small"></span></button>
                                 <ul class="dropdown-menu">
-                                  <li><a href="#">Keyword - URL Prefix</a></li>
-                                  <li class="active"><a href="#">Keyword - Title Prefix</a></li>
-                                  <li ><a href="#">Keyword - Anywhere<small>(Brute Force)</small></a></li>
+                                  <li class="disabled small"><a href="#">Use URL Index</a></li>
+                                  <li class="active small"><a href="#">Use Title Index</a></li>
+                                  <li class="disabled small"><a href="#">Use Title Index<small>(Brute Force)</small></a></li>
                                   <li role="separator" class="divider"></li>
-                                  <li class="small"><a href="#">Content - Only Articles</a></li>
-                                  <li class="small"><a href="#">Content - Only Images</a></li>
-                                  <li class="small"><a href="#">Content - Everything</a></li>
-                                  <li role="separator" class="divider"></li>
-                                  <li class="small"><a style="color:red;" href="#">Case Sensitive - No Variants</a></li>
-                                  <li class="small"><a style="color:green;" href="#">Resolve Redirects</a></li>
+                                  <!-- values of the "match" group below should be the same as values in dirEntryFinder.js matcherTable until better impl in place. Anything added there should be added here-->
+                                  <li class="small"><input value="PrefixAndArticleMatch" type="radio" form="filters" name="match" checked>PrefixMatch</input></li>
+                                  <li class="small"><input value="SubstringMatch" type="radio" form="filters" name="match"></input>SubstringMatch</li>
+                                  <li class="small"><input value="All" type="radio" name="match" form="filters">Return All</input></li>
+                                  <li class="small"><input value="NoMatch" type="radio" form="filters" name="match">Return None - Perf Test</input></li>
+                                  <li class="small"><input type="checkbox" id="caseSensitive" form="filters" style="color:blue;" >Case Sensitive - No Variants</a></li>
+                                  <li class="small"><a style="color:blue;" href="#">Resolve Redirects</a></li>
                                   <li class="small"><a href="#">Remove Dups</a></li>
+                                  <!--<li role="seperator" class="divider"></li>-->
+                                  <li class="input-group">
+                                        <span class="input-group-addon primary" style="padding:2px 20px;font-size:12px;border-radius:4px 4px 0px 0px;text-align:left;" form="filters" id="fromindex-addon">Start From</span>
+                                        <input type="text" class="form-control" style="width:100%;border:1px solid #ccc;border-radius:0px 0px 0px 0px;" id="from" form="filters" aria-describedby="fromindex-addon"></input>
+                                  </li>
+                                  <li class="input-group xs">
+                                        <span class="input-group-addon" style="padding:2px 20px;font-size:12px;text-align:left;border-radius:0px 0px 0px 0px;" id="traverse-addon">Traverse Upto</span>
+                                        <input type="text" class="form-control" style="border-radius:0px 0px 4px 4px;" id="traverse" form="filters" aria-describedby="traverse-addon"></input>
+                                  </li>
                                 </ul>    
                                 </span>
                                 <input type="search" id="prefix" placeholder="Search..." 

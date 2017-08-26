@@ -125,52 +125,49 @@ define(['util', 'module'], function(util, module) {
             this.createDirEntryFinder(0, this.urlArray.length);
         }                
     }
-    // Calling this titleFinder rather than keywordFinder as the lookups are using an Index built of Article Titles. Need to refactor to clarify where to use keyword, title and prefix. All have great potential of being applied all over if not clearly defined. Right now trying to adhere to - keyword = what is typed in search bar. prefix = matching algo. title where title index is being used.
-    function titleFinder(keyword, maxResults, callbacks, archive, mode){
+    // Calling this titleFinder rather than keywordFinder as the lookups are using an Index built of Article Titles. 
+    // keyword = what is typed in search bar. prefix = matching algo. title where title index is being used. variant - case variations of the keyword
+    // Results are collected onEachResult in the allResults array and passed back in the onAllWorkersCompletion callback
+    // NOTE: onEach and onAll will be called for EACH variant, 
+    // if searchContext.caseSensitive = false, for each case variantion of the keyword one worker will be started.
+    // if searchContext.caseSensitiva = true, only one worker is created.
+    // Use the callbacks depending on how finder return value need to be processed 
+    function titleFinder(searchContext, callbacks, archive, mode){
         this.allResults=[];
         this.workerCompletions = 0;
-        this.keyword = keyword;
+        this.ctx = searchContext;
         this.variantCount = 0;
-        this.maxResults = maxResults;
 
+        // This will be called with 1 param - the dirEntry found
         this.onEachResult = callbacks.hasOwnProperty("onEachResult") ? callbacks["onEachResult"] : function (){};
-        // TODO: Rename onAllResults and onAllWorkers to signal diff between on single variant done and on all variants done.
+        // This will be called with 3 params - keyword, matchesCount, last examined index
         this.onAllResults = callbacks.hasOwnProperty("onAllResults") ? callbacks["onAllResults"] : function (){};
+        // This will be called when all workers are done with 1 param - allResults
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
 
         this.file = archive._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
         this.titlePtrPos = archive._file.titlePtrPos;
-        this.mode = mode;        
+        this.mode = mode;
+        this.run();        
     }
 
-    //titleFinder.prototype.run = function(settings){
-        // start a worker for each keyword variant
-    //    this.startWorkers(); 
-    //};
-
-    titleFinder.prototype.run = function(settings){
+    // TODO Keeping run seperate from init to test perf cases where worker can be kept alive to handle loadmore vs starting a new worker each time
+    titleFinder.prototype.run = function(){
         var allworkers=[], prefixVariants=[];
-        var that = this;
+        var that = this; 
         console.time("search");
-        // on loadmore continue search only with the variant with the most matches
-        if(settings){
-            var p;
-            if(settings.continueFrom && settings.noVariants)
-                p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
-            else if(settings.continueFrom)
-                p = this.createDirEntryFinder(this.keyword, settings.continueFrom);
-            else
-                p = this.createDirEntryFinder(this.keyword);
+        if(this.ctx.caseSensitive){
+            var p = this.createDirEntryFinder(this.ctx.keyword);
             allworkers.push(p);
             this.variantCount = 1; 
         }else{
             prefixVariants = util.removeDuplicateStringsInSmallArray([ 
-                util.ucFirstLetter(this.keyword), 
-                util.lcFirstLetter(this.keyword), 
-                util.ucEveryFirstLetter(this.keyword),
-                this.keyword]);
+                util.ucFirstLetter(this.ctx.keyword), 
+                util.lcFirstLetter(this.ctx.keyword), 
+                util.ucEveryFirstLetter(this.ctx.keyword),
+                this.ctx.keyword]);
             console.log(prefixVariants);
             this.variantCount = prefixVariants.length;
             allworkers = prefixVariants.map((p) => this.createDirEntryFinder(p));            
@@ -182,7 +179,7 @@ define(['util', 'module'], function(util, module) {
         });
     }
 
-    titleFinder.prototype.createDirEntryFinder = function(variant, continueFrom){
+    titleFinder.prototype.createDirEntryFinder = function(variant){
         var that = this;
         return new Promise(function (resolve,reject){
             var def = new Worker(WORKERPATH);
@@ -196,21 +193,18 @@ define(['util', 'module'], function(util, module) {
                     that.onAllResults(variant, e.data[1], e.data[2]);
                     resolve();
                 }else{
-                    //var index = e.data[0];                          
                     var dirEntry = e.data[0];
                     that.allResults.push(dirEntry);   
                     that.onEachResult(dirEntry);                            
                 }
             };
-            var msg =[ that.file, 
-                that.articleCount, 
-                that.urlPtrPos,
-                that.titlePtrPos,
-                variant,
-                that.maxResults, 
-                that.mode];
-            if(continueFrom)
-                msg.push(continueFrom); 
+            var msg =[that.file, that.articleCount, that.urlPtrPos, that.titlePtrPos,
+                        variant,
+                        that.ctx.upto, 
+                        that.mode,
+                        that.ctx.from,
+                        that.ctx.match, 
+                        that.ctx.loadmore ];
             def.postMessage(msg);
         });
     }

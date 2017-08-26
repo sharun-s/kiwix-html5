@@ -30,6 +30,19 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
  function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
 
     var settings = module.config().settings;
+    // Setup the default search context and search UI
+    var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
+    setupSearchUI(searchContext);
+
+    var matchoptions = document.getElementsByName("match");
+    function setMatchFn(event){
+        searchContext.match = event.target.value;
+        console.log("MATCHER: " + searchContext.match);
+    }
+    for(var i = 0; i < matchoptions.length ; i++)
+        matchoptions[i].addEventListener("change" , setMatchFn);
+    var caseSense = document.getElementById('caseSensitive')
+    caseSense.addEventListener("change", function(event){searchContext.caseSensitive = event.target.checked; console.log("CASE: " + searchContext.caseSensitive);})
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -149,9 +162,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     // Both search bar key presses and submit button press handled here.
     $('#searchArticles').on('click', function(e) {
         resetUI();
-        pushBrowserHistoryState(null, {keyword:$('#prefix').val()});
-        $("title").html($('#prefix').val());
-        searchDirEntriesFromPrefix($('#prefix').val());
+        searchContext.keyword = $('#prefix').val();
+        // newkeyword so loadmore must be reset.
+        searchContext.loadmore = false;
+        pushBrowserHistoryState(null, searchContext);
+        $("title").html("Searching for" + searchContext.keyword);
+        searchInit();
+        search();
     });
     $('#searchImages').on('click', function(e) {
         pushBrowserHistoryState(null, null, $('#prefix').val());
@@ -159,7 +176,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         searchDirEntriesFromImagePrefix($('#prefix').val());
     });
     $('#formArticleSearchnew').on('submit', function(e) {
-        //console.count("formsubmit");
         document.getElementById("searchArticles").click();
         return false;
     });
@@ -495,17 +511,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 pushBrowserHistoryState(params["title"]);
                 goToArticle(params["title"]);                
             }else if(params.hasOwnProperty("titleSearch")){
-                var keyword = decodeURIComponent(params["titleSearch"]);
-                var continueFrom = parseInt(params["from"]);
-                var state = {"keyword":keyword, "continueFrom":continueFrom};
-                pushBrowserHistoryState(null, state, null);
-                $("title").html("Search Results for "+keyword);
-                searchInit();
-                // TODO set searchbar value to keyword ensuring it doesn't trigger keypress/form submit and god knows whatelse
-                if (continueFrom)
-                    searchDirEntriesFromPrefix(keyword, continueFrom);
-                else    
-                    searchDirEntriesFromPrefix(keyword);
+                searchContext.keyword = decodeURIComponent(params["titleSearch"]);
+                $("#prefix").val(searchContext.keyword);
+                $("title").html("Search Results for " + searchContext.keyword);
+                pushBrowserHistoryState(null, searchContext, null);
+                searchInit(); // init results, variants, totalFound 
+                search();
             }else if(params["imageSearch"]){
                 var keyword = decodeURIComponent(params["imageSearch"]);
                 pushBrowserHistoryState(null, null, keyword);
@@ -534,12 +545,20 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
 	    }
     }
 
+    function setupSearchUI(ctx){
+        //$('#prefix').val(ctx.keyword);
+        $("#from").val(ctx.from);
+        $("#traverse").val(ctx.upto);
+        $("#caseSensitive").prop("checked", ctx.caseSensitive);
+        $('input:radio[name=match]').prop('checked', false);
+        $('input:radio[name=match]').filter('[value="' + ctx.match + '"]').prop('checked', true);
+    }
 
     // Display the article when the user goes back in the browser history
     window.onpopstate = function(event) {
         if (event.state) {
             var title = event.state.title;
-            var titleSearch = event.state.titleSearch;
+            var searchCtx = event.state.searchCtx;
             var imageSearch = event.state.imageSearch;
             
             resetUI();
@@ -548,10 +567,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 goToArticle(title);
             }
             else if (titleSearch) {
-                $('#prefix').val(titleSearch.keyword);
-                $("title").html(titleSearch.keyword);
-                searchInit(); // when you pop old state should go
-                searchDirEntriesFromPrefix(titleSearch.keyword, titleSearch.continueFrom);
+                searchContext = searchCtx;
+                $("title").html("Search Results for " + searchContext.keyword);
+                // whenever keyword resets loadmore has to reset.
+                searchContext.loadmore = false;
+                setupSearchUI(searchContext);
+                searchInit(); // when you pop old state should go - results, variants, total found 
+                search();
             }else if(imageSearch && !(""===imageSearch)){
                 //disable prefix change handler
                 //$('#prefix').val(imageSearch);
@@ -774,8 +796,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} prefix
      */
     var totalFound, totalImages, articlesMatchedProcessed, nonArticlesMatchedProcessed; 
-    function searchDirEntriesFromPrefix(keyword, continueFrom) {
-        if(!continueFrom){
+    function search() {
+        //continueFrom = 58370334; //continueFrom;
+        //filter = "MatchAnywhere";
+        if(searchContext.loadmore){
             resetUI();
             searchInit();
         }
@@ -787,7 +811,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (selectedArchive !== null && selectedArchive.isReady()) {
             if (settings.includeSnippet)
                 snippetController = new control.asyncJobQueue(settings.maxAsyncSnippetReads, fillSnippet);
-            var f = new finder.initKeywordSearch(keyword.trim(), settings.maxResults, 
+            var f = new finder.initKeywordSearch(searchContext, 
                             { onEachResult: fillResult, 
                               onAllResults: function (variant, matchCount, continueFromIndex){
                                 $("#articleList a").on("click",handleTitleClick);
@@ -795,24 +819,27 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                                 totalFound = totalFound + matchCount;
                               },
                               onAllWorkersCompletion: function(allResults){
-                                // assert allResults.length against totalFound
-                                // TODO Is this the right way of updating the button and its handler?
-                                updateLoadMoreButton("Found:" +totalFound+ " Load More...");
                                 variantMatches.forEach((obj, i) => console.log(obj));
                                 variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
+                                searchContext.keyword = variantWithMostMatches[0];
+                                searchContext.loadmore = true;
+                                searchContext.from = variantWithMostMatches[2];
+                                if(allResults.length == 0 || totalFound == 0){
+                                    statusUpdate("Nothing Matched!");
+                                    return;    
+                                }
+                                // assert allResults.length against totalFound
+                                updateLoadMoreButton("Found:" +totalFound+ " Load More...");
                                 $("#loadmore").on('click', function(e) {
-                                    pushBrowserHistoryState(null, { keyword:variantWithMostMatches[0], continueFrom:variantWithMostMatches[2] });
+                                    pushBrowserHistoryState(null, searchContext);
+                                    $("#prefix").val(searchContext.keyword);
                                     $("title").html("Keyword:"+ variantWithMostMatches[0] +" FromIndex:"+ variantWithMostMatches[2]);
-                                    searchDirEntriesFromPrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
+                                    search();
                                 });
                                 //if(continueFrom)
                                 //    $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);
                               }
                             }, selectedArchive, module.config().mode);
-            if(continueFrom)
-                f.run({"continueFrom": continueFrom});
-            else
-                f.run({"noVariants":true});
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -859,14 +886,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // ResultSet.forEach((v,k) =>{ console.log(k); console.log(v.images.length, v.redirectedFrom, v.dup);})
         variantMatches.forEach((obj, i) => console.log(obj));
         var variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
-        $("#loadmore").on('click', function(e) {
-            // TODO: for keywordsearch this is searchDirEntriesFromPrefix
+        $("#loadmore").on('click', function(e) {            
             searchDirEntriesFromImagePrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
         });
         console.timeEnd("ImageSearch Lookup+Inject+Load");
     }
 
-    function searchDirEntriesFromImagePrefix(keyword, continueFrom) {
+    function searchForImages() {
         console.time("ImageSearch Lookup+Inject+Load");
         if(!continueFrom){
             resetUI();
@@ -882,16 +908,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (selectedArchive !== null && selectedArchive.isReady()) {
             // used in processArticleForImages TODO refactor
             articleReadController = new control.asyncJobQueue(settings.maxAsyncArticleReads, fillImages);
-            var f = new finder.initKeywordSearch(keyword, settings.maxResults, {
+            var f = new finder.initKeywordSearch(searchContext, {
                 onEachResult: processArticleForImages,
                 // NOTE: this just means title index lookup is done for one variant not UI update completion
                 onAllResults: singleVariantDone
                 // onAllWorkerTODO: use to improve searchDone detection promise.all( all dislayinFrame resolved promises)
             }, selectedArchive, module.config().mode);
-            if(continueFrom)
-                f.run({"continueFrom":continueFrom});
-            else
-                f.run();
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -1480,6 +1502,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         archiveStatusUpdate();
         selectedArchive.getMainPageDirEntry(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
+                statusUpdate("Error finding main article.");
                 console.error("Error finding main article.");
             }
             else {
@@ -1488,6 +1511,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     injectContent(dirEntry);
                 }
                 else {
+                    statusUpdate("The main page of this archive does not seem to be an article");
                     console.error("The main page of this archive does not seem to be an article");
                 }
             }
