@@ -29,21 +29,11 @@
 define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
  function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
 
-    var settings = module.config().settings;
+    var settings  = module.config().settings;
+    var READ_MODE = module.config().mode;
     // Setup the default search context and search UI
     var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
     setupSearchUI(searchContext);
-
-    var matchoptions = document.getElementsByName("match");
-    function setMatchFn(event){
-        searchContext.match = event.target.value;
-        $("#filterDropDown").dropdown("toggle");        
-        console.log("MATCHER: " + searchContext.match);
-    }
-    for(var i = 0; i < matchoptions.length ; i++)
-        matchoptions[i].addEventListener("change" , setMatchFn);
-    var caseSense = document.getElementById('caseSensitive')
-    caseSense.addEventListener("change", function(event){searchContext.caseSensitive = event.target.checked; console.log("CASE: " + searchContext.caseSensitive);})
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -54,7 +44,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         console.log("jQuery tried to run some javascript with eval(), which is not allowed in packaged applications");
     };
 
-    //$.getJSON( "library-1617-en.json", function( data ) {
+    // Download link setup for the config page from latest archive library
     $.getJSON( "library8Aug2017-1617-en.json", function( data ) {    
         // Add links to ZIM on disk. Onclick change selected archive
         var onDisk = zimArchiveLoader.onDiskMatches(data);
@@ -136,6 +126,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             var name = selectedArchive._file._files[0].name;
             if(name && name !=="undefined")
                 statusUpdate(selectedArchive._file._files[0].name, "bg-success");
+            else
+                throw {name:"KiwixError", message:"Unknown Archive"}; 
         }catch (e){
             statusUpdate("Archive not set!!", "btn-danger");
             //throw {name:"KiwixError", message:"Archive Undefined"};    
@@ -159,26 +151,42 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             }
         }
     }
-
     // Both search bar key presses and submit button press handled here.
     $('#searchArticles').on('click', function(e) {
         resetUI();
         searchContext.keyword = $('#prefix').val();
-        // newkeyword so loadmore must be reset.
+        // new search so loadmore must be reset.
         searchContext.loadmore = false;
         pushBrowserHistoryState(null, searchContext);
-        $("title").html("Searching for" + searchContext.keyword);
+        $("title").html("Searching for " + searchContext.keyword);
         searchInit();
         search();
     });
     $('#searchImages').on('click', function(e) {
-        pushBrowserHistoryState(null, null, $('#prefix').val());
-        $("title").html($('#prefix').val());
-        searchDirEntriesFromImagePrefix($('#prefix').val());
+        searchContext.keyword = $('#prefix').val();
+        // new search so loadmore must be reset.
+        searchContext.loadmore = false;
+        pushBrowserHistoryState(null, null, searchContext.keyword);
+        $("title").html("ImageSearch for " + searchContext.keyword);
+        searchForImages();
     });
     $('#formArticleSearchnew').on('submit', function(e) {
         document.getElementById("searchArticles").click();
         return false;
+    });
+    // Setup search options UI handlers
+    var matchoptions = document.getElementsByName("match");
+    function setMatchFn(event){
+        searchContext.match = event.target.value;
+        $("#filterDropDown").dropdown("toggle");        
+        console.log("MATCHER: " + searchContext.match);
+    }
+    for(var i = 0; i < matchoptions.length ; i++)
+        matchoptions[i].addEventListener("change" , setMatchFn);
+    var caseSense = document.getElementById('caseSensitive')
+    caseSense.addEventListener("change", function(event){
+        searchContext.caseSensitive = event.target.checked; 
+        //console.log("CASE: " + searchContext.caseSensitive);
     });
     $('#filters').on('submit', function(e){
         searchContext.from = parseInt($("#from").val());
@@ -231,13 +239,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     });
     // Top menu :
     $('#btnHome').on('click', function(e) {
-        // Highlight the selected section in the navbar
-        /*$('#liHomeNav').attr("class","active");
-        $('#liConfigureNav').attr("class","");
-        $('#liAboutNav').attr("class","");
-        if ($('#navbarToggle').is(":visible") && $('#liHomeNav').is(':visible')) {
-            $('#navbarToggle').click();
-        }*/
         // Show the selected content in the page
         resetUI();
         $('#formArticleSearch').show();
@@ -267,7 +268,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         $("title").html("Kiwix");
         resetUI();
         $('#about').show();
-        statusUpdate("");
+        // TODO: Not reqd each time - store it statically once about/help page settles
+        setupTableOfContents(document.getElementById("about"));
         return false;
     });
     $('input:radio[name=contentInjectionMode]').on('change', function(e) {
@@ -486,7 +488,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             return new abstractFilesystemAccess.StorageFirefoxOS(s);
         });
     }
-
+    // Video test on wiki-en-2016-12
     async function loadVid(){
         var url = decodeURIComponent('I/m/-Pluto-FlyoverAnimation-20150918.webm.jpg');
         //console.log(url); 
@@ -526,10 +528,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 searchInit(); // init results, variants, totalFound 
                 search();
             }else if(params["imageSearch"]){
-                var keyword = decodeURIComponent(params["imageSearch"]);
-                pushBrowserHistoryState(null, null, keyword);
-                $("title").html("ImageSearch Results for "+keyword);
-                searchDirEntriesFromImagePrefix(keyword);
+                searchContext.keyword = decodeURIComponent(params["imageSearch"]);
+                $("#prefix").val(searchContext.keyword);
+                $("title").html("ImageSearch Results for "+ searchContext.keyword);
+                pushBrowserHistoryState(null, null, searchContext.keyword);
+                searchInit();
+                searchForImages();
             }else if("random" in params){
                 goToRandomArticle();
             }
@@ -577,8 +581,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             else if (searchCtx) {
                 searchContext = searchCtx;
                 $("title").html("Search Results for " + searchContext.keyword);
-                // whenever keyword resets loadmore has to reset.
-                searchContext.loadmore = false;
                 setupSearchUI(searchContext);
                 searchInit(); // when you pop old state should go - results, variants, total found 
                 search();
@@ -586,8 +588,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 //disable prefix change handler
                 //$('#prefix').val(imageSearch);
                 //enable prefix change handler
-                $("title").html(imageSearch);
-                searchDirEntriesFromImagePrefix(imageSearch);
+                searchContext.keyword = searchCtx.keyword;
+                $("title").html("ImageSearch for " + imageSearch );
+                searchInit();
+                searchForImages();
             }
         }
     };
@@ -705,15 +709,14 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      */
     function setLocalArchiveFromFileSelect() {
         // if firefox is started in xhrff mode loading archive from url 
-        // and then user switches to archive via fileselctor change the mode to file 
+        // and then user switches to archive via fileselector, change the mode to file 
         // for readslice to use the right mode. This is because init.js won't get reloaded in this case. 
-        if(module.config().mode !== "file"){
-            // module.config().mode="file"; is not enough as mode must be set in util and finder too 
+        if(READ_MODE !== "file"){
+            // READ_MODE = "file"; is not enough as mode must be also reset in util 
             // so trigger a reload
             // [TODO] This is temp hack - find a way to set mode across modules
             location.replace(uiUtil.removeUrlParameters(location.href));
-        } 
-            
+        }            
         setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
 
@@ -756,8 +759,8 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     // snippetController - Controls rate of additions of snippets
-    // Not really required if maxResults < 10-20 with loadmore enabled on Desktop 
-    // Is handy when maxResults is set higher, as an async article read happens for each result  
+    // Not really required if upto < 10-20 with loadmore enabled on Desktop 
+    // Is handy when upto is set higher, as an async article read happens for each result  
     // TODO: Controller is optional. 
     var snippetController;  
     function fillResult(dirEntry){         
@@ -799,56 +802,32 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
     }
 
     /**
-     * Search the index for DirEntries with title that start with the given prefix (implemented
-     * with a binary search inside the index file)
-     * @param {String} prefix
+     * Encapsulates a call to finder which starts workers that perform a binary search over the title index
+     * The searchContext sets up the search
      */
-    var totalFound, totalImages, articlesMatchedProcessed, nonArticlesMatchedProcessed; 
+    var totalFound, totalImages, articlesMatchedProcessed, nonArticlesMatchedProcessed, ResultSet, variantMatches=[]; 
     function search() {
-        //continueFrom = 58370334; //continueFrom;
-        //filter = "MatchAnywhere";
         if(searchContext.loadmore){
             resetUI();
             searchInit();
+        }else{
+            variantMatches=[];    
         }
         statusUpdate("Searching...", "btn-warning");
-        var variantWithMostMatches, variantMatches=[];
         
         // If incremental UI update of results is not desired move this inside onAllResults
         $('#articleList').show();
         if (selectedArchive !== null && selectedArchive.isReady()) {
             if (settings.includeSnippet)
                 snippetController = new control.asyncJobQueue(settings.maxAsyncSnippetReads, fillSnippet);
-            var f = new finder.initKeywordSearch(searchContext, 
+            // if searchContext.caseSensitive = false setting the onAllResults callback is unnecessary
+            new finder.titleSearch(searchContext, 
                             { onEachResult: fillResult, 
-                              onAllResults: function (variant, matchCount, continueFromIndex){
-                                $("#articleList a").on("click",handleTitleClick);
-                                variantMatches.push([variant, matchCount, continueFromIndex]);
-                                totalFound = totalFound + matchCount;
+                              onAllResults: function (variant, matchCount, from){
+                                variantMatches.push([variant, matchCount, from]);
                               },
-                              onAllWorkersCompletion: function(allResults){
-                                variantMatches.forEach((obj, i) => console.log(obj));
-                                variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
-                                searchContext.keyword = variantWithMostMatches[0];
-                                searchContext.loadmore = true;
-                                searchContext.from = variantWithMostMatches[2];
-                                $("#from").val(searchContext.from);
-                                if(allResults.length == 0 || totalFound == 0){
-                                    statusUpdate("Nothing Matched!");
-                                    return;    
-                                }
-                                // assert allResults.length against totalFound
-                                updateLoadMoreButton("Found:" +totalFound+ " Load More...");
-                                $("#loadmore").on('click', function(e) {
-                                    pushBrowserHistoryState(null, searchContext);
-                                    $("#prefix").val(searchContext.keyword);
-                                    $("title").html("Keyword:"+ variantWithMostMatches[0] +" FromIndex:"+ variantWithMostMatches[2]);
-                                    search();
-                                });
-                                //if(continueFrom)
-                                //    $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);
-                              }
-                            }, selectedArchive, module.config().mode);
+                              onAllWorkersCompletion: titleSearchDone 
+                            }, selectedArchive, READ_MODE);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -858,11 +837,11 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             $("#btnConfigure").click();
         }
     }
-    var ResultSet, variantMatches=[];
+    
     window.getSearchResults = function getSearchResults(){
         return ResultSet;
     }
-
+    // This is only required to add the 'fillImages of nextDirEnt' job into the controller queue 
     function processArticleForImages(dirEntry){
         totalFound++;
         articleReadController.processORAddToQueue(dirEntry);
@@ -886,24 +865,55 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             searchDone();
         //totalFound = totalFound + matchCount;
     }
+
+    function updateSearchContext(){
+        if(searchContext.caseSensitive){
+            variantMatches.forEach((obj, i) => console.log(obj));
+            var variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
+            searchContext.keyword = variantWithMostMatches[0];
+            searchContext.from = variantWithMostMatches[2];
+            $("#from").val(searchContext.from);
+        }
+        searchContext.loadmore = true;        
+    }
+
     // BUG: end of search condition can cause searchDone to get called multiple times and before it actually done. Fix: Make displayImagesInFrame promise based.
     function searchDone(){
         // TODO Is this the right way of updating the button and its handler?
-        // for keywordsearch - updateLoadMoreButton("Found:" +totalCount+ " Load More...");
+        // for titlesearch - updateLoadMoreButton("Found:" +totalCount+ " Load More...");
         //var totImgCount from ResultSet
         updateLoadMoreButton("Pages:"+ totalFound+" Uniq:"+ResultSet.size + " Images:"+totalImages, "btn-success");
         // ResultSet.forEach((v,k) =>{ console.log(k); console.log(v.images.length, v.redirectedFrom, v.dup);})
-        variantMatches.forEach((obj, i) => console.log(obj));
-        var variantWithMostMatches = variantMatches.sort((a,b) => a[1]<b[1])[0];
-        $("#loadmore").on('click', function(e) {            
-            searchDirEntriesFromImagePrefix(variantWithMostMatches[0], variantWithMostMatches[2]);
+        updateSearchContext();
+        $("#loadmore").on('click', function(e) {
+            pushBrowserHistoryState(null, null, searchContext.keyword);            
+            $("#prefix").val(searchContext.keyword);
+            $("title").html("ImageKeyword:"+ searchContext.keyword +" FromIndex:"+ searchContext.from);
+            searchForImages();
         });
         console.timeEnd("ImageSearch Lookup+Inject+Load");
     }
 
+    function titleSearchDone(allResults){
+        $("#articleList a").on("click",handleTitleClick);
+        updateSearchContext();
+        if(allResults.length == 0){
+            statusUpdate("Nothing Matched!");
+            return;    
+        }
+        updateLoadMoreButton("Found:" +allResults.length+ " Load More...");
+        $("#loadmore").on('click', function(e) {
+            pushBrowserHistoryState(null, searchContext);
+            $("#prefix").val(searchContext.keyword);
+            $("title").html("Keyword:"+ searchContext.keyword +" FromIndex:"+ searchContext.from);
+            search();
+        });
+        // $("#articleContent").contents().scrollTop($("#articleList:last-child").offset().top);        
+    }
+
     function searchForImages() {
         console.time("ImageSearch Lookup+Inject+Load");
-        if(!continueFrom){
+        if(!searchContext.loadmore){
             resetUI();
             $("#articleContent").attr('src', "A/imageResults.html");
             searchInit();            
@@ -917,12 +927,12 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         if (selectedArchive !== null && selectedArchive.isReady()) {
             // used in processArticleForImages TODO refactor
             articleReadController = new control.asyncJobQueue(settings.maxAsyncArticleReads, fillImages);
-            var f = new finder.initKeywordSearch(searchContext, {
+            var f = new finder.titleSearch(searchContext, {
                 onEachResult: processArticleForImages,
                 // NOTE: this just means title index lookup is done for one variant not UI update completion
                 onAllResults: singleVariantDone
                 // onAllWorkerTODO: use to improve searchDone detection promise.all( all dislayinFrame resolved promises)
-            }, selectedArchive, module.config().mode);
+            }, selectedArchive, READ_MODE);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -1029,6 +1039,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             selectedArchive.resolveRedirect(dirEntry, readArticle);
         }
         else {
+            //console.log(dirEntry);
             selectedArchive.readArticle(dirEntry, displayArticleInFrame);
         }
     }
@@ -1150,17 +1161,20 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         //console.log("added css promise");    
     }
 
-    function setupTableOfContents(){
-        var iframe = document.getElementById('articleContent');
-        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-        var tableOfContents = new uiUtil.toc(innerDoc);
+    // @page is a DOM document or element, 
+    function setupTableOfContents(page){
+        var iframe = page.nodeType == 9; // to handle toc of about page - remove when done
+        var tableOfContents = new uiUtil.toc(page);
         var headings = tableOfContents.getHeadingObjects();
         var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> In This Article <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
         headings.forEach(function(heading){
             if(heading.tagName == "H1")
                 dropup = dropup + '<li><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
             else if(heading.tagName == "H2")
-                dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+                if (iframe)
+                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+                else
+                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="location.href=&apos;#'+heading.id+'&apos;">'+heading.textContent+'</a></li>';
             //else
                 //Currently skip smaller headings until toc scrolling works
                 //dropup = ...
@@ -1192,12 +1206,13 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
      * NB : in some error cases, the given title can be null, and the htmlArticle contains the error message
-     * @param {DirEntry} dirEntry [BUG] Really title I think
+     * @param {String} title [BUG] should be dirent
      * @param {String} htmlArticle
      */
-    async function displayArticleInFrame(dirEntry, htmlArticle) {
+    async function displayArticleInFrame(title, htmlArticle) {
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
+        // BUG: handle cases where src is a non zim url or a data url
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
         var iframe = document.getElementById('articleContent');
         var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -1277,13 +1292,21 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             console.log("SVG Math Load:"+ (svgmathload/imgNodes.length)*100);
             if(imgNodes.length > 0)
             {
-                var imageURLs = [].slice.call(imgNodes)
-                               .map(el => decodeURIComponent(el.getAttribute('data-src')
-                                            .match(regexpImageUrl)[1]));
+                //console.log(imgNodes);
+                var imageURLs = [];
+                for(var k=0;k<imgNodes.length;k++){
+                    var imgurl = imgNodes[k].getAttribute('data-src');
+                    var m = imgurl.match(regexpImageUrl);
+                    if(m)
+                        imageURLs.push(decodeURIComponent(m[1]));
+                    else
+                        console.error("Unrecognized image URL! Not retrieving - "+imgurl); 
+                }
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
                 var injectImage = function (index, dirEntry){
+                    if (!dirEntry) return Promise.resolve(null);
                     return selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob)
                         .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), $(imgNodes[index]), imageBlob))
                         .catch((reason) => {
@@ -1296,7 +1319,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                     // The number of async injectImage that will run at a time is controlled by maxAsyncImageReads 
                     controller = new control.asyncJobQueue(settings.maxAsyncImageReads, injectImage);
                 // finder divides the url list among workers, callbacks handle finder "events"
-                var f = new finder.initURLSearch(imageURLs, {
+                var f = new finder.urlSearch(imageURLs, {
                     onEachResult: function(index, dirEntry){
                         var p;
                         if(controlledLoading)
@@ -1315,7 +1338,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
-                }, selectedArchive, module.config().mode, settings.workerCount);
+                }, selectedArchive, READ_MODE, settings.workerCount);
                 f.run({type:"quick", initialImageLoad: settings.initialImageLoad});
             }
 
@@ -1331,7 +1354,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 }
             });
             //console.log("# of css files loading:" + cssLoaded.length);
-            setupTableOfContents();    
+            setupTableOfContents(innerDoc);    
         }
     }
 
@@ -1380,7 +1403,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
             ResultSet.set(foundDirEntry.title, {images:imageURLs, redirectedFrom:foundDirEntry.redirectedFrom, dup:""});
         }
         var imageLoadCompletions = [];
-        var f = new finder.initURLSearch(imageURLs, {
+        var f = new finder.urlSearch(imageURLs, {
                 onEachResult: function(index, dirEntry){
                     var p = selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob);
                     p.then(function (content) {
@@ -1417,7 +1440,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                             searchDone(); 
                     });
                 }
-            }, selectedArchive, module.config().mode, settings.workerCount 
+            }, selectedArchive, READ_MODE, settings.workerCount 
         );
         f.run();
     }
@@ -1435,7 +1458,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         // This will ensure in url mode (as opposed to file selector mode)
         // archive parameter becomes part of the url string. 
         // Bookmarking links & Setting home page to a url will also be possible.
-        var appendArchive = module.config().mode == "file" ? "" : "&archive="+ selectedArchive._file._files[0].name;
+        var appendArchive = READ_MODE == "file" ? "" : "&archive="+ selectedArchive._file._files[0].name;
 
         if (title && !(""===title)) {
             stateObj.title = title;
@@ -1471,6 +1494,7 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
      * @param {String} article url eg: Paris.html
      */
     function goToArticle(url) {
+        url = "A/" + url; 
         selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 //alert("Article with url " + url + " not found in the archive");

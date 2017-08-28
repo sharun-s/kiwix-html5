@@ -148,8 +148,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 done();
             };
             var searchContext = {keyword: 'A', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:true, loadmore:false};
-            new finder.initKeywordSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
-            
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file"); 
         });
         QUnit.test("check findDirEntriesWithPrefix 'a'", function(assert) {
             var done = assert.async();            
@@ -161,7 +160,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 done();
             };
             var searchContext = {keyword: 'a', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
-            new finder.initKeywordSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
         });
         QUnit.test("check findDirEntriesWithPrefix 'blues brothers'", function(assert) {
             var done = assert.async();
@@ -174,7 +173,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 done();
             };
             var searchContext = {keyword: 'blues brothers', from:0, upto:3, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
-            new finder.initKeywordSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
         });
         QUnit.test("article '(The Night Time Is) The Right Time' correctly redirects to 'Night Time Is the Right Time'", function(assert) {
             var done = assert.async();

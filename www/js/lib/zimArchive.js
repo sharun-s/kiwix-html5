@@ -186,11 +186,12 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
      */
     ZIMArchive.prototype.getDirEntryByURL = function(url, cache) {
         var that = this;
-
-        // If no namespace is mentioned, it's an article, and we have to add it
-        if (regexpTitleWithoutNameSpace.test(url)) {
-            url= "A/" + url;
-        }
+        // [BUG] Spec ambiguity - stackoverflow has articles titled tag/blah, question/blah etc
+        // This function should just return a DirEntry whatever the url unless some url scheme is mentioned in the ZIM spec  
+        // //If no namespace is mentioned, it's an article, and we have to add it
+        // // if (regexpTitleWithoutNameSpace.test(url)) {
+        // //   url= "A/" + url;
+        // // }
         if (cache && cache.has(url)){
             //console.log("cache hit");
             return Promise.resolve().then(() => cache.get(url));

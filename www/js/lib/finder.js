@@ -131,7 +131,7 @@ define(['util', 'module'], function(util, module) {
     // NOTE: onEach and onAll will be called for EACH variant, 
     // if searchContext.caseSensitive = false, for each case variantion of the keyword one worker will be started.
     // if searchContext.caseSensitiva = true, only one worker is created.
-    // Use the callbacks depending on how finder return value need to be processed 
+    // Use the only the reqd callbacks depending on how finder return values need to be processed 
     function titleFinder(searchContext, callbacks, archive, mode){
         this.allResults=[];
         this.workerCompletions = 0;
@@ -210,7 +210,7 @@ define(['util', 'module'], function(util, module) {
     }
 
     return {
-        initURLSearch: finder,
-        initKeywordSearch: titleFinder
+        urlSearch: finder,
+        titleSearch: titleFinder
     };
 });

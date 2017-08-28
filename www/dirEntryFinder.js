@@ -4,7 +4,7 @@
 var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
 var imageArray, keyword, maxResults, matcherfn;
 //Comment out to disable logs and timing    
-//console.log = function(){}     
+console.log = function(){}     
 console.time = function(){};
 console.timeEnd =function(){};
 
@@ -233,6 +233,7 @@ function binarySearch(begin, end, query, lowerBound) {
 };
 
 function readImageDirEnt(url) {
+    if (url==="") return null; 
     if (loadingCache && loadingCache.has(url)){
         return Promise.resolve().then(() => loadingCache.get(url));
     }

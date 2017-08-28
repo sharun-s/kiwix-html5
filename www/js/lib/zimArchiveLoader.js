@@ -59,7 +59,8 @@ define(['zimArchive', 'jquery'],
         "wikipedia_en_all_2016-12.zim": '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
         "wikiquote_en_all_nopic_2017-03.zim": '{"_file":{"_files":[{"name":"wikiquote_en_all_nopic_2017-03.zim","size":121026170}],"articleCount":53511,"clusterCount":252,"urlPtrPos":168,"titlePtrPos":428256,"clusterPtrPos":3359985,"mimeListPos":80,"mainPage":30342,"layoutPage":4294967295},"_language":""}',
         "wiktionary_en_simple_all_nopic_2017-01.zim": '{"_file":{"_files":[{"name":"wiktionary_en_simple_all_nopic_2017-01.zim","size":6001233}],"articleCount":25444,"clusterCount":41,"urlPtrPos":168,"titlePtrPos":203720,"clusterPtrPos":1292216,"mimeListPos":80,"mainPage":12520,"layoutPage":4294967295},"_language":""}',
-        "wikivoyage_en_all_2017-08.zim": '{"_file":{"_files":[{"name":"wikivoyage_en_all_2017-08.zim","size":731527966}],"articleCount":97674,"clusterCount":581,"urlPtrPos":225,"titlePtrPos":781617,"clusterPtrPos":5992414,"mimeListPos":80,"mainPage":46890,"layoutPage":4294967295},"_language":""}' 
+        "wikivoyage_en_all_2017-08.zim": '{"_file":{"_files":[{"name":"wikivoyage_en_all_2017-08.zim","size":731527966}],"articleCount":97674,"clusterCount":581,"urlPtrPos":225,"titlePtrPos":781617,"clusterPtrPos":5992414,"mimeListPos":80,"mainPage":46890,"layoutPage":4294967295},"_language":""}',
+           test: '{"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}'         
     };
 
     function onDiskMatches(library){
