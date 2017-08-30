@@ -26,14 +26,16 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
- function($, zimArchiveLoader, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
+define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
+ function($, zimArchiveLoader, library, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
 
     var settings  = module.config().settings;
+    // Determines if Archives are read via FileReader or XHR Range Requests
     var READ_MODE = module.config().mode;
     // Setup the default search context and search UI
     var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
     setupSearchUI(searchContext);
+    library.loadCatalogue($("#zims"));
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -44,49 +46,6 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
         console.log("jQuery tried to run some javascript with eval(), which is not allowed in packaged applications");
     };
 
-    // Download link setup for the config page from latest archive library
-    $.getJSON( "library8Aug2017-1617-en.json", function( data ) {    
-        // Add links to ZIM on disk. Onclick change selected archive
-        var onDisk = zimArchiveLoader.onDiskMatches(data);
-        $("#zims").append("<h4>Detected Archives On Disk: </h4>");
-        var items = [];
-        $.each( onDisk, function( i, item ) {
-            items.push( "<li class='list-group-item small' id='" + i + "'>" + "<img width='24px' height='24px' src='data:"+item.faviconMimeType
-            +";base64,"+item.favicon+ "'><strong>" + item.title +"</strong> "
-            +item.date+ " " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item.filename+"&random=&apos;);'> LOAD</button></li>");
-        });
-        $("#zims").append(items.join( "" ));
-        // Add downloadable ZIM's
-        $("#zims").append("<h5>Download Links:</h5>");
-        var groups = {};
-
-        $.each( data, function( i, item ) {
-            if(item.title in groups)
-                groups[item.title].push(item);
-            else
-                groups[item.title] = [item];
-        });
-        // group links by title, sort groups by lenth, sort links in group by date
-        var groupHTML = '<ul id="accordian" class="list-group">';
-        for(var group in groups){
-            groups[group].sort(function(a,b){return new Date(b.date) - new Date(a.date);});
-        }
-        var groupsSorted = Object.keys(groups).sort(function(a,b){return groups[b].length - groups[a].length});
-        // generate subGroup HTML 
-        for(var i=0;i<groupsSorted.length;i++){
-            var items = [], subGroup = groups[groupsSorted[i]];
-            // Group Header
-            var groupHeader = '<a class="list-group-item" data-toggle="collapse" href="#g'+i+'" ><span class="badge">'+ subGroup.length+'</span><strong> '+groupsSorted[i]+'</strong> <span class="small"> <em>'
-            +subGroup[0].description+'</em> - Creator:<strong>'+ subGroup[0].creator+'</strong> Publisher:<strong>'+ subGroup[0].publisher+'</strong></span></a><ul style="padding:2px" id="g'+i+'" class="collapse  list-group">'; 
-            for(var j=0;j<subGroup.length;j++){
-                var item = subGroup[j];
-                items.push( "<li class ='list-group-item small' style='padding:2px'><span class='label label-primary'>"+item.date+"</span> Articles:"+item.articleCount+ "    Media:"+item.mediaCount + "    <a href='"+item.url +"'> <span class='glyphicon glyphicon-download'></span></a> <a href=''> <span class='glyphicon glyphicon-magnet'></span></a> </li>");                
-            }
-            groupHTML = groupHTML + groupHeader + items.join( "" ) +"</ul>";
-        }
-        groupHTML = groupHTML + '</ul>';
-        $("#zims").append(groupHTML); 
-    });
 
     /**
      * @type ZIMArchive
@@ -964,11 +923,10 @@ define(['jquery', 'zimArchiveLoader', 'util', 'uiUtil', 'cookies','abstractFiles
                 });
             } else {
                     selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob).then(function(data){
-                    // TODO: too heavy duty - optimize
-                    // var top = $(data); <== gives the best snips tho
+                    // var top = $(data); <== gives the best snips tho for wikipedia zims. 
                     // TODO: Issue here is, when infoboxes are present first para 
                     // can get pushed way down into the article
-                    //console.time(title);
+                    // console.time(title);
                     data = utf8.parse(data);
                     var b = data.search(/<body/); 
                     var top = data.slice(b, b+4000);
