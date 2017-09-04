@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define([], function() {
+define(['jquery'], function($) {
 
     
     /**
@@ -145,6 +145,221 @@ define([], function() {
         };
     }
 
+    function statusUpdate(text, type){
+        if(type)
+            $("#appStatus").removeClass().addClass(type).text(text);
+        else
+        {
+            $("#appStatus").removeClass().addClass("bg-danger").text(text);
+            //$('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+        }    
+    }
+
+    function statusUpdateHTML(html){
+        $("#appStatus").removeClass().html(html);
+    }
+
+    function archiveStatusUpdate(selectedArchive){
+        try{
+            if(selectedArchive.isReady()){
+                var name = selectedArchive._file._files[0].name;
+                //if(name && name !=="undefined")
+                statusUpdate(selectedArchive._file._files[0].name, "bg-success");
+            }else
+                statusUpdate("Archive not set!!", "btn-danger"); 
+        }catch (e){
+            statusUpdate("Archive not set!!", "btn-danger");
+        }
+    }
+
+    function resetUI(){
+        statusUpdate("");
+        $('#about').hide();
+        $('#configuration').hide();
+        $("#welcomeText").hide();
+        $('#articleList').hide();
+        $("#articleList").empty();
+        try{
+            // .empty() doesnt seem to clear the frame
+            $("#articleContent").contents().find("body").html('');   
+        }catch(e){
+            if(e.name === "SecurityError"){
+                statusUpdate("ERROR: Set flag allow-file-access-from-files!!!", "btn-danger");
+                throw "Error";
+            }
+        }
+    }
+
+    function updateLoadMoreButton(str){
+        var button = '<button class="btn btn-success btn-sm" type="button" id="loadmore">'+str+'</button>'
+        statusUpdateHTML(button);
+    }
+
+    function setupHandlers(){
+        // Bottom bar :
+        $('#btnBack').on('click', function(e) {
+            history.back();
+            return false;
+        });
+        $('#btnForward').on('click', function(e) {
+            history.forward();
+            return false;
+        });
+        $('#btnHomeBottom').on('click', function(e) {
+            $('#btnHome').click();
+            return false;
+        });
+        $('#btnTop').on('click', function(e) {
+            $("#articleContent").contents().scrollTop(0);
+            // We return true, so that the link to #top is still triggered (useful in the About section)
+            return true;
+        });
+        $('#btnAbout').on('click', function(e) {
+            $("title").html("Kiwix");
+            resetUI();
+            $('#about').show();
+            // TODO: Not reqd each time - store it statically once about/help page settles
+            setupTableOfContents(document.getElementById("about"));
+            return false;
+        });
+    }
+
+    function onHome(handler){
+        $('#btnHome').on('click', function(e) {
+            // Show the selected content in the page
+            resetUI();
+            // Give the focus to the search field, and clean up the page contents
+            $("#prefix").val("");
+            $('#prefix').focus();
+            handler();
+            return false;
+        });        
+    }
+
+    function onRandom(fn){
+        $("#btnRandomArticle").on("click", function(e) {
+            resetUI();
+            fn();        
+        });
+    }   
+
+    function onConfig(fn){
+        $('#btnConfigure').on('click', function(e) {
+            $("title").html("Kiwix");
+            resetUI();
+            $('#configuration').show();
+            fn();
+            return false;
+        });
+    } 
+
+    // @page is a DOM document or element, 
+    function setupTableOfContents(page){
+        var iframe = page.nodeType == 9; // to handle toc of about page - remove when done
+        var toc = new TableOfContents(page);
+        var headings = toc.getHeadingObjects();
+        var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> In This Article <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
+        headings.forEach(function(heading){
+            if(heading.tagName == "H1")
+                dropup = dropup + '<li><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+            else if(heading.tagName == "H2")
+                if (iframe)
+                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
+                else
+                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="location.href=&apos;#'+heading.id+'&apos;">'+heading.textContent+'</a></li>';
+            //else
+                //Currently skip smaller headings until toc scrolling works
+                //dropup = ...
+        });
+        dropup = dropup + '</ul></span>'
+        statusUpdateHTML(dropup);
+    }
+
+    /**
+     * Populate the drop-down list of archives with the given list
+     * @param {Array.<String>} archiveDirectories
+     */
+    function populateDropDownListOfArchives(archiveDirectories, storages, setArchive) {
+        $('#scanningForArchives').hide();
+        $('#chooseArchiveFromLocalStorage').show();
+        var comboArchiveList = document.getElementById('archiveList');
+        comboArchiveList.options.length = 0;
+        for (var i = 0; i < archiveDirectories.length; i++) {
+            var archiveDirectory = archiveDirectories[i];
+            if (archiveDirectory === "/") {
+                alert("It looks like you have put some archive files at the root of your sdcard (or internal storage). Please move them in a subdirectory");
+            }
+            else {
+                comboArchiveList.options[i] = new Option(archiveDirectory, archiveDirectory);
+            }
+        }
+        // Store the list of archives in a cookie, to avoid rescanning at each start
+        cookies.setItem("listOfArchives", archiveDirectories.join('|'), Infinity);
+        
+        $('#archiveList').on('change', () => { setLocalArchiveFromArchiveList(storages, setArchive);});
+        if (comboArchiveList.options.length > 0) {
+            var lastSelectedArchive = cookies.getItem("lastSelectedArchive");
+            if (lastSelectedArchive !== null && lastSelectedArchive !== undefined && lastSelectedArchive !== "") {
+                // Attempt to select the corresponding item in the list, if it exists
+                if ($("#archiveList option[value='"+lastSelectedArchive+"']").length > 0) {
+                    $("#archiveList").val(lastSelectedArchive);
+                }
+            }
+            // Set the localArchive as the last selected (or the first one if it has never been selected)
+            //setLocalArchiveFromArchiveList();
+            setLocalArchiveFromArchiveList(setArchive);
+        }
+        else {
+            alert("Welcome to Kiwix! This application needs at least a ZIM file in your SD-card (or internal storage). Please download one and put it on the device (see About section). Also check that your device is not connected to a computer through USB device storage (which often locks the SD-card content)");
+            $("#btnAbout").click();
+            var isAndroid = (navigator.userAgent.indexOf("Android") !== -1);
+            if (isAndroid) {
+                alert("You seem to be using an Android device. Be aware that there is a bug on Firefox, that prevents finding Wikipedia archives in a SD-card (at least on some devices. See about section). Please put the archive in the internal storage if the application can't find it.");
+            }
+        }
+    }
+
+        /**
+     * Sets the localArchive from the selected archive in the drop-down list
+     */
+    function setLocalArchiveFromArchiveList(storages, setArchive) {
+        var archiveDirectory = $('#archiveList').val();
+        if (archiveDirectory && archiveDirectory.length > 0) {
+            // Now, try to find which DeviceStorage has been selected by the user
+            // It is the prefix of the archive directory
+            var regexpStorageName = /^\/([^\/]+)\//;
+            var regexpResults = regexpStorageName.exec(archiveDirectory);
+            var selectedStorage = null;
+            if (regexpResults && regexpResults.length>0) {
+                var selectedStorageName = regexpResults[1];
+                for (var i=0; i<storages.length; i++) {
+                    var storage = storages[i];
+                    if (selectedStorageName === storage.storageName) {
+                        // We found the selected storage
+                        selectedStorage = storage;
+                    }
+                }
+                if (selectedStorage === null) {
+                    alert("Unable to find which device storage corresponds to directory " + archiveDirectory);
+                }
+            }
+            else {
+                // This happens when the archiveDirectory is not prefixed by the name of the storage
+                // (in the Simulator, or with FxOs 1.0, or probably on devices that only have one device storage)
+                // In this case, we use the first storage of the list (there should be only one)
+                if (storages.length === 1) {
+                    selectedStorage = storages[0];
+                }
+                else {
+                    alert("Something weird happened with the DeviceStorage API : found a directory without prefix : "
+                        + archiveDirectory + ", but there were " + storages.length
+                        + " storages found with getDeviceStorages instead of 1");
+                }
+            }
+            setArchive(selectedStorage, archiveDirectory);            
+        }
+    }
+
     /**
      * Functions and classes exposed by this module
      */
@@ -154,6 +369,17 @@ define([], function() {
         toc: TableOfContents,
         snippet: Snippet,
         isElementInView: isElementInView,
-        checkVisibleImages: checkVisibleImages
+        checkVisibleImages: checkVisibleImages,
+        reset: resetUI,
+        archiveStatusUpdate: archiveStatusUpdate,
+        status: statusUpdate,
+        statusHTML: statusUpdateHTML,
+        statusLoadMore: updateLoadMoreButton,
+        setupHandlers: setupHandlers,
+        setupTableOfContents: setupTableOfContents,
+        onHome: onHome,
+        onConfig: onConfig,
+        onRandom: onRandom,
+        populateDropDownListOfArchives: populateDropDownListOfArchives 
     };
 });

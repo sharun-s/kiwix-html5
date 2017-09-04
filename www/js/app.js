@@ -26,15 +26,18 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
- function($, zimArchiveLoader, library, util, uiUtil, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
+define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
+ function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
 
     var settings  = module.config().settings;
     // Determines if Archives are read via FileReader or XHR Range Requests
     var READ_MODE = module.config().mode;
+    // 'ParseAndLoad' vs 'InterceptAndLoad'
+    var contentInjectionMode = 'ParseAndLoad';
     // Setup the default search context and search UI
     var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
-    setupSearchUI(searchContext);
+    var selectedArchive = null;    
+    //setupSearchUI(searchContext);
     library.loadCatalogue($("#zims"));
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
@@ -45,12 +48,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         // In any case, that would have been blocked by CSP for package applications
         console.log("jQuery tried to run some javascript with eval(), which is not allowed in packaged applications");
     };
-
-
-    /**
-     * @type ZIMArchive
-     */
-    var selectedArchive = null;
     
     /**
      * Resize the IFrame height, so that it fills the whole available height in the window
@@ -65,359 +62,29 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     }
     $(document).ready(resizeIFrame);
     $(window).resize(resizeIFrame);
-    
-    function statusUpdate(text, type){
-        if(type)
-            $("#appStatus").removeClass().addClass(type).text(text);
-        else
-        {
-            $("#appStatus").removeClass().addClass("bg-danger").text(text);
-            //$('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
-        }    
-    }
 
-    function statusUpdateHTML(html){
-        $("#appStatus").removeClass().html(html);
-    }
-
-    function archiveStatusUpdate(){
-        try{
-            var name = selectedArchive._file._files[0].name;
-            if(name && name !=="undefined")
-                statusUpdate(selectedArchive._file._files[0].name, "bg-success");
-            else
-                throw {name:"KiwixError", message:"Unknown Archive"}; 
-        }catch (e){
-            statusUpdate("Archive not set!!", "btn-danger");
-            //throw {name:"KiwixError", message:"Archive Undefined"};    
-        }
-    }
-
-    function resetUI(){
-        statusUpdate("");
-        $('#about').hide();
-        $('#configuration').hide();
-        $("#welcomeText").hide();
-        $('#articleList').hide();
-        $("#articleList").empty();
-        try{
-            // .empty() doesnt seem to clear the frame
-            $("#articleContent").contents().find("body").html('');   
-        }catch(e){
-            if(e.name === "SecurityError"){
-                statusUpdate("ERROR: Set flag allow-file-access-from-files!!!", "btn-danger");
-                throw "Error";
-            }
-        }
-    }
-    // Both search bar key presses and submit button press handled here.
-    $('#searchArticles').on('click', function(e) {
-        resetUI();
-        searchContext.keyword = $('#prefix').val();
-        // new search so loadmore must be reset.
-        searchContext.loadmore = false;
-        pushBrowserHistoryState(null, searchContext);
-        $("title").html("Searching for " + searchContext.keyword);
-        searchInit();
-        search();
-    });
-    $('#searchImages').on('click', function(e) {
-        searchContext.keyword = $('#prefix').val();
-        // new search so loadmore must be reset.
-        searchContext.loadmore = false;
-        pushBrowserHistoryState(null, null, searchContext.keyword);
-        $("title").html("ImageSearch for " + searchContext.keyword);
-        searchForImages();
-    });
-    $('#formArticleSearchnew').on('submit', function(e) {
-        document.getElementById("searchArticles").click();
-        return false;
-    });
-    // Setup search options UI handlers
-    var matchoptions = document.getElementsByName("match");
-    function setMatchFn(event){
-        searchContext.match = event.target.value;
-        $("#filterDropDown").dropdown("toggle");        
-        console.log("MATCHER: " + searchContext.match);
-    }
-    for(var i = 0; i < matchoptions.length ; i++)
-        matchoptions[i].addEventListener("change" , setMatchFn);
-    var caseSense = document.getElementById('caseSensitive')
-    caseSense.addEventListener("change", function(event){
-        searchContext.caseSensitive = event.target.checked; 
-        //console.log("CASE: " + searchContext.caseSensitive);
-    });
-    $('#filters').on('submit', function(e){
-        searchContext.from = parseInt($("#from").val());
-        searchContext.upto = parseInt($("#upto").val());
-        $("#filterDropDown").dropdown("toggle");
-        document.getElementById("searchArticles").click();
-        return false;
-    });
+    ui.setupHandlers();
+    ui.onHome(goToMainArticle);
+    ui.onRandom(goToRandomArticle);
+    ui.onConfig(() => ui.archiveStatusUpdate(selectedArchive));
+    uiSearch.setupHandlers(searchContext, settings.autoComplete);
     if(settings.autoComplete)
         $('#prefix').on('keyup', function(e) {
-            if (selectedArchive !== null && selectedArchive.isReady()) {
-                onKeyUpPrefix(e);
-            }
-        });
-    $("#btnRandomArticle").on("click", function(e) {
-        if (selectedArchive !== null && selectedArchive.isReady()) {
-            goToRandomArticle();
-            resetUI();
-            archiveStatusUpdate();
-        } else {
-            //$('#searchingForArticles').hide();
-            // We have to remove the focus from the search field,
-            // so that the keyboard does not stay above the message
-            $("#searchArticles").focus();
-            statusUpdate("Archive not set!");
-            $("#btnConfigure").click();
-        }        
+                if (selectedArchive !== null && selectedArchive.isReady()) 
+                    ui.autoComplete(e, settings.autoCompleteResubmitTimer);
+        });    
+    $('#searchArticles').on('click', function(e) {
+        startSearch($('#prefix').val(), true);
     });
-    
+    $('#searchImages').on('click', function(e) {
+        searchContext.loadmore = false;
+        startImageSearch($('#prefix').val());
+    });    
     $('#btnRescanDeviceStorage').on("click", function(e) {
         searchForArchivesInStorage();
     });
-    // Bottom bar :
-    $('#btnBack').on('click', function(e) {
-        history.back();
-        return false;
-    });
-    $('#btnForward').on('click', function(e) {
-        history.forward();
-        return false;
-    });
-    $('#btnHomeBottom').on('click', function(e) {
-        $('#btnHome').click();
-        return false;
-    });
-    $('#btnTop').on('click', function(e) {
-        $("#articleContent").contents().scrollTop(0);
-        // We return true, so that the link to #top is still triggered (useful in the About section)
-        return true;
-    });
-    // Top menu :
-    $('#btnHome').on('click', function(e) {
-        // Show the selected content in the page
-        resetUI();
-        $('#formArticleSearch').show();
-        $("#welcomeText").show();
-        $('#articleList').show();
-        // Give the focus to the search field, and clean up the page contents
-        $("#prefix").val("");
-        $('#prefix').focus();
-        if (selectedArchive !== null && selectedArchive.isReady()) {
-            $("#articleList").hide();
-            $("#welcomeText").hide();
-            goToMainArticle();
-            archiveStatusUpdate();
-        }
-        return false;
-    });
-    $('#btnConfigure').on('click', function(e) {
-        $("title").html("Kiwix");
-        // Show the selected content in the page
-        resetUI();
-        $('#configuration').show();
-        statusUpdate("");
-        archiveStatusUpdate();
-        return false;
-    });
-    $('#btnAbout').on('click', function(e) {
-        $("title").html("Kiwix");
-        resetUI();
-        $('#about').show();
-        // TODO: Not reqd each time - store it statically once about/help page settles
-        setupTableOfContents(document.getElementById("about"));
-        return false;
-    });
-    $('input:radio[name=contentInjectionMode]').on('change', function(e) {
-        if (checkWarnServiceWorkerMode(this.value)) {
-            // Do the necessary to enable or disable the Service Worker
-            setContentInjectionMode(this.value);
-        }
-        else {
-            setContentInjectionMode('jquery');
-        }
-    });
-        
-    /**
-     * Displays or refreshes the API status shown to the user
-     */
-    function refreshAPIStatus() {
-        if (isMessageChannelAvailable()) {
-            $('#messageChannelStatus').html("MessageChannel API available");
-            $('#messageChannelStatus').removeClass("apiAvailable apiUnavailable")
-                    .addClass("apiAvailable");
-        } else {
-            $('#messageChannelStatus').html("MessageChannel API unavailable");
-            $('#messageChannelStatus').removeClass("apiAvailable apiUnavailable")
-                    .addClass("apiUnavailable");
-        }
-        if (isServiceWorkerAvailable()) {
-            if (isServiceWorkerReady()) {
-                $('#serviceWorkerStatus').html("ServiceWorker API available, and registered");
-                $('#serviceWorkerStatus').removeClass("apiAvailable apiUnavailable")
-                        .addClass("apiAvailable");
-            } else {
-                $('#serviceWorkerStatus').html("ServiceWorker API available, but not registered");
-                $('#serviceWorkerStatus').removeClass("apiAvailable apiUnavailable")
-                        .addClass("apiUnavailable");
-            }
-        } else {
-            $('#serviceWorkerStatus').html("ServiceWorker API unavailable");
-            $('#serviceWorkerStatus').removeClass("apiAvailable apiUnavailable")
-                    .addClass("apiUnavailable");
-        }
-    }
-    
-    var contentInjectionMode;
-    
-    /**
-     * Sets the given injection mode.
-     * This involves registering (or re-enabling) the Service Worker if necessary
-     * It also refreshes the API status for the user afterwards.
-     * 
-     * @param {String} value The chosen content injection mode : 'jquery' or 'serviceworker'
-     */
-    function setContentInjectionMode(value) {
-        if (value === 'jquery') {
-            if (isServiceWorkerReady()) {
-                // We need to disable the ServiceWorker
-                // Unregistering it does not seem to work as expected : the ServiceWorker
-                // is indeed unregistered but still active...
-                // So we have to disable it manually (even if it's still registered and active)
-                navigator.serviceWorker.controller.postMessage({'action': 'disable'});
-                messageChannel = null;
-            }
-            refreshAPIStatus();
-        } else if (value === 'serviceworker') {
-            if (!isServiceWorkerAvailable()) {
-                alert("The ServiceWorker API is not available on your device. Falling back to JQuery mode");
-                setContentInjectionMode('jquery');
-                return;
-            }
-            if (!isMessageChannelAvailable()) {
-                alert("The MessageChannel API is not available on your device. Falling back to JQuery mode");
-                setContentInjectionMode('jquery');
-                return;
-            }
-            
-            if (!messageChannel) {
-                // Let's create the messageChannel for the 2-way communication
-                // with the Service Worker
-                messageChannel = new MessageChannel();
-                messageChannel.port1.onmessage = handleMessageChannelMessage;
-            }
-                    
-            if (!isServiceWorkerReady()) {
-                $('#serviceWorkerStatus').html("ServiceWorker API available : trying to register it...");
-                navigator.serviceWorker.register('../service-worker.js').then(function (reg) {
-                    console.log('serviceWorker registered', reg);
-                    serviceWorkerRegistration = reg;
-                    refreshAPIStatus();
-                    
-                    // We need to wait for the ServiceWorker to be activated
-                    // before sending the first init message
-                    var serviceWorker = reg.installing || reg.waiting || reg.active;
-                    serviceWorker.addEventListener('statechange', function(statechangeevent) {
-                        if (statechangeevent.target.state === 'activated') {
-                            console.log("try to post an init message to ServiceWorker");
-                            navigator.serviceWorker.controller.postMessage({'action': 'init'}, [messageChannel.port2]);
-                            console.log("init message sent to ServiceWorker");
-                        }
-                    });
-                }, function (err) {
-                    console.error('error while registering serviceWorker', err);
-                    refreshAPIStatus();
-                });
-            } else {
-                console.log("try to re-post an init message to ServiceWorker, to re-enable it in case it was disabled");
-                navigator.serviceWorker.controller.postMessage({'action': 'init'}, [messageChannel.port2]);
-                console.log("init message sent to ServiceWorker");
-            }
-        }
-        $('input:radio[name=contentInjectionMode]').prop('checked', false);
-        $('input:radio[name=contentInjectionMode]').filter('[value="' + value + '"]').prop('checked', true);
-        contentInjectionMode = value;
-        // Save the value in a cookie, so that to be able to keep it after a reload/restart
-        cookies.setItem('lastContentInjectionMode', value, Infinity);
-    }
-    
-    /**
-     * If the ServiceWorker mode is selected, warn the user before activating it
-     * @param chosenContentInjectionMode The mode that the user has chosen
-     */
-    function checkWarnServiceWorkerMode(chosenContentInjectionMode) {
-        if (chosenContentInjectionMode === 'serviceworker' && !cookies.hasItem("warnedServiceWorkerMode")) {
-            // The user selected the "serviceworker" mode, which is still unstable
-            // So let's display a warning to the user
 
-            // If the focus is on the search field, we have to move it,
-            // else the keyboard hides the message
-            if ($("#prefix").is(":focus")) {
-                $("searchArticles").focus();
-            }
-            if (confirm("The 'Service Worker' mode is still UNSTABLE for now."
-                + " It happens that the application needs to be reinstalled (or the ServiceWorker manually removed)."
-                + " Please confirm with OK that you're ready to face this kind of bugs, or click Cancel to stay in 'jQuery' mode.")) {
-                // We will not display this warning again for one day
-                cookies.setItem("warnedServiceWorkerMode", true, 86400);
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    // At launch, we try to set the last content injection mode (stored in a cookie)
-    var lastContentInjectionMode = cookies.getItem('lastContentInjectionMode');
-    if (lastContentInjectionMode) {
-        setContentInjectionMode(lastContentInjectionMode);
-    }
-    else {
-        setContentInjectionMode('jquery');
-    }
-    
-    var serviceWorkerRegistration = null;
-    
-    /**
-     * Tells if the ServiceWorker API is available
-     * https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorker
-     * @returns {Boolean}
-     */
-    function isServiceWorkerAvailable() {
-        return ('serviceWorker' in navigator);
-    }
-    
-    /**
-     * Tells if the MessageChannel API is available
-     * https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel
-     * @returns {Boolean}
-     */
-    function isMessageChannelAvailable() {
-        try{
-            var dummyMessageChannel = new MessageChannel();
-            if (dummyMessageChannel) return true;
-        }
-        catch (e){
-            return false;
-        }
-        return false;
-    }
-    
-    /**
-     * Tells if the ServiceWorker is registered, and ready to capture HTTP requests
-     * and inject content in articles.
-     * @returns {Boolean}
-     */
-    function isServiceWorkerReady() {
-        // Return true if the serviceWorkerRegistration is not null and not undefined
-        return (serviceWorkerRegistration);
-    }
-    
+
     /**
      * 
      * @type Array.<StorageFirefoxOS>
@@ -428,7 +95,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         var listOfArchivesFromCookie = cookies.getItem("listOfArchives");
         if (listOfArchivesFromCookie !== null && listOfArchivesFromCookie !== undefined && listOfArchivesFromCookie !== "") {
             var directories = listOfArchivesFromCookie.split('|');
-            populateDropDownListOfArchives(directories);
+            ui.populateDropDownListOfArchives(directories, storages, setArchiveFromArchiveList);
         }
         else {
             searchForArchivesInStorage();
@@ -438,7 +105,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         // If DeviceStorage is available, we look for archives in it
         $("#btnConfigure").click();
         $('#scanningForArchives').show();
-        zimArchiveLoader.scanForArchives(storages, populateDropDownListOfArchives);
+        zimArchiveLoader.scanForArchives(storages,(directories) => {ui.populateDropDownListOfArchives(directories, storages, setArchiveFromArchiveList);} );
     }
 
     if ($.isFunction(navigator.getDeviceStorages)) {
@@ -446,17 +113,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         storages = $.map(navigator.getDeviceStorages("sdcard"), function(s) {
             return new abstractFilesystemAccess.StorageFirefoxOS(s);
         });
-    }
-    // Video test on wiki-en-2016-12
-    async function loadVid(){
-        var url = decodeURIComponent('I/m/-Pluto-FlyoverAnimation-20150918.webm.jpg');
-        //console.log(url); 
-        var dev = await selectedArchive.getDirEntryByURL(url);
-        var data = await dev.readData();
-        var blob = new Blob([data], {type: 'video'});
-        var url = URL.createObjectURL(blob);
-        $('#articleContent').contents().find('body').html('<img src='+url+'></img>');
-        //$('#articleContent').contents().find('body').html('<video src='+url+'></video>');                
     }
 
     if (storages !== null && storages.length > 0) {
@@ -466,45 +122,16 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
                                                   searchForArchivesInPreferencesOrStorage);
     }else{ 
-        // when switching from url based loading to file based ensures UI is visible    
-        displayFileSelect();
+        // dislpay the fileselector TODO show maybe unnecessary as its always in view when config is clicked   
+        $('#openLocalFiles').show();
+        $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
+
+        // Handle setting archive via URL
         var params={};
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
-        if(params["archive"]) // == wiki_en_2016-12
+        if(params["archive"]) 
         {
-            resetUI();    
-            selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
-            archiveStatusUpdate();
-
-            if(params["title"]){
-                pushBrowserHistoryState(params["title"]);
-                goToArticle(params["title"]);                
-            }else if(params.hasOwnProperty("titleSearch")){
-                searchContext.keyword = decodeURIComponent(params["titleSearch"]);
-                $("#prefix").val(searchContext.keyword);
-                $("title").html("Search Results for " + searchContext.keyword);
-                pushBrowserHistoryState(null, searchContext, null);
-                searchInit(); // init results, variants, totalFound 
-                search();
-            }else if(params["imageSearch"]){
-                searchContext.keyword = decodeURIComponent(params["imageSearch"]);
-                $("#prefix").val(searchContext.keyword);
-                $("title").html("ImageSearch Results for "+ searchContext.keyword);
-                pushBrowserHistoryState(null, null, searchContext.keyword);
-                searchInit();
-                searchForImages();
-            }else if("random" in params){
-                goToRandomArticle();
-            }
-            else{
-                selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
-                    selectedArchive.readArticle(dirEntry, 
-                        (de,content) => $('#articleContent').contents().find('body').html("Loaded archive:"+selectedArchive._file._files[0].name+". It contains:<br>"+
-                            content.split(';').join('<br>')+
-                            "<br>Total Article Count:" + selectedArchive._file.articleCount));
-                });
-                //loadVid();
-            }
+            setLocalArchiveFromURL(params);
         }else{
 	        // If DeviceStorage is not available, we display the file select components
             if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
@@ -516,13 +143,51 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
 	    }
     }
 
-    function setupSearchUI(ctx){
-        //$('#prefix').val(ctx.keyword);
-        $("#from").val(ctx.from);
-        $("#upto").val(ctx.upto);
-        $("#caseSensitive").prop("checked", ctx.caseSensitive);
-        $('input:radio[name=match]').prop('checked', false);
-        $('input:radio[name=match]').filter('[value="' + ctx.match + '"]').prop('checked', true);
+    function setLocalArchiveFromURL(params){
+        ui.reset();    
+        selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
+        ui.archiveStatusUpdate(selectedArchive);
+        if(params["title"]){
+            pushBrowserHistoryState(params["title"]);
+            goToArticle(params["title"]);                
+        }else if(params.hasOwnProperty("titleSearch")){
+            startSearch(decodeURIComponent(params["titleSearch"], false, true));
+        }else if(params["imageSearch"]){
+            startImageSearch(decodeURIComponent(params["imageSearch"]));
+        }else if("random" in params){
+            goToRandomArticle();
+        }
+        else{
+            selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
+                selectedArchive.readArticle(dirEntry, 
+                    (de,content) => $('#articleContent').contents().find('body').html("Loaded archive:"+selectedArchive._file._files[0].name+". It contains:<br>"+
+                        content.split(';').join('<br>')+
+                        "<br>Total Article Count:" + selectedArchive._file.articleCount));
+            });
+            //testVid();
+        }
+    }
+
+    function startSearch(keyword, uiReset, uiKeywordSet){
+        searchContext.keyword = keyword;
+        if (uiReset)
+            ui.reset();
+        if (uiKeywordSet)
+            $("#prefix").val(searchContext.keyword);
+        searchContext.loadmore = false; // new search so loadmore must be reset.
+        pushBrowserHistoryState(null, searchContext);
+        $("title").html("Searching for " + searchContext.keyword);
+        searchInit();
+        search();        
+    }
+    
+    function startImageSearch(keyword){
+        searchContext.keyword = keyword;
+        $("#prefix").val(searchContext.keyword);
+        $("title").html("ImageSearch Results for "+ searchContext.keyword);
+        pushBrowserHistoryState(null, null, searchContext.keyword);
+        searchInit();
+        searchForImages();        
     }
 
     // Display the article when the user goes back in the browser history
@@ -531,127 +196,31 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             var title = event.state.title;
             var searchCtx = event.state.titleSearch;
             var imageSearch = event.state.imageSearch;
-            
-            resetUI();
-
+            ui.reset();
             if (title && !(""===title)) {
                 goToArticle(title);
             }
             else if (searchCtx) {
                 searchContext = searchCtx;
-                $("title").html("Search Results for " + searchContext.keyword);
-                setupSearchUI(searchContext);
-                searchInit(); // when you pop old state should go - results, variants, total found 
-                search();
+                uiSearch.update(searchContext);
+                startSearch(searchCtx.keyword);
             }else if(imageSearch && !(""===imageSearch)){
-                //disable prefix change handler
-                //$('#prefix').val(imageSearch);
-                //enable prefix change handler
-                searchContext.keyword = searchCtx.keyword;
-                $("title").html("ImageSearch for " + imageSearch );
-                searchInit();
-                searchForImages();
+                startImageSearch(searchCtx.keyword);
             }
         }
     };
     
     /**
-     * Populate the drop-down list of archives with the given list
-     * @param {Array.<String>} archiveDirectories
-     */
-    function populateDropDownListOfArchives(archiveDirectories) {
-        $('#scanningForArchives').hide();
-        $('#chooseArchiveFromLocalStorage').show();
-        var comboArchiveList = document.getElementById('archiveList');
-        comboArchiveList.options.length = 0;
-        for (var i = 0; i < archiveDirectories.length; i++) {
-            var archiveDirectory = archiveDirectories[i];
-            if (archiveDirectory === "/") {
-                alert("It looks like you have put some archive files at the root of your sdcard (or internal storage). Please move them in a subdirectory");
-            }
-            else {
-                comboArchiveList.options[i] = new Option(archiveDirectory, archiveDirectory);
-            }
-        }
-        // Store the list of archives in a cookie, to avoid rescanning at each start
-        cookies.setItem("listOfArchives", archiveDirectories.join('|'), Infinity);
-        
-        $('#archiveList').on('change', setLocalArchiveFromArchiveList);
-        if (comboArchiveList.options.length > 0) {
-            var lastSelectedArchive = cookies.getItem("lastSelectedArchive");
-            if (lastSelectedArchive !== null && lastSelectedArchive !== undefined && lastSelectedArchive !== "") {
-                // Attempt to select the corresponding item in the list, if it exists
-                if ($("#archiveList option[value='"+lastSelectedArchive+"']").length > 0) {
-                    $("#archiveList").val(lastSelectedArchive);
-                }
-            }
-            // Set the localArchive as the last selected (or the first one if it has never been selected)
-            setLocalArchiveFromArchiveList();
-        }
-        else {
-            alert("Welcome to Kiwix! This application needs at least a ZIM file in your SD-card (or internal storage). Please download one and put it on the device (see About section). Also check that your device is not connected to a computer through USB device storage (which often locks the SD-card content)");
-            $("#btnAbout").click();
-            var isAndroid = (navigator.userAgent.indexOf("Android") !== -1);
-            if (isAndroid) {
-                alert("You seem to be using an Android device. Be aware that there is a bug on Firefox, that prevents finding Wikipedia archives in a SD-card (at least on some devices. See about section). Please put the archive in the internal storage if the application can't find it.");
-            }
-        }
-    }
-
-    /**
      * Sets the localArchive from the selected archive in the drop-down list
      */
-    function setLocalArchiveFromArchiveList() {
-        var archiveDirectory = $('#archiveList').val();
-        if (archiveDirectory && archiveDirectory.length > 0) {
-            // Now, try to find which DeviceStorage has been selected by the user
-            // It is the prefix of the archive directory
-            var regexpStorageName = /^\/([^\/]+)\//;
-            var regexpResults = regexpStorageName.exec(archiveDirectory);
-            var selectedStorage = null;
-            if (regexpResults && regexpResults.length>0) {
-                var selectedStorageName = regexpResults[1];
-                for (var i=0; i<storages.length; i++) {
-                    var storage = storages[i];
-                    if (selectedStorageName === storage.storageName) {
-                        // We found the selected storage
-                        selectedStorage = storage;
-                    }
-                }
-                if (selectedStorage === null) {
-                    alert("Unable to find which device storage corresponds to directory " + archiveDirectory);
-                }
-            }
-            else {
-                // This happens when the archiveDirectory is not prefixed by the name of the storage
-                // (in the Simulator, or with FxOs 1.0, or probably on devices that only have one device storage)
-                // In this case, we use the first storage of the list (there should be only one)
-                if (storages.length === 1) {
-                    selectedStorage = storages[0];
-                }
-                else {
-                    alert("Something weird happened with the DeviceStorage API : found a directory without prefix : "
-                        + archiveDirectory + ", but there were " + storages.length
-                        + " storages found with getDeviceStorages instead of 1");
-                }
-            }
+    function setArchiveFromArchiveList(selectedStorage, archiveDirectory) {
             selectedArchive = zimArchiveLoader.loadArchiveFromDeviceStorage(selectedStorage, archiveDirectory, function (archive) {
                 cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
                 // The archive is set : go back to home page to start searching
                 $("#btnHome").click();
             });
-            
-        }
     }
-
-    /**
-     * Displays the zone to select files from the archive
-     */
-    function displayFileSelect() {
-        $('#openLocalFiles').show();
-        $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
-    }
-
+    
     function setLocalArchiveFromFileList(files) {
         // Reset the cssDirEntryCache and cssBlobCache. Must be done when archive changes.
         if(cssBlobCache) 
@@ -660,6 +229,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             cssDirEntryCache = new Map();
         selectedArchive = zimArchiveLoader.loadArchiveFromFiles(files, function (archive) {
             // The archive is set : go back to home page to start searching
+            ui.archiveStatusUpdate(archive);
             $("#btnHome").click();
         });
     }
@@ -674,7 +244,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             // READ_MODE = "file"; is not enough as mode must be also reset in util 
             // so trigger a reload
             // [TODO] This is temp hack - find a way to set mode across modules
-            location.replace(uiUtil.removeUrlParameters(location.href));
+            location.replace(ui.removeUrlParameters(location.href));
         }            
         setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
@@ -697,25 +267,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         };
         request.send(null);
     };
-
-    /**
-     * Handle key input in the prefix input zone
-     * @param {Event} evt
-     */
-    function onKeyUpPrefix(evt) {
-        // Use a timeout, so that very quick typing does not cause a lot of overhead
-        // It is also necessary for the words suggestions to work inside Firefox OS
-        if(window.timeoutKeyUpPrefix) {
-            window.clearTimeout(window.timeoutKeyUpPrefix);
-        }
-        window.timeoutKeyUpPrefix = window.setTimeout(function() {
-            var prefix = $("#prefix").val();
-            if (prefix && prefix.length>0) {
-                $('#searchArticles').click();
-            }
-        }
-        , settings.autoCompleteResubmitTimer);
-    }
 
     // snippetController - Controls rate of additions of snippets
     // Not really required if upto < 10-20 with loadmore enabled on Desktop 
@@ -767,12 +318,12 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     var totalFound, totalImages, articlesMatchedProcessed, nonArticlesMatchedProcessed, ResultSet, variantMatches=[]; 
     function search() {
         if(searchContext.loadmore){
-            resetUI();
+            ui.reset();
             searchInit();
         }else{
             variantMatches=[];    
         }
-        statusUpdate("Searching...", "btn-warning");
+        ui.status("Searching...", "btn-warning");
         
         // If incremental UI update of results is not desired move this inside onAllResults
         $('#articleList').show();
@@ -792,7 +343,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
             //alert("Archive not set : please select an archive");
-            statusUpdate("Archive not set!");
+            ui.status("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -841,7 +392,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         // TODO Is this the right way of updating the button and its handler?
         // for titlesearch - updateLoadMoreButton("Found:" +totalCount+ " Load More...");
         //var totImgCount from ResultSet
-        updateLoadMoreButton("Pages:"+ totalFound+" Uniq:"+ResultSet.size + " Images:"+totalImages, "btn-success");
+        ui.statusLoadMore("Pages:"+ totalFound+" Uniq:"+ResultSet.size + " Images:"+totalImages, "btn-success");
         // ResultSet.forEach((v,k) =>{ console.log(k); console.log(v.images.length, v.redirectedFrom, v.dup);})
         updateSearchContext();
         $("#loadmore").on('click', function(e) {
@@ -857,10 +408,10 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         $("#articleList a").on("click",handleTitleClick);
         updateSearchContext();
         if(allResults.length == 0){
-            statusUpdate("Nothing Matched!");
+            ui.status("Nothing Matched!");
             return;    
         }
-        updateLoadMoreButton("Found:" +allResults.length+ " Load More...");
+        ui.statusLoadMore("Found:" +allResults.length+ " Load More...");
         $("#loadmore").on('click', function(e) {
             pushBrowserHistoryState(null, searchContext);
             $("#prefix").val(searchContext.keyword);
@@ -873,7 +424,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     function searchForImages() {
         console.time("ImageSearch Lookup+Inject+Load");
         if(!searchContext.loadmore){
-            resetUI();
+            ui.reset();
             $("#articleContent").attr('src', "A/imageResults.html");
             searchInit();            
         }else{
@@ -881,7 +432,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         }
         //$("#articleContent").contents().scrollTop(0);            
         /* TODO Show Progress */
-        statusUpdate("Searching...", "btn-warning")
+        ui.status("Searching...", "btn-warning")
         //var keyword = decodeURIComponent(prefix); 
         if (selectedArchive !== null && selectedArchive.isReady()) {
             // used in processArticleForImages TODO refactor
@@ -896,7 +447,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            statusUpdate("Archive not set!");
+            ui.status("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -932,7 +483,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
                     var top = data.slice(b, b+4000);
                     // get rid of 404s
                     top = top.replace("src=","nosrc=");
-                    var snippet = new uiUtil.snippet($(top).find("p")).parse();
+                    var snippet = new ui.snippet($(top).find("p")).parse();
                     /* Testing jaifroid's regex
                     var firstpara = /((?:<span\s*>\s*)?<p\b[^>]*>(?:(?=([^<]+))\3|<(?!p\b[^>]*>))*?<\/p>(?:<span\s*>)?)/i ;
                     var snippet = top.match(firstpara);
@@ -955,7 +506,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     function handleTitleClick(event) {
         // TODO: Can be refactored/reused? url->DirEnt step gets skipped by saving dirent in search result link        
         var dirEntryId = event.currentTarget.getAttribute("dirEntryId");
-        resetUI();
+        ui.reset();
         findDirEntryFromDirEntryIdAndLaunchArticleRead(dirEntryId);
         var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
         pushBrowserHistoryState(dirEntry.url);
@@ -972,7 +523,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         if (selectedArchive.isReady()) {
             var dirEntry = selectedArchive.parseDirEntryId(dirEntryId);
             $("title").html(dirEntry.title);
-            statusUpdate("Reading...", "bg-warning");
+            ui.status("Reading...", "bg-warning");
             //$("#articleContent").contents().html("");
             if (dirEntry.isRedirect()) {
                 selectedArchive.resolveRedirect(dirEntry, readArticle);
@@ -985,8 +536,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             alert("Data files not set");
         }
     }
-
-    
 
     /**
      * Read the article corresponding to the given dirEntry
@@ -1001,48 +550,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
             selectedArchive.readArticle(dirEntry, displayArticleInFrame);
         }
     }
-    
-    var messageChannel;
-    
-    /**
-     * Function that handles a message of the messageChannel.
-     * It tries to read the content in the backend, and sends it back to the ServiceWorker
-     * @param {Event} event
-     */
-    function handleMessageChannelMessage(event) {
-        if (event.data.error) {
-            console.error("Error in MessageChannel", event.data.error);
-            reject(event.data.error);
-        } else {
-            console.log("the ServiceWorker sent a message on port1", event.data);
-            if (event.data.action === "askForContent") {
-                console.log("we are asked for a content : let's try to answer to this message");
-                var url = event.data.url;
-                var messagePort = event.ports[0];
-                var readFile = function(dirEntry) {
-                    if (dirEntry === null) {
-                        console.error("URL " + url + " not found in archive.");
-                        messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': ''});
-                    } else if (dirEntry.isRedirect()) {
-                        selectedArchive.resolveRedirect(dirEntry, readFile);
-                    } else {
-                        console.log("Reading binary file...");
-                        selectedArchive.readBinaryFile(dirEntry, function(content) {
-                            messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': content});
-                            console.log("content sent to ServiceWorker");
-                        });
-                    }
-                };
-                selectedArchive.getDirEntryByURL(url).then(readFile).fail(function() {
-                    messagePort.postMessage({'action': 'giveContent', 'url' : url, 'content': new UInt8Array()});
-                });
-            }
-            else {
-                console.error("Invalid message received", event.data);
-            }
-        }
-    };
-    
+            
     // Compile some regular expressions needed to modify links
     var regexpImageLink = /^.?\/?[^:]+:(.*)/;
     var regexpPath = /^(.*\/)[^\/]+$/;
@@ -1096,7 +604,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     function loadCSS(link, hrefURL){
         //console.time("css-load");
         // It's a CSS file contained in the ZIM file
-        var url = uiUtil.removeUrlParameters(decodeURIComponent(hrefURL));
+        var url = ui.removeUrlParameters(decodeURIComponent(hrefURL));
         var cssLoadingPromise;
         if(cssBlobCache && cssBlobCache.has(url)){
             //console.log("blob hit");
@@ -1119,46 +627,18 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         //console.log("added css promise");    
     }
 
-    // @page is a DOM document or element, 
-    function setupTableOfContents(page){
-        var iframe = page.nodeType == 9; // to handle toc of about page - remove when done
-        var tableOfContents = new uiUtil.toc(page);
-        var headings = tableOfContents.getHeadingObjects();
-        var dropup = '<span class="dropup"><button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> In This Article <span class="caret"></span> </button> <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">';
-        headings.forEach(function(heading){
-            if(heading.tagName == "H1")
-                dropup = dropup + '<li><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
-            else if(heading.tagName == "H2")
-                if (iframe)
-                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="$(&apos;#articleContent&apos;).contents().scrollTop($(&apos;#articleContent&apos;).contents().find(&apos;#'+heading.id+'&apos;).offset().top)">'+heading.textContent+'</a></li>';
-                else
-                    dropup = dropup + '<li class="small"><a href="javascript:void(0)" onclick="location.href=&apos;#'+heading.id+'&apos;">'+heading.textContent+'</a></li>';
-            //else
-                //Currently skip smaller headings until toc scrolling works
-                //dropup = ...
-        });
-        dropup = dropup + '</ul></span>'
-        statusUpdateHTML(dropup);
-    }
-
-    function updateLoadMoreButton(str){
-        var button = '<button class="btn btn-success btn-sm" type="button" id="loadmore">'+str+'</button>'
-        statusUpdateHTML(button);
-    }
-
     function checkTypeAndInject(url, jQueryNode, imageBlob) {
         if(util.endsWith(url, ".png")){
-            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/png');
+            ui.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/png');
         }else if (util.endsWith(url, ".svg")){
-            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/svg+xml;');
+            ui.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/svg+xml;');
         }else if (util.endsWith(url, ".jpg")){
-            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/jpeg');
+            ui.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image/jpeg');
         }else{
             //console.error("Unrecognized image format: " + dirEntry.url);
-            uiUtil.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image');
+            ui.feedNodeWithBlob(jQueryNode, 'src', imageBlob, 'image');
         }
     }
-
 
     /**
      * Display the the given HTML article in the web page,
@@ -1181,9 +661,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         var $iframeBody = $iframe.find('body');
         $iframeBody.html($body);
        
-        // If the ServiceWorker is not useable, we need to fallback to parse the DOM
-        // to inject math images, and replace some links with javascript calls
-        if (contentInjectionMode === 'jquery') {
+        if (contentInjectionMode === 'ParseAndLoad') {
 
             // Convert links into javascript calls
             $iframeBody.find('a').each(function() {    
@@ -1198,7 +676,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
                 if (cssClass === "new") {
                     // It's a link to a missing article : display a message
                     $(this).on('click', function(e) {
-                        statusUpdate("Missing article");
+                        ui.status("Missing article");
                         return false;
                     });
                 }
@@ -1312,13 +790,13 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
                 }
             });
             //console.log("# of css files loading:" + cssLoaded.length);
-            setupTableOfContents(innerDoc);    
+            ui.setupTableOfContents(innerDoc);    
         }
     }
 
     function displayImagesInFrame(dirEntry, htmlArticle) {
         if(!dirEntry && !htmlArticle){
-            statusUpdate("No matches found", "btn-success");
+            ui.status("No matches found", "btn-success");
             console.log("FIX: add errorcnt to searchDone check");
             // TODO errorcount++; add to searchDone condition 
             return;
@@ -1352,7 +830,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
                 searchDone();
             return;
         }
-        //var snippet = new uiUtil.snippet($body.contents().find("p")).parse();
+        //var snippet = new ui.snippet($body.contents().find("p")).parse();
         var imageURLs = [].slice.call(imgNodes)
                            .map(el => decodeURIComponent(el.getAttribute('data-src')
                                         .match(regexpImageUrl)[1]));
@@ -1413,8 +891,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         var stateObj = {};
         var urlParameters;
         var stateLabel;
-        // This will ensure in url mode (as opposed to file selector mode)
-        // archive parameter becomes part of the url string. 
+        // This will ensure in url mode (as opposed to file selector mode) archive parameter becomes part of the url string. 
         // Bookmarking links & Setting home page to a url will also be possible.
         var appendArchive = READ_MODE == "file" ? "" : "&archive="+ selectedArchive._file._files[0].name;
 
@@ -1442,7 +919,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
     // common code used by gotoArticle/gotoMainArticle/gotoRandomArticle
     function injectContent(dirEntry){
         $("title").html(dirEntry.title);
-        statusUpdate("Reading...", "bg-warning");
+        ui.status("Reading...", "bg-warning");
         $('#articleContent').contents().find('body').html("");
         readArticle(dirEntry);
     }
@@ -1456,55 +933,67 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 //alert("Article with url " + url + " not found in the archive");
-                statusUpdate("Article not found:"+ url);
+                ui.status("Article not found:"+ url);
             }
             else {
                 injectContent(dirEntry);
             }
         }).catch(function() { 
             //alert("Error reading article with title " + url);
-            statusUpdate("Error reading " + url); 
+            ui.status("Error reading " + url); 
         });
     }
     
     function goToRandomArticle() {
-        selectedArchive.getRandomDirEntry(function(dirEntry) {
-            if (dirEntry === null || dirEntry === undefined) {
-                alert("Error finding random article.");
-            }
-            else {
-                if (dirEntry.namespace === 'A') {
-                    pushBrowserHistoryState(dirEntry.url);
-                    injectContent(dirEntry);
+        if (selectedArchive !== null && selectedArchive.isReady()) {    
+            selectedArchive.getRandomDirEntry(function(dirEntry) {
+                if (dirEntry === null || dirEntry === undefined) {
+                    ui.status("Error finding random article.");
                 }
                 else {
-                    // If the random title search did not end up on an article,
-                    // we try again, until we find one
-                    goToRandomArticle();
+                    if (dirEntry.namespace === 'A') {
+                        pushBrowserHistoryState(dirEntry.url);
+                        injectContent(dirEntry);
+                    }
+                    else {
+                        // If the random title search did not end up on an article,
+                        // we try again, until we find one
+                        goToRandomArticle();
+                    }
                 }
-            }
-        });
+            });            
+        } else {
+            //$('#searchingForArticles').hide();
+            // We have to remove the focus from the search field,
+            // so that the keyboard does not stay above the message
+            $("#searchArticles").focus();
+            ui.status("Archive not set!");
+            $("#btnConfigure").click();
+        }
     }
 
     function goToMainArticle() {
-        resetUI();
-        archiveStatusUpdate();
-        selectedArchive.getMainPageDirEntry(function(dirEntry) {
-            if (dirEntry === null || dirEntry === undefined) {
-                statusUpdate("Error finding main article.");
-                console.error("Error finding main article.");
-            }
-            else {
-                if (dirEntry.namespace === 'A') {
-                    pushBrowserHistoryState(dirEntry.url);
-                    injectContent(dirEntry);
+        //ui.reset();
+        if (selectedArchive && selectedArchive.isReady()){
+            selectedArchive.getMainPageDirEntry(function(dirEntry) {
+                if (dirEntry === null || dirEntry === undefined) {
+                    ui.status("Error finding main article.");
+                    console.error("Error finding main article.");
                 }
                 else {
-                    statusUpdate("The main page of this archive does not seem to be an article");
-                    console.error("The main page of this archive does not seem to be an article");
+                    if (dirEntry.namespace === 'A') {
+                        pushBrowserHistoryState(dirEntry.url);
+                        injectContent(dirEntry);
+                    }
+                    else {
+                        ui.status("The main page of this archive does not seem to be an article");
+                        console.error("The main page of this archive does not seem to be an article");
+                    }
                 }
-            }
-        });
+            });            
+        }else{
+            ui.status("Archive not set!", 'btn-danger');
+        }
     }
 
     // Converts selectedArchive object to string. The string can be saved and used later to recreate the object  
@@ -1521,7 +1010,20 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'cookies','ab
         return "";
     }
 
+    // Video test on wiki-en-2016-12
+    async function testVid(){
+        var url = decodeURIComponent('I/m/-Pluto-FlyoverAnimation-20150918.webm.jpg');
+        //console.log(url); 
+        var dev = await selectedArchive.getDirEntryByURL(url);
+        var data = await dev.readData();
+        var blob = new Blob([data], {type: 'video'});
+        var url = URL.createObjectURL(blob);
+        $('#articleContent').contents().find('body').html('<img src='+url+'></img>');
+        //$('#articleContent').contents().find('body').html('<video src='+url+'></video>');                
+    }
+
     return { 
-        stringifyArchive: stringifyArchive
+        stringifyArchive: stringifyArchive,
+        testVid: testVid
     };
 });
