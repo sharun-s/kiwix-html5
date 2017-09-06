@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', 'cookies','abstractFilesystemAccess', 'module', 'control', 'finder', 'utf8'],
- function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, abstractFilesystemAccess, module, control, finder, utf8) {
+define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', 'cookies', 'module', 'control', 'finder', 'utf8'],
+ function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, module, control, finder, utf8) {
 
     var settings  = module.config().settings;
     // Determines if Archives are read via FileReader or XHR Range Requests
@@ -80,60 +80,26 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         searchContext.loadmore = false;
         startImageSearch($('#prefix').val());
     });    
-    $('#btnRescanDeviceStorage').on("click", function(e) {
-        searchForArchivesInStorage();
-    });
 
-
-    /**
-     * 
-     * @type Array.<StorageFirefoxOS>
-     */
-    var storages = [];
-    function searchForArchivesInPreferencesOrStorage() {
-        // First see if the list of archives is stored in the cookie
-        var listOfArchivesFromCookie = cookies.getItem("listOfArchives");
-        if (listOfArchivesFromCookie !== null && listOfArchivesFromCookie !== undefined && listOfArchivesFromCookie !== "") {
-            var directories = listOfArchivesFromCookie.split('|');
-            ui.populateDropDownListOfArchives(directories, storages, setArchiveFromArchiveList);
-        }
-        else {
-            searchForArchivesInStorage();
-        }
-    }
-    function searchForArchivesInStorage() {
-        // If DeviceStorage is available, we look for archives in it
-        $("#btnConfigure").click();
-        $('#scanningForArchives').show();
-        zimArchiveLoader.scanForArchives(storages,(directories) => {ui.populateDropDownListOfArchives(directories, storages, setArchiveFromArchiveList);} );
-    }
-
-    if ($.isFunction(navigator.getDeviceStorages)) {
-        // The method getDeviceStorages is available (FxOS>=1.1)
-        storages = $.map(navigator.getDeviceStorages("sdcard"), function(s) {
-            return new abstractFilesystemAccess.StorageFirefoxOS(s);
+    if (zimArchiveLoader.storageExists()) {
+        zimArchiveLoader.findArchives(ui.populateListOfArchives);
+        $('#archiveList').on('change', setLocalArchiveFromArchiveList);
+        $('#btnRescanDeviceStorage').on("click", function(e) {
+            $("#btnConfigure").click();
+            $('#scanningForArchives').show();
+            zimArchiveLoader.scanForArchives(ui.populateDropDownListOfArchives);
         });
-    }
-
-    if (storages !== null && storages.length > 0) {
-        // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
-        // This way, it is only done once at this moment, instead of being done several times in callbacks
-        // After that, we can start looking for archives
-        storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
-                                                  searchForArchivesInPreferencesOrStorage);
     }else{ 
         // dislpay the fileselector TODO show maybe unnecessary as its always in view when config is clicked   
         $('#openLocalFiles').show();
         $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
-
         // Handle setting archive via URL
         var params={};
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
-        if(params["archive"]) 
-        {
+        if(params["archive"]){
             setLocalArchiveFromURL(params);
         }else{
-	        // If DeviceStorage is not available, we display the file select components
+	        // Display the file select components
             if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
                 // Archive files are already selected, 
                 setLocalArchiveFromFileSelect();
@@ -143,6 +109,48 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
 	    }
     }
 
+    function startSearch(keyword, uiReset, uiKeywordSet){
+        searchContext.keyword = keyword;
+        if (uiReset)
+            ui.reset();
+        if (uiKeywordSet)
+            $("#prefix").val(searchContext.keyword);
+        searchContext.loadmore = false; // new search so loadmore must be reset.
+        pushBrowserHistoryState(null, searchContext);
+        $("title").html("Searching for " + searchContext.keyword);
+        searchInit();
+        search();        
+    }
+    
+    function startImageSearch(keyword){
+        searchContext.keyword = keyword;
+        $("#prefix").val(searchContext.keyword);
+        $("title").html("ImageSearch Results for "+ searchContext.keyword);
+        pushBrowserHistoryState(null, null, searchContext.keyword);
+        searchInit();
+        searchForImages();        
+    }
+
+    // Going back in the browser history
+    window.onpopstate = function(event) {
+        if (event.state) {
+            var title = event.state.title;
+            var searchCtx = event.state.titleSearch;
+            var imageSearch = event.state.imageSearch;
+            ui.reset();
+            if (title && !(""===title)) {
+                goToArticle(title);
+            }
+            else if (searchCtx) {
+                searchContext = searchCtx;
+                uiSearch.update(searchContext);
+                startSearch(searchCtx.keyword);
+            }else if(imageSearch && !(""===imageSearch)){
+                startImageSearch(searchCtx.keyword);
+            }
+        }
+    };
+    // Called when 'archive' param is specified in URL
     function setLocalArchiveFromURL(params){
         ui.reset();    
         selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
@@ -168,59 +176,52 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         }
     }
 
-    function startSearch(keyword, uiReset, uiKeywordSet){
-        searchContext.keyword = keyword;
-        if (uiReset)
-            ui.reset();
-        if (uiKeywordSet)
-            $("#prefix").val(searchContext.keyword);
-        searchContext.loadmore = false; // new search so loadmore must be reset.
-        pushBrowserHistoryState(null, searchContext);
-        $("title").html("Searching for " + searchContext.keyword);
-        searchInit();
-        search();        
-    }
-    
-    function startImageSearch(keyword){
-        searchContext.keyword = keyword;
-        $("#prefix").val(searchContext.keyword);
-        $("title").html("ImageSearch Results for "+ searchContext.keyword);
-        pushBrowserHistoryState(null, null, searchContext.keyword);
-        searchInit();
-        searchForImages();        
-    }
-
-    // Display the article when the user goes back in the browser history
-    window.onpopstate = function(event) {
-        if (event.state) {
-            var title = event.state.title;
-            var searchCtx = event.state.titleSearch;
-            var imageSearch = event.state.imageSearch;
-            ui.reset();
-            if (title && !(""===title)) {
-                goToArticle(title);
-            }
-            else if (searchCtx) {
-                searchContext = searchCtx;
-                uiSearch.update(searchContext);
-                startSearch(searchCtx.keyword);
-            }else if(imageSearch && !(""===imageSearch)){
-                startImageSearch(searchCtx.keyword);
-            }
-        }
-    };
-    
     /**
      * Sets the localArchive from the selected archive in the drop-down list
      */
-    function setArchiveFromArchiveList(selectedStorage, archiveDirectory) {
+    function setLocalArchiveFromArchiveList() {
+        var archiveDirectory = $('#archiveList').val();
+        if (archiveDirectory && archiveDirectory.length > 0) {
+            // Now, try to find which DeviceStorage has been selected by the user
+            // It is the prefix of the archive directory
+            var regexpStorageName = /^\/([^\/]+)\//;
+            var regexpResults = regexpStorageName.exec(archiveDirectory);
+            var selectedStorage = null;
+            if (regexpResults && regexpResults.length>0) {
+                var selectedStorageName = regexpResults[1];
+                for (var i=0; i<storages.length; i++) {
+                    var storage = zimArchiveLoader.storages[i];// prob needs a getter
+                    if (selectedStorageName === storage.storageName) {
+                        // We found the selected storage
+                        selectedStorage = storage;
+                    }
+                }
+                if (selectedStorage === null) {
+                    alert("Unable to find which device storage corresponds to directory " + archiveDirectory);
+                }
+            }
+            else {
+                // This happens when the archiveDirectory is not prefixed by the name of the storage
+                // (in the Simulator, or with FxOs 1.0, or probably on devices that only have one device storage)
+                // In this case, we use the first storage of the list (there should be only one)
+                if (zimArchiveLoader.storages.length === 1) {
+                    selectedStorage = zimArchiveLoader.storages[0];
+                }
+                else {
+                    alert("Something weird happened with the DeviceStorage API : found a directory without prefix : "
+                        + archiveDirectory + ", but there were " + zimArchiveLoader.storages.length
+                        + " storages found with getDeviceStorages instead of 1");
+                }
+            }
             selectedArchive = zimArchiveLoader.loadArchiveFromDeviceStorage(selectedStorage, archiveDirectory, function (archive) {
                 cookies.setItem("lastSelectedArchive", archiveDirectory, Infinity);
                 // The archive is set : go back to home page to start searching
                 $("#btnHome").click();
             });
+        }
     }
-    
+
+    // Called when archive is selected via FileSelector
     function setLocalArchiveFromFileList(files) {
         // Reset the cssDirEntryCache and cssBlobCache. Must be done when archive changes.
         if(cssBlobCache) 
@@ -233,19 +234,17 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             $("#btnHome").click();
         });
     }
+
     /**
      * Sets the localArchive from the File selects populated by user
      */
     function setLocalArchiveFromFileSelect() {
-        // if firefox is started in xhrff mode loading archive from url 
-        // and then user switches to archive via fileselector, change the mode to file 
+        // if firefox is started in xhrff mode loading archive from url and then user switches to archive via fileselector, change the mode to file 
         // for readslice to use the right mode. This is because init.js won't get reloaded in this case. 
         if(READ_MODE !== "file"){
-            // READ_MODE = "file"; is not enough as mode must be also reset in util 
-            // so trigger a reload
-            // [TODO] This is temp hack - find a way to set mode across modules
-            location.replace(ui.removeUrlParameters(location.href));
-        }            
+            READ_MODE = "file";
+            require({'baseUrl':'js/lib'},['util'], (u) => {u.readSlice = u.readFileSlice;});
+        }
         setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
 

@@ -20,8 +20,45 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['zimArchive', 'jquery'],
-       function(zimArchive, jQuery) {
+define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies'], function(zimArchive, $, abstractFilesystemAccess, cookies) {
+
+    var storages, directories, scanDone;
+    // Only required on FFOS can be extended to other platforms
+    function storageExists(){
+        if ($.isFunction(navigator.getDeviceStorages)) {
+            // The method getDeviceStorages is available (FxOS>=1.1)
+            storages = $.map(navigator.getDeviceStorages("sdcard"), function(s) {
+                return new abstractFilesystemAccess.StorageFirefoxOS(s);
+            });
+            
+            if (storages !== null && storages.length > 0){
+                return true;
+            }else
+                return false;
+        }else
+            return false;
+    }
+
+    function fromLocalStorage(onComplete){
+        scanDone = onComplete;
+        // Make a fake first access to device storage, in order to ask the user for confirmation if necessary.
+        // This way, it is only done once at this moment, instead of being done several times in callbacks
+        // After that, we can start looking for archives
+        storages[0].get("fake-file-to-read").then(searchForArchivesInPreferencesOrStorage,
+                                              searchForArchivesInPreferencesOrStorage);            
+    }
+    // returns true if list of archives found either from cookie or on scane
+    function searchForArchivesInPreferencesOrStorage() {
+        // First see if the list of archives is stored in the cookie
+        var listOfArchivesFromCookie = cookies.getItem("listOfArchives");
+        if (listOfArchivesFromCookie !== null && listOfArchivesFromCookie !== undefined && listOfArchivesFromCookie !== "") {
+            directories = listOfArchivesFromCookie.split('|');
+            return true;
+        }
+        else {
+            scanForArchives();
+        }
+    }
 
     /**
      * Create a ZIMArchive from DeviceStorage location
@@ -93,27 +130,27 @@ define(['zimArchive', 'jquery'],
     /**
      *  Scans the DeviceStorage for archives
      *
-     * @param {Array.<DeviceStorage>} storages List of DeviceStorage instances
      * @param {callbackPathList} callbackFunction Function to call with the list of directories where archives are found
      */
-    function scanForArchives(storages, callbackFunction) {
-        var directories = [];
-        var promises = jQuery.map(storages, function(storage) {
+    function scanForArchives(callbackFunction) {
+        directories = [];
+        var promises = $.map(storages, function(storage) {
             return storage.scanForArchives()
                 .then(function(dirs) {
-                    jQuery.merge(directories, dirs);
+                    $.merge(directories, dirs);
                     return true;
                 });
         });
-        jQuery.when.apply(null, promises).then(function() {
-            callbackFunction(directories);
+        $.when.apply(null, promises).then(function() {
+            scanDone(directories);
+            return true;
         }, function(error) {
             alert("Error scanning your SD card : " + error
                     + ". If you're using the Firefox OS Simulator, please put the archives in "
                     + "a 'fake-sdcard' directory inside your Firefox profile "
                     + "(ex : ~/.mozilla/firefox/xxxx.default/extensions/fxos_2_x_simulator@mozilla.org/"
                     + "profile/fake-sdcard/wikipedia_en_ray_charles_2015-06.zim)");
-            callbackFunction(null);
+            scanDone(null);
         });
     };
 
@@ -125,6 +162,8 @@ define(['zimArchive', 'jquery'],
         loadArchiveFromFiles: loadArchiveFromFiles,
         loadArchiveFromString: loadArchiveFromString,
         loadArchiveFromURL: loadArchiveFromURL,
+        storageExists: storageExists,
+        findArchives: fromLocalStorage,
         scanForArchives: scanForArchives,
         onDiskMatches: onDiskMatches
     };

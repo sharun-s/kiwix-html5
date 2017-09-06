@@ -388,6 +388,7 @@ define(['module'], function(module) {
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
         readSlice : module.config().mode == "file" ? readFileSlice : isFireFox() ? readFFXHRSlice : readXHRSlice,
+        readFileSlice : readFileSlice,
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,

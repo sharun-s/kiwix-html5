@@ -279,7 +279,7 @@ define(['jquery'], function($) {
      * Populate the drop-down list of archives with the given list
      * @param {Array.<String>} archiveDirectories
      */
-    function populateDropDownListOfArchives(archiveDirectories, storages, setArchive) {
+    function populateListOfArchives(archiveDirectories) {
         $('#scanningForArchives').hide();
         $('#chooseArchiveFromLocalStorage').show();
         var comboArchiveList = document.getElementById('archiveList');
@@ -296,7 +296,6 @@ define(['jquery'], function($) {
         // Store the list of archives in a cookie, to avoid rescanning at each start
         cookies.setItem("listOfArchives", archiveDirectories.join('|'), Infinity);
         
-        $('#archiveList').on('change', () => { setLocalArchiveFromArchiveList(storages, setArchive);});
         if (comboArchiveList.options.length > 0) {
             var lastSelectedArchive = cookies.getItem("lastSelectedArchive");
             if (lastSelectedArchive !== null && lastSelectedArchive !== undefined && lastSelectedArchive !== "") {
@@ -307,7 +306,7 @@ define(['jquery'], function($) {
             }
             // Set the localArchive as the last selected (or the first one if it has never been selected)
             //setLocalArchiveFromArchiveList();
-            setLocalArchiveFromArchiveList(setArchive);
+            //setLocalArchiveFromArchiveList(setArchive);
         }
         else {
             alert("Welcome to Kiwix! This application needs at least a ZIM file in your SD-card (or internal storage). Please download one and put it on the device (see About section). Also check that your device is not connected to a computer through USB device storage (which often locks the SD-card content)");
@@ -316,47 +315,6 @@ define(['jquery'], function($) {
             if (isAndroid) {
                 alert("You seem to be using an Android device. Be aware that there is a bug on Firefox, that prevents finding Wikipedia archives in a SD-card (at least on some devices. See about section). Please put the archive in the internal storage if the application can't find it.");
             }
-        }
-    }
-
-        /**
-     * Sets the localArchive from the selected archive in the drop-down list
-     */
-    function setLocalArchiveFromArchiveList(storages, setArchive) {
-        var archiveDirectory = $('#archiveList').val();
-        if (archiveDirectory && archiveDirectory.length > 0) {
-            // Now, try to find which DeviceStorage has been selected by the user
-            // It is the prefix of the archive directory
-            var regexpStorageName = /^\/([^\/]+)\//;
-            var regexpResults = regexpStorageName.exec(archiveDirectory);
-            var selectedStorage = null;
-            if (regexpResults && regexpResults.length>0) {
-                var selectedStorageName = regexpResults[1];
-                for (var i=0; i<storages.length; i++) {
-                    var storage = storages[i];
-                    if (selectedStorageName === storage.storageName) {
-                        // We found the selected storage
-                        selectedStorage = storage;
-                    }
-                }
-                if (selectedStorage === null) {
-                    alert("Unable to find which device storage corresponds to directory " + archiveDirectory);
-                }
-            }
-            else {
-                // This happens when the archiveDirectory is not prefixed by the name of the storage
-                // (in the Simulator, or with FxOs 1.0, or probably on devices that only have one device storage)
-                // In this case, we use the first storage of the list (there should be only one)
-                if (storages.length === 1) {
-                    selectedStorage = storages[0];
-                }
-                else {
-                    alert("Something weird happened with the DeviceStorage API : found a directory without prefix : "
-                        + archiveDirectory + ", but there were " + storages.length
-                        + " storages found with getDeviceStorages instead of 1");
-                }
-            }
-            setArchive(selectedStorage, archiveDirectory);            
         }
     }
 
@@ -380,6 +338,6 @@ define(['jquery'], function($) {
         onHome: onHome,
         onConfig: onConfig,
         onRandom: onRandom,
-        populateDropDownListOfArchives: populateDropDownListOfArchives 
+        populateListOfArchives: populateListOfArchives 
     };
 });
