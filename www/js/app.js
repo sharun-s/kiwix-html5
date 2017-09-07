@@ -639,6 +639,27 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         }
     }
 
+    function existsInKnownArchives(url){
+        var temp = new URL(url);
+        //console.log(temp);
+        if(!zimArchiveLoader.URL2Archive.hasOwnProperty(temp.hostname))
+            return false; 
+        var parts = temp.pathname.split('/');
+        //console.log(parts);
+        const cnt = parts.length;
+        if ( cnt == 1)
+            return false;
+        for(var i=0;i<cnt;i++){
+            var basePath = parts.slice(0, i).join('/');
+            //console.log(basePath);
+            if(zimArchiveLoader.URL2Archive.hasOwnProperty(temp.host + basePath )){
+                var archive = zimArchiveLoader.URL2Archive[temp.host + basePath];
+                return "./../index.html?archive=" + archive + "&title=" + parts[cnt-1].replace(/%20/g,"_") + ".html";
+            }
+        }
+        return false; 
+    }
+
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -678,15 +699,21 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                         ui.status("Missing article");
                         return false;
                     });
-                }
-                else if (url.slice(0, 1) === "#") {
-                    // It's an anchor link : do nothing
-                }
-                else if (url.substring(0, 4) === "http") {
+                }else if (url.slice(0, 1) === "#") {
+                    // It's an anchor link : do nothing TODO: Add to TOC
+                }else if (url.substring(0, 4) === "http") {
                     // It's an external link : open in a new tab
-                    $(this).attr("target", "_blank");
-                }
-                else if (url.match(regexpImageLink)
+                    var newurl = existsInKnownArchives(url);
+                    if(!newurl)
+                        $(this).attr("target", "_blank");
+                    else{
+                        //$(this).attr("href", newurl);
+                        $(this).on('click', function(e) {
+                            window.location.href = newurl; // iframe location change not enough when archive is changed.
+                            return false;
+                        });   
+                    }
+                }else if (url.match(regexpImageLink)
                     && (util.endsWith(lowerCaseUrl, ".png")
                         || util.endsWith(lowerCaseUrl, ".svg")
                         || util.endsWith(lowerCaseUrl, ".jpg")

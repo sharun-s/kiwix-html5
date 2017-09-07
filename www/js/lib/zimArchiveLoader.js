@@ -100,6 +100,16 @@ define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies'], function
            test: '{"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}'         
     };
 
+    var URL2Archive = {
+        'simple.wikipedia.org': 'wiki',
+        'en.wikipedia.org': 'wiki',
+        'en.wikipedia.org/wiki': 'wiki',
+        'stackoverflow.com': 'so',
+        'www.stackoverflow.com': 'so',
+        'developer.mozilla.com': 'mdn',
+        'msdn.com': 'msdn'
+    };
+
     function onDiskMatches(library){
         function filename(obj){ return obj.url.split("/").slice(-1)[0].slice(0,-6); };
         var onDisk = library.filter((i) => knownArchives.hasOwnProperty(filename(i)));
@@ -165,6 +175,7 @@ define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies'], function
         storageExists: storageExists,
         findArchives: fromLocalStorage,
         scanForArchives: scanForArchives,
-        onDiskMatches: onDiskMatches
+        onDiskMatches: onDiskMatches,
+        URL2Archive: URL2Archive
     };
 });
