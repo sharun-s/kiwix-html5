@@ -104,6 +104,7 @@ define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies'], function
         'simple.wikipedia.org': 'wiki',
         'en.wikipedia.org': 'wiki',
         'en.wikipedia.org/wiki': 'wiki',
+        'en.wiktionary.org/wiki': 'dict',
         'stackoverflow.com': 'so',
         'www.stackoverflow.com': 'so',
         'developer.mozilla.com': 'mdn',

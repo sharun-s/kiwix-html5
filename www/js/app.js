@@ -39,6 +39,21 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     var selectedArchive = null;    
     //setupSearchUI(searchContext);
     library.loadCatalogue($("#zims"));
+            
+    // Compile some regular expressions needed to modify links
+    var regexpImageLink = /^.?\/?[^:]+:(.*)/;
+    var regexpPath = /^(.*\/)[^\/]+$/;
+    // These regular expressions match both relative and absolute URLs, since late 2014, all ZIM files should use relative URLs
+    var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
+    var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
+    // This regular expression matches the href of all <link> tags containing rel="stylesheet" in raw HTML
+    var regexpSheetHref = /(<link\s+(?=[^>]*rel\s*=\s*["']stylesheet)[^>]*href\s*=\s*["'])([^"']+)(["'][^>]*>)/ig;
+    // Stores a url to direntry mapping and is refered to/updated anytime there is a css lookup
+    // When archive changes these caches will be reset. 
+    var cssDirEntryCache = new Map();
+    var cssBlobCache = new Map();
+    // Promise that gets resolved after css load used to control article loading in ParseAndLoad mode
+    var cssLoaded;
      
     // Disable any eval() call in jQuery : it's disabled by CSP in any packaged application
     // It happens on some wiktionary archives, because there is some javascript inside the html article
@@ -150,6 +165,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             }
         }
     };
+
     // Called when 'archive' param is specified in URL
     function setLocalArchiveFromURL(params){
         ui.reset();    
@@ -176,9 +192,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         }
     }
 
-    /**
-     * Sets the localArchive from the selected archive in the drop-down list
-     */
+    // Currently used only in FFOS. Sets the localArchive from the selected archive in the drop-down list
     function setLocalArchiveFromArchiveList() {
         var archiveDirectory = $('#archiveList').val();
         if (archiveDirectory && archiveDirectory.length > 0) {
@@ -235,8 +249,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         });
     }
 
-    /**
-     * Sets the localArchive from the File selects populated by user
+    /* Sets the localArchive from the File selects populated by user TODO: can be merged with setLocalArchiveFromFileList 
      */
     function setLocalArchiveFromFileSelect() {
         // if firefox is started in xhrff mode loading archive from url and then user switches to archive via fileselector, change the mode to file 
@@ -512,7 +525,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         return false;
     }
     
-
     /**
      * Creates an instance of DirEntry from given dirEntryId (including resolving redirects),
      * and call the function to read the corresponding article
@@ -549,23 +561,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             selectedArchive.readArticle(dirEntry, displayArticleInFrame);
         }
     }
-            
-    // Compile some regular expressions needed to modify links
-    var regexpImageLink = /^.?\/?[^:]+:(.*)/;
-    var regexpPath = /^(.*\/)[^\/]+$/;
-    // These regular expressions match both relative and absolute URLs
-    // Since late 2014, all ZIM files should use relative URLs
-    var regexpImageUrl = /^(?:\.\.\/|\/)+(I\/.*)$/;
-    var regexpMetadataUrl = /^(?:\.\.\/|\/)+(-\/.*)$/;
-    // This regular expression matches the href of all <link> tags containing rel="stylesheet" in raw HTML
-    var regexpSheetHref = /(<link\s+(?=[^>]*rel\s*=\s*["']stylesheet)[^>]*href\s*=\s*["'])([^"']+)(["'][^>]*>)/ig;
-    // Stores a url to direntry mapping and is refered to/updated anytime there is a css lookup 
-    // When archive changes these caches should be reset. 
-    // Currently happens only in setLocalArchiveFromFileList.
-    var cssDirEntryCache = new Map();
-    var cssBlobCache = new Map();
-    // Promise that gets resolved after css load used to control article loading
-    var cssLoaded;
 
     function applyCSS(link, content) 
     {
@@ -654,10 +649,89 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             //console.log(basePath);
             if(zimArchiveLoader.URL2Archive.hasOwnProperty(temp.host + basePath )){
                 var archive = zimArchiveLoader.URL2Archive[temp.host + basePath];
+                // TODO assumption here is parts[cnt-1] refers to title, not so in SO zims eg: questions/id/title 
+                if (archive == "so" && parts[1] == "questions")
+                        return "./../index.html?archive=" + archive + "&title=question/" + parts[2] + ".html";
                 return "./../index.html?archive=" + archive + "&title=" + parts[cnt-1].replace(/%20/g,"_") + ".html";
             }
         }
         return false; 
+    }
+
+    function fixLink() {
+        // Store current link's url
+        var url = $(this).attr("href");
+        if (url === null || url === undefined) {
+            return;
+        }
+        var lowerCaseUrl = url.toLowerCase();
+        var cssClass = $(this).attr("class");
+
+        if (cssClass === "new") {
+            // It's a link to a missing article : display a message
+            $(this).on('click', function(e) {
+                ui.status("Missing article");
+                return false;
+            });
+        }else if (url.slice(0, 1) === "#") {
+            // It's an anchor link : do nothing TODO: Add to TOC
+        }else if (url.substring(0, 4) === "http") {
+            // It's an external link : open in a new tab
+            var newurl = existsInKnownArchives(url);
+            if(!newurl)
+                $(this).attr("target", "_blank");
+            else{
+                //$(this).attr("href", newurl);
+                $(this).on('click', function(e) {
+                    //pushBrowserHistoryState(newurl);
+                    window.location.href = newurl; // iframe location change not enough when archive is changed.
+                    return false;
+                });   
+            }
+        }else if (url.match(regexpImageLink)
+            && (util.endsWith(lowerCaseUrl, ".png")
+                || util.endsWith(lowerCaseUrl, ".svg")
+                || util.endsWith(lowerCaseUrl, ".jpg")
+                || util.endsWith(lowerCaseUrl, ".jpeg"))) {
+            // It's a link to a file of Wikipedia : change the URL to the online version and open in a new tab
+            var onlineWikipediaUrl = url.replace(regexpImageLink, "https://" + selectedArchive._language + ".wikipedia.org/wiki/File:$1");
+            $(this).attr("href", onlineWikipediaUrl);
+            $(this).attr("target", "_blank");
+        }
+        else {
+            // It's a link to another article
+            // Add an onclick event to go to this article
+            // instead of following the link
+            if (url.substring(0, 2) === "./") {
+                url = url.substring(2);
+            }else if (url.substring(0, 1) === "/"){
+                url = url.substring(1);
+            }else if ( url.substring(0, 6) === "../../"){ // handles some stackoverflow links 
+                url = url.substring(6);
+            }
+            else if (url.substring(0, 3) === "../") {
+                url = url.substring(3);
+            }
+            $(this).on('click', function(e) {
+                var decodedURL = decodeURIComponent(url);
+                pushBrowserHistoryState(decodedURL);
+                goToArticle(decodedURL);
+                return false;
+            });
+        }
+    }
+
+    function getImageUrls(imgNodes){
+        var urls = [];
+        for(var k=0;k<imgNodes.length;k++){
+            var imgurl = imgNodes[k].getAttribute('data-src');
+            var m = imgurl.match(regexpImageUrl);
+            if(m)
+                urls.push(decodeURIComponent(m[1]));
+            else
+                console.error("Unrecognized image URL! Not retrieving - "+imgurl); 
+        }
+        return urls;        
     }
 
     /**
@@ -682,88 +756,21 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         $iframeBody.html($body);
        
         if (contentInjectionMode === 'ParseAndLoad') {
-
             // Convert links into javascript calls
-            $iframeBody.find('a').each(function() {    
-                // Store current link's url
-                var url = $(this).attr("href");
-                if (url === null || url === undefined) {
-                    return;
-                }
-                var lowerCaseUrl = url.toLowerCase();
-                var cssClass = $(this).attr("class");
-
-                if (cssClass === "new") {
-                    // It's a link to a missing article : display a message
-                    $(this).on('click', function(e) {
-                        ui.status("Missing article");
-                        return false;
-                    });
-                }else if (url.slice(0, 1) === "#") {
-                    // It's an anchor link : do nothing TODO: Add to TOC
-                }else if (url.substring(0, 4) === "http") {
-                    // It's an external link : open in a new tab
-                    var newurl = existsInKnownArchives(url);
-                    if(!newurl)
-                        $(this).attr("target", "_blank");
-                    else{
-                        //$(this).attr("href", newurl);
-                        $(this).on('click', function(e) {
-                            window.location.href = newurl; // iframe location change not enough when archive is changed.
-                            return false;
-                        });   
-                    }
-                }else if (url.match(regexpImageLink)
-                    && (util.endsWith(lowerCaseUrl, ".png")
-                        || util.endsWith(lowerCaseUrl, ".svg")
-                        || util.endsWith(lowerCaseUrl, ".jpg")
-                        || util.endsWith(lowerCaseUrl, ".jpeg"))) {
-                    // It's a link to a file of Wikipedia : change the URL to the online version and open in a new tab
-                    var onlineWikipediaUrl = url.replace(regexpImageLink, "https://" + selectedArchive._language + ".wikipedia.org/wiki/File:$1");
-                    $(this).attr("href", onlineWikipediaUrl);
-                    $(this).attr("target", "_blank");
-                }
-                else {
-                    // It's a link to another article
-                    // Add an onclick event to go to this article
-                    // instead of following the link
-                    
-                    if (url.substring(0, 2) === "./") {
-                        url = url.substring(2);
-                    }
-                    // Remove the initial slash if it's an absolute URL
-                    else if (url.substring(0, 1) === "/") {
-                        url = url.substring(1);
-                    }
-                    $(this).on('click', function(e) {
-                        var decodedURL = decodeURIComponent(url);
-                        pushBrowserHistoryState(decodedURL);
-                        goToArticle(decodedURL);
-                        return false;
-                    });
-                }
-            });
+            $iframeBody.find('a').each(fixLink);
 
             // Load images
             var imageLoadCompletions = [];
             var imgNodes = $iframeBody.find('img');//$('#articleContent img');
             // Refer #278 & #297 - For math heavy page use the controller - TEMP Solution till ZIM files support mathjax
-            // No need for the controller otherwise
+            // No need for the controller otherwise. Alternately use local mathjax see SO - q/31891619
             var svgmathload = imgNodes.filter(".mwe-math-fallback-image-inline").length;
             var controller, controlledLoading = svgmathload/imgNodes.length > 0.5 ? true : false;
-            console.log("SVG Math Load:"+ (svgmathload/imgNodes.length)*100);
+            //console.log("SVG Math Load:"+ (svgmathload/imgNodes.length)*100);
             if(imgNodes.length > 0)
             {
                 //console.log(imgNodes);
-                var imageURLs = [];
-                for(var k=0;k<imgNodes.length;k++){
-                    var imgurl = imgNodes[k].getAttribute('data-src');
-                    var m = imgurl.match(regexpImageUrl);
-                    if(m)
-                        imageURLs.push(decodeURIComponent(m[1]));
-                    else
-                        console.error("Unrecognized image URL! Not retrieving - "+imgurl); 
-                }
+                var imageURLs = getImageUrls(imgNodes);
                 console.time("Total Image Lookup+Read+Inject Time");
                 console.time("TimeToFirstPaint");
 
@@ -791,12 +798,13 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                         imageLoadCompletions.push(p);
                     },
                     onFirstWorkerCompletion: function(){
+                        // initialImageLoad in 'quick' mode complete
                         // NOTE: any waiting that is done here will hold up all other worker starts
                         return Promise.all(cssLoaded).then(()=>console.timeEnd("TimeToFirstPaint"));
                     }, 
                     onAllWorkersCompletion: function(resultsCount){
                         Promise.all(imageLoadCompletions).then(function (){
-                            console.log("Images loaded:" + resultsCount);
+                            //console.log("Images loaded:" + resultsCount);
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
