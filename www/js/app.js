@@ -37,6 +37,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     // Setup the default search context and search UI
     var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
     var selectedArchive = null;    
+    var protocolHandlers = ["so://", "so-tags://", "so-page://", "so:", "wiki://", "wiki:"];
+
     //setupSearchUI(searchContext);
     library.loadCatalogue($("#zims"));
             
@@ -166,6 +168,20 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         }
     };
 
+    // In URL Mode, if a protocolHandler is registered remove the scheme in case its passed in  
+    function removeURIScheme(param){
+        var scheme = protocolHandlers.find((scheme) => param.startsWith(scheme));
+        //console.log(scheme, param.substring(scheme.length),param);
+        // chrome has different behavior for so: and so://, 
+        // if so://keyword a '/' gets added to the end (keyword/) so remove it 
+        if (scheme){
+            if (param.endsWith("/"))
+                return param.substring(scheme.length, param.length-1); 
+            return param.substring(scheme.length);
+        } else
+            return param;
+    }
+
     // Called when 'archive' param is specified in URL
     function setLocalArchiveFromURL(params){
         ui.reset();    
@@ -175,7 +191,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             pushBrowserHistoryState(params["title"]);
             goToArticle(params["title"]);                
         }else if(params.hasOwnProperty("titleSearch")){
-            startSearch(decodeURIComponent(params["titleSearch"], false, true));
+            startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
         }else if(params["imageSearch"]){
             startImageSearch(decodeURIComponent(params["imageSearch"]));
         }else if("random" in params){

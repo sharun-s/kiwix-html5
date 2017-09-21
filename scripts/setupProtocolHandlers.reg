@@ -1,0 +1,10 @@
+[HKEY_CURRENT_USER\Software\Classes\so]
+@="URL:so"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\so\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\so\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\so\shell\open\command]
+@="\"C:\\Program Files\\[path to browser]\\[some browser].exe\" \"[path to index.html]?archive=so&titleSearch=\"%1\""
