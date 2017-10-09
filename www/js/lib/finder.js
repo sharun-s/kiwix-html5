@@ -38,7 +38,7 @@ define(['util', 'module'], function(util, module) {
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
         // [TODO] This stuff is being passed around unnecessarily. 
         // Find a way to share it across modules and worker. Maybe a singleton selectedArchive
-        this.file = archive._file._files[0]; 
+        this.file = archive;//._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
         
@@ -145,7 +145,7 @@ define(['util', 'module'], function(util, module) {
         // This will be called when all workers are done with 1 param - allResults
         this.onAllWorkersCompletion = callbacks.hasOwnProperty("onAllWorkersCompletion") ? callbacks["onAllWorkersCompletion"] : function (){};
 
-        this.file = archive._file._files[0]; 
+        this.file = archive;//._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
         this.titlePtrPos = archive._file.titlePtrPos;

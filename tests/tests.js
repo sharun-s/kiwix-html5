@@ -71,12 +71,10 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
         var filename = 'wikipedia_en_ray_charles_2015-06.zima' + c;
         return makeBlobRequest('tests/' + filename, filename);
     });
-    Promise.all(splitBlobs)
-        .then(function(values) {
-            zimArchiveFiles = values;
-    }).then(function() {
+    Promise.all(splitBlobs).then(function(values) {
+        zimArchiveFiles = values;
         // Create a localZimArchive from selected files, in order to run the following tests
-        localZimArchive = new zimArchive.ZIMArchive(zimArchiveFiles, null, function (zimArchive) {
+        localZimArchive = new zimArchive.ZIMArchive(values, null, function (zimArchive) {
             runTests();
         });
     });

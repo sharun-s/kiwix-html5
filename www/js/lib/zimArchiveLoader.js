@@ -99,7 +99,7 @@ define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies'], function
         "wikivoyage_en_all_2017-08.zim": '{"_file":{"_files":[{"name":"wikivoyage_en_all_2017-08.zim","size":731527966}],"articleCount":97674,"clusterCount":581,"urlPtrPos":225,"titlePtrPos":781617,"clusterPtrPos":5992414,"mimeListPos":80,"mainPage":46890,"layoutPage":4294967295},"_language":""}',
            test: '{"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}'         
     };
-
+    // required to support inter-archive links in url mode
     var URL2Archive = {
         'simple.wikipedia.org': 'wiki',
         'en.wikipedia.org': 'wiki',

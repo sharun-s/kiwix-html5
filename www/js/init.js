@@ -38,7 +38,7 @@ if (params['archive'] && mode === 'file') {
     if(isFirefox)
         mode = 'xhrFF';
     else
-        mode = 'xhr';
+        mode = 'xhrFF';
 };
 
 // Convert string to bool if params["case"] exists else default to true

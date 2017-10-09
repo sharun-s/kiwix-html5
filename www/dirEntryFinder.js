@@ -4,7 +4,7 @@
 var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
 var imageArray, keyword, maxResults, matcherfn;
 //Comment out to disable logs and timing    
-console.log = function(){}     
+//console.log = function(){}     
 console.time = function(){};
 console.timeEnd =function(){};
 
@@ -88,6 +88,7 @@ function makeIterator(array) {
 }
 
 function readFileSlice(file, begin, size) {
+    console.log(file.name);
     return new Promise(function (resolve, reject){
         var reader = new FileReader();
         reader.onload = function(e) {
@@ -102,6 +103,7 @@ function readFileSlice(file, begin, size) {
 
 
 function readXHRSlice(file, begin, size) {
+    console.log(file.name);
     return new Promise(function (resolve, reject){
         var req = new XMLHttpRequest();
         req.onload = function(e){            
@@ -148,6 +150,48 @@ function readFFXHRSlice(file, begin, size){
     });
 }
 
+function _readSlice(archive, offset, size)
+{
+    var readRequests = [];
+    var currentOffset = 0;
+    var _files = archive._file._files;
+    for (var i = 0; i < _files.length; currentOffset += _files[i].size, ++i) {
+        var currentSize = _files[i].size;
+        if (offset < currentOffset + currentSize && currentOffset < offset + size) {
+            var readStart = Math.max(0, offset - currentOffset);
+            var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
+            //console.log(_files[i]);
+            readRequests.push(readSlice(_files[i], readStart, readSize));
+        }
+    }
+    if (readRequests.length == 0) {
+        return Promise.resolve().then(() => {return new Uint8Array(0).buffer;});
+    } else if (readRequests.length == 1) {
+        return readRequests[0];
+    } else {
+        // Wait until all are resolved and concatenate.
+        console.log("CONCAT");
+        return Promise.all(readRequests).then(function(arrays) {
+            var concatenated = new Uint8Array(size);
+            var sizeSum = 0;
+            for (var i = 0; i < arrays.length; ++i) {
+                concatenated.set(new Uint8Array(arrays[i]), sizeSum);
+                sizeSum += arrays[i].byteLength;
+            }
+            return concatenated;
+        });
+    }
+};
+
+function dirEntryByTitleIndex(index)
+{
+    return _readSlice(archive, titlePtrPos + index * 4, 4).then(function(data){
+        return readInt(data, 0, 4);        
+    }).then(function(urlIndex)
+    {
+        return dirEntryByUrlIndex(urlIndex);
+    });
+};
 
 function dirEntryByUrlIndex(index, cache)
 {
@@ -155,7 +199,7 @@ function dirEntryByUrlIndex(index, cache)
     if (cache && cache.has(index)){
         return Promise.resolve().then(() => cache.get(index));
     }
-    return readSlice(archive, urlPtrPos + index * 8, 8).then(function(data)
+    return _readSlice(archive, urlPtrPos + index * 8, 8).then(function(data)
         {
             return readInt(data, 0, 8);
         }).then(function(dirEntryPos)
@@ -167,21 +211,11 @@ function dirEntryByUrlIndex(index, cache)
     });
 };
 
-function dirEntryByTitleIndex(index)
-{
-    return readSlice(archive, titlePtrPos + index * 4, 4).then(function(data){
-        return readInt(data, 0, 4);        
-    }).then(function(urlIndex)
-    {
-        return dirEntryByUrlIndex(urlIndex);
-    });
-};
-
 // formerly zimfile.dirEntry(offset)
 function dirEntryByOffset(offset)
 {
     var that = this;
-    return readSlice(archive, offset, 2048).then(function(data)    
+    return _readSlice(archive, offset, 2048).then(function(data)    
     {
         var dirEntry =
         {
@@ -439,6 +473,7 @@ function initKeywordSearch(index){
 onmessage = function(e) {
   // for url->dirents an array of urls is passed (article loading image urls) 
   // for title->dirent a keyword is passed (via search bar or url)
+  console.log(e.data[0]);
   if (typeof e.data[4] !== 'string'){  
       archive = e.data[0]; 
       articleCount = e.data[1];

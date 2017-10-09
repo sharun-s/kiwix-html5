@@ -230,7 +230,8 @@ define(['module'], function(module) {
             req.onerror = req.onabort = function(e) {
                 reject(e);
             }; 
-            req.open('GET', file.name, true); 
+            //req.open('GET', file.name, true);
+            req.open('GET', file, true); 
             req.responseType = "arraybuffer";
             var end = begin + size;
             req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
@@ -241,7 +242,8 @@ define(['module'], function(module) {
     function readFFXHRSlice(file, begin, size){
         return new Promise(function(resolve, reject){
             var req = new XMLHttpRequest();
-            req.open('GET', file.name, true); 
+            //req.open('GET', file.name, true);
+            req.open('GET', file, true); 
             if (location.protocol == 'file:') {
                 //console.log("blobloader");
                 req.responseType = "blob";
@@ -370,7 +372,8 @@ define(['module'], function(module) {
     }
 
     function isFireFox(){
-        return typeof InstallTrigger !== 'undefined';
+        return true;
+        //return typeof InstallTrigger !== 'undefined';
     }
     /**
      * Functions and classes exposed by this module
