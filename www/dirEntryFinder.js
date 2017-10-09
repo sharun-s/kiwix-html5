@@ -103,7 +103,7 @@ function readFileSlice(file, begin, size) {
 
 
 function readXHRSlice(file, begin, size) {
-    console.log(file.name);
+    //console.log(file.name);
     return new Promise(function (resolve, reject){
         var req = new XMLHttpRequest();
         req.onload = function(e){            
@@ -473,7 +473,7 @@ function initKeywordSearch(index){
 onmessage = function(e) {
   // for url->dirents an array of urls is passed (article loading image urls) 
   // for title->dirent a keyword is passed (via search bar or url)
-  console.log(e.data[0]);
+  //console.log(e.data[0]);
   if (typeof e.data[4] !== 'string'){  
       archive = e.data[0]; 
       articleCount = e.data[1];

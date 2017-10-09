@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry'], function(xz, util, utf8, zimDirEntry) {
+define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, util, utf8, zimDirEntry, module) {
 
     var readInt = function(data, offset, size)
     {
@@ -88,41 +88,44 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry'], function(xz, util, utf8
     {
         var readRequests = [];
         var currentOffset = 0;
-        /*for (var i = 0; i < this._files.length; currentOffset += this._files[i].size, ++i) {
-            var currentSize = this._files[i].size;
-            if (offset < currentOffset + currentSize && currentOffset < offset + size) {
-                var readStart = Math.max(0, offset - currentOffset);
-                var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
-                //readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
-                //console.log(this._files[i]);
-                readRequests.push(util.readSlice(this._files[i], readStart, readSize));
+        if (module.config().mode !== "xhrFF"){
+            for (var i = 0; i < this._files.length; currentOffset += this._files[i].size, ++i) {
+                var currentSize = this._files[i].size;
+                if (offset < currentOffset + currentSize && currentOffset < offset + size) {
+                    var readStart = Math.max(0, offset - currentOffset);
+                    var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
+                    //readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
+                    //console.log(this._files[i]);
+                    readRequests.push(util.readSlice(this._files[i], readStart, readSize));
+                }
             }
-        }*/
-        var sliceSize = 50*1024;
-        var slice = Math.floor(offset / sliceSize);
-        var endSlice = Math.floor((offset + size) / sliceSize);
-        
-        currentOffset = offset % sliceSize;
-        var endOffset = (offset + size) % sliceSize 
-        //console.log(offset, size, slice, currentOffset, endSlice, endOffset);
-        if (slice == endSlice){
-            //console.log(slice, currentOffset, endOffset);
-            readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, endOffset));            
         }else{
-            console.log(slice, currentOffset, sliceSize-1);
-            readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, sliceSize-1));
-            slice = slice + 1;
-            while(slice < endSlice)
-            {
-                //console.log(slice, 0, sliceSize-1);
-                // if changing mode to xhr from xhrFF use 0, sliceSize-1 
-                readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, sliceSize));
+            var sliceSize = 50*1024;
+            var slice = Math.floor(offset / sliceSize);
+            var endSlice = Math.floor((offset + size) / sliceSize);
+            
+            currentOffset = offset % sliceSize;
+            var endOffset = (offset + size) % sliceSize 
+            //console.log(offset, size, slice, currentOffset, endSlice, endOffset);
+            if (slice == endSlice){
+                //console.log(slice, currentOffset, endOffset);
+                readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, endOffset));            
+            }else{
+                console.log(slice, currentOffset, sliceSize-1);
+                readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, sliceSize-1));
                 slice = slice + 1;
+                while(slice < endSlice)
+                {
+                    //console.log(slice, 0, sliceSize-1);
+                    // if changing mode to xhr from xhrFF use 0, sliceSize-1 
+                    readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, sliceSize));
+                    slice = slice + 1;
+                }
+                //console.log(slice, 0, endOffset);
+                // xhr - readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset-1));
+                // xhrFF
+                readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset));
             }
-            //console.log(slice, 0, endOffset);
-            // xhr - readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset-1));
-            // xhrFF
-            readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset));
         }
         
         if (readRequests.length == 0) {
@@ -139,7 +142,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry'], function(xz, util, utf8
                     concatenated.set(new Uint8Array(arrays[i]), sizeSum);
                     sizeSum += arrays[i].byteLength;
                 }
-                console.log(concatenated);
+                //console.log(concatenated);
                 return concatenated;
             });
         }

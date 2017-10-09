@@ -38,7 +38,7 @@ if (params['archive'] && mode === 'file') {
     if(isFirefox)
         mode = 'xhrFF';
     else
-        mode = 'xhrFF';
+        mode = 'xhr';
 };
 
 // Convert string to bool if params["case"] exists else default to true
@@ -69,7 +69,7 @@ var appSettings = {
 // Anytime it changes it needs to be updated in each. How?
 require.config({
     baseUrl: 'js/lib',
-    config: {  'util':{mode: mode},
+    config: {  'util':{mode: mode},'zimfile':{mode: mode},
                'finder':{workerPath: 'dirEntryFinder.js'},  
              '../app':{mode: mode, settings: appSettings}
     },

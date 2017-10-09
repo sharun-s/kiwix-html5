@@ -23,11 +23,11 @@
 'use strict';
 var params={};
 location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
-var mode = params['mode'] || "file";
+var mode = params['mode'] || "xhrFF";
 require.config({
     baseUrl: 'www/js/lib',
     config: {'finder':{workerPath: 'www/dirEntryFinder.js'},
-    		 'util': { mode: mode},
+    		 'util': { mode: mode},'zimfile': { mode: mode},
     		 '../app': { mode: mode}},
     paths: {
         'jquery': 'jquery-2.1.4'
