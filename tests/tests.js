@@ -22,71 +22,18 @@
 define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
  function($, zimArchive, zimDirEntry, util, utf8, finder) {
     
-    var localZimArchive = new zimArchive.ZIMArchive().set('{"_file":{"_files":[{"name":"tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
-    console.log(util.readSlice);
-    /**
-     * Make an HTTP request for a Blob and return a Promise
-     * 
-     * @param {String} url URL to download from
-     * @param {String} name Name to give to the Blob instance
-     * @returns {Promise}
-     */
-    function makeBlobRequest(url, name) {
-        return new Promise(function (resolve, reject) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
-                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0 ) {
-                        var blob = new Blob([xhr.response], {type: 'application/octet-stream'});
-                        blob.name = name;
-                        resolve(blob);
-                    }
-                    else {
-                        console.error("Error reading file " + url + " status:" + xhr.status + ", statusText:" + xhr.statusText);
-                        reject({
-                            status: xhr.status,
-                            statusText: xhr.statusText
-                        });
-                    }
-                }
-            };
-            xhr.onerror = function () {
-                console.error("Error reading file " + url + " status:" + xhr.status + ", statusText:" + xhr.statusText);
-                reject({
-                    status: xhr.status,
-                    statusText: xhr.statusText
-                });
-            };
-            xhr.responseType = 'blob';
-            xhr.send();
-        });
-    }
-    
-    // Will work but currently disabled until URL mode changes complete
-    //var zimArchiveFiles = new Array();
-    /*var splitBlobs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o'].map(function(c) {
-        var filename = 'wikipedia_en_ray_charles_2015-06.zima' + c;
-        return makeBlobRequest('tests/' + filename, filename);
-    });*/
-    /*Promise.all(splitBlobs).then(function(values) {
-        zimArchiveFiles = values;
-        // Create a localZimArchive from selected files, in order to run the following tests
-        localZimArchive = new zimArchive.ZIMArchive(values, null, function (zimArchive) {
-            runTests();
-        });
-    });*/
-    
+    var localZimArchive = new zimArchive.ZIMArchive().set('{"slice":51200, "_file":{"_files":[{"name":"tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+    //var localZimArchive = new zimArchive.ZIMArchive().set('{"_file":{"_files":[{"name":"tests/dict","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+      
     var runTests = function() {
 
         QUnit.module("environment");
         QUnit.test("qunit test", function(assert) {
             assert.equal("test", "test", "QUnit is properly configured");
         });
-
-        /*QUnit.test("check archive files are read", function(assert) {
-            assert.ok(zimArchiveFiles && zimArchiveFiles[0] && zimArchiveFiles[0].size > 0, "ZIM file read and not empty");
-        });*/
+        QUnit.test("check archive files are read", function(assert) {
+            assert.ok(localZimArchive, "ZIM file read and not empty");
+        });
         
         QUnit.module("utils");
         QUnit.test("check reading an IEEE_754 float from 4 bytes" ,function(assert) {
@@ -115,13 +62,11 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
             var expectedArray = [{title:"a"}, {title:"b"}, {title:"c"}, {title:"d"}];
             assert.deepEqual(util.removeDuplicateTitlesInDirEntryArray(array), expectedArray, "Duplicates should be removed from the array");
         });
-        
-        QUnit.module("ZIM initialisation");
         QUnit.test("ZIM archive is ready", function(assert) {
             assert.ok(localZimArchive.isReady() === true, "ZIM archive should be set as ready");
-        });
+        });    
         QUnit.module("zim_direntry_search_and_read");
-        QUnit.skip("check DirEntry.fromStringId 'A Fool for You'", function(assert) {
+        QUnit.test("check DirEntry.fromStringId 'A Fool for You'", function(assert) {
             var done = assert.async();
             var aFoolForYouDirEntry = zimDirEntry.DirEntry.fromStringId(localZimArchive._file, "5856|7|A|0|2|A_Fool_for_You.html|A Fool for You|false|undefined");
             assert.expect(2);
@@ -129,47 +74,12 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 assert.ok(htmlArticle && htmlArticle.length > 0, "Article not empty");
                 // Remove new lines
                 htmlArticle = htmlArticle.replace(/[\r\n]/g, " ");
+                console.log(htmlArticle.length);
+                console.log(htmlArticle.slice(0,50));
                 assert.ok(htmlArticle.match("^.*<h1[^>]*>A Fool for You</h1>"), "'A Fool for You' title somewhere in the article");
                 done();
             };
             localZimArchive.readArticle(aFoolForYouDirEntry, callbackFunction);
-        });
-        QUnit.skip("check findDirEntriesWithPrefix 'A'", function(assert) {
-            var done = assert.async();            
-            assert.expect(2);
-            var callbackFunction = function(dirEntryList) {
-                assert.ok(dirEntryList && dirEntryList.length === 5, "Article list with 5 results");
-                var firstDirEntry = dirEntryList[0];
-                assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
-                done();
-            };
-            var searchContext = {keyword: 'A', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:true, loadmore:false};
-            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file"); 
-        });
-        QUnit.skip("check findDirEntriesWithPrefix 'a'", function(assert) {
-            var done = assert.async();            
-            assert.expect(2);
-            var callbackFunction = function(dirEntryList) {
-                assert.ok(dirEntryList && dirEntryList.length === 5, "Article list with 5 results");
-                var firstDirEntry = dirEntryList[0];
-                assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
-                done();
-            };
-            var searchContext = {keyword: 'a', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
-            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
-        });
-        QUnit.skip("check findDirEntriesWithPrefix 'blues brothers'", function(assert) {
-            var done = assert.async();
-            assert.expect(2);
-            var callbackFunction = function(dirEntryList) {
-                console.log(dirEntryList);
-                assert.ok(dirEntryList && dirEntryList.length === 3, "Article list with 3 result");
-                var firstDirEntry = dirEntryList[0];
-                assert.equal(firstDirEntry.title , 'The Blues Brothers (film)', 'First result should be "Blues Brothers (film)"');
-                done();
-            };
-            var searchContext = {keyword: 'blues brothers', from:0, upto:3, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
-            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
         });
         QUnit.test("article '(The Night Time Is) The Right Time' correctly redirects to 'Night Time Is the Right Time'", function(assert) {
             var done = assert.async();
@@ -247,7 +157,84 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                 }
             });
         });
+        QUnit.module("Search");
+        QUnit.test("check findDirEntriesWithPrefix 'A'", function(assert) {
+            // NOTE: Renaming file path cause direntry finder cant find file at tests/zimfile but at ../test/zimfile
+            // All tests above dont involve direntryfinder doing file access?
+            var localZimArchive = new zimArchive.ZIMArchive().set('{"slice":51200,"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+
+            var done = assert.async();            
+            assert.expect(2);
+            var callbackFunction = function(dirEntryList) {
+                assert.ok(dirEntryList && dirEntryList.length === 5, "Article list with 5 results");
+                var firstDirEntry = dirEntryList[0];
+                assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
+                done();
+            };
+            var searchContext = {keyword: 'A', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:true, loadmore:false};
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file"); 
+        });
+        QUnit.test("check findDirEntriesWithPrefix 'a'", function(assert) {
+            // NOTE: Renaming file path cause direntry finder cant find file at tests/zimfile but at ../test/zimfile
+            // All tests above dont involve direntryfinder doing file access?
+            var localZimArchive = new zimArchive.ZIMArchive().set('{"slice":51200,"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+
+            var done = assert.async();            
+            assert.expect(2);
+            var callbackFunction = function(dirEntryList) {
+                assert.ok(dirEntryList && dirEntryList.length === 5, "Article list with 5 results");
+                var firstDirEntry = dirEntryList[0];
+                assert.equal(firstDirEntry.title , 'A Fool for You', 'First result should be "A Fool for You"');
+                done();
+            };
+            var searchContext = {keyword: 'a', from:0, upto:5, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+        });
+        QUnit.test("check findDirEntriesWithPrefix 'blues brothers'", function(assert) {
+             // NOTE: Renaming file path cause direntry finder cant find file at tests/zimfile but at ../test/zimfile
+            // All tests above dont involve direntryfinder doing file access?
+            var localZimArchive = new zimArchive.ZIMArchive().set('{"slice":51200, "_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+
+            var done = assert.async();
+            assert.expect(2);
+            var callbackFunction = function(dirEntryList) {
+                console.log(dirEntryList);
+                assert.ok(dirEntryList && dirEntryList.length === 3, "Article list with 3 result");
+                var firstDirEntry = dirEntryList[0];
+                assert.equal(firstDirEntry.title , 'The Blues Brothers (film)', 'First result should be "Blues Brothers (film)"');
+                done();
+            };
+            var searchContext = {keyword: 'blues brothers', from:0, upto:3, match:'PrefixAndArticleMatch', caseSensitive:false, loadmore:false};
+            new finder.titleSearch(searchContext, {onAllWorkersCompletion: callbackFunction}, localZimArchive, "file");
+        });
+        QUnit.test("Finder", function(assert) {
+            // NOTE: Renaming file path cause direntry finder cant find file at tests/zimfile but at ../test/zimfile
+            // All tests above dont involve direntryfinder doing file access?
+            var localZimArchive = new zimArchive.ZIMArchive().set('{"slice":51200, "_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+
+            var done = assert.async();
+            var urlList = ["I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg"];
+            assert.expect((2*urlList.length) + 1 );   
+            var callbacks = {
+                onEachResult: function(index, dirEntry){
+                    assert.ok(dirEntry !== null, "DirEntry found");
+                    assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "I/m/RayCharles_AManAndHisSoul.jpg", "URL is correct.");
+                },
+                onAllWorkersCompletion: function(resultsCount){
+                    assert.ok(resultsCount, urlList.length);
+                    done();
+                }
+            };
+            // finder divides the url list among workers, callbacks handle finder "events"
+            var f = new finder.urlSearch(urlList, callbacks, localZimArchive, 2); 
+            f.run({type:"quick", initialImageLoad: 2});
+        });
+        QUnit.module("Media");
         QUnit.test("Image 'm/RayCharles_AManAndHisSoul.jpg' can be loaded", function(assert) {
+            // NOTE: Renaming file path cause direntry finder cant find file at tests/zimfile but at ../test/zimfile
+            // All tests above dont involve direntryfinder doing file access?
+            //var localZimArchive = new zimArchive.ZIMArchive().set('{"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}');
+
             var done = assert.async();
             assert.expect(4);
             localZimArchive.getDirEntryByURL("I/m/RayCharles_AManAndHisSoul.jpg").then(function(dirEntry) {
@@ -265,25 +252,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                     done();
                 }
             });
-        });
-        /*QUnit.test("Finder", function(assert) {
-            var done = assert.async();
-            var urlList = ["I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg","I/m/RayCharles_AManAndHisSoul.jpg"];
-            assert.expect((2*urlList.length) + 1 );
-            var callbacks = { 
-                onEachResult : function(index, dirEntry) {
-                                    assert.ok(dirEntry !== null, "DirEntry found");
-                                    assert.equal(dirEntry.namespace +"/"+ dirEntry.url, "I/m/RayCharles_AManAndHisSoul.jpg", "URL is correct.");
-                                },
-                onAllWorkersCompletion : function(resultsCount){
-                                    assert.ok(resultsCount, urlList.length);
-                                    done();
-                                }
-            };
-            var f = new finder.init(urlList, callbacks, localZimArchive, "xhr", 2);
-            f.run({type:"quick", initialImageLoad: 2}); 
-        });*/
-        
+        });        
         QUnit.test("Stylesheet '-/s/style.css' can be loaded", function(assert) {
             var done = assert.async();
             
@@ -368,5 +337,19 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
             localZimArchive.getMainPageDirEntry(callbackMainPageArticleFound);
         });
     };
+
+
     runTests();
+    /*var zimArchiveFiles = new Array();
+    var splitBlobs = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o'].map(function(c) {
+        var filename = 'wikipedia_en_ray_charles_2015-06.zima' + c;
+        return makeBlobRequest('tests/' + filename, filename);
+    });
+    Promise.all(splitBlobs).then(function(values) {
+        zimArchiveFiles = values;
+        // Create a localZimArchive from selected files, in order to run the following tests
+        localZimArchive = new zimArchive.ZIMArchive(values, null, function (zimArchive) {
+            runTests();
+        });
+    });*/
 });

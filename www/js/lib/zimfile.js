@@ -57,6 +57,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, 
     function ZIMFile(abstractFileArray)
     {
         this._files = abstractFileArray;
+        this.sliceSize = 0;
     }
 
     /**
@@ -74,7 +75,7 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, 
     };
 
     ZIMFile.prototype.sliceToFileName = function(slice){
-        var slices = Math.floor(this._files[0].size / (50*1024));
+        var slices = Math.floor(this._files[0].size / (this.sliceSize));
         return this._files[0].name +'/'+ slice.toString().padStart(slices.toString().length, "0");
     }
 
@@ -88,54 +89,53 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, 
     {
         var readRequests = [];
         var currentOffset = 0;
-        if (module.config().mode !== "xhrFF"){
-            for (var i = 0; i < this._files.length; currentOffset += this._files[i].size, ++i) {
-                var currentSize = this._files[i].size;
-                if (offset < currentOffset + currentSize && currentOffset < offset + size) {
-                    var readStart = Math.max(0, offset - currentOffset);
-                    var readSize = Math.min(currentSize, offset + size - currentOffset - readStart);
-                    //readRequests.push(util.readXHRSlice(this._files[i], readStart, readSize));
-                    //console.log(this._files[i]);
-                    readRequests.push(util.readSlice(this._files[i], readStart, readSize));
-                }
-            }
+        
+        var sliceSize = this.sliceSize;
+        var slice = Math.floor(offset / sliceSize);
+        var slicename = this.sliceToFileName(slice);
+        //console.log(slicename); 
+        var endSlice = Math.floor((offset + size) / sliceSize);
+        
+        currentOffset = offset % sliceSize;
+        var endOffset = (offset + size) % sliceSize 
+        //console.log(offset, size, slice, currentOffset, endSlice, endOffset);
+        if (slice == endSlice){
+            //console.log( slicename.slice(-5), currentOffset, endOffset);
+              readRequests.push(util.readSlice(slicename, currentOffset, endOffset));
         }else{
-            var sliceSize = 50*1024;
-            var slice = Math.floor(offset / sliceSize);
-            var endSlice = Math.floor((offset + size) / sliceSize);
-            
-            currentOffset = offset % sliceSize;
-            var endOffset = (offset + size) % sliceSize 
-            //console.log(offset, size, slice, currentOffset, endSlice, endOffset);
-            if (slice == endSlice){
-                //console.log(slice, currentOffset, endOffset);
-                readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, endOffset));            
-            }else{
-                console.log(slice, currentOffset, sliceSize-1);
-                readRequests.push(util.readSlice(this.sliceToFileName(slice), currentOffset, sliceSize-1));
+            //console.log("CROSS slice", slicename.slice(-5), currentOffset, sliceSize);
+            readRequests.push(util.readSlice(slicename, currentOffset, sliceSize));
+            slice = slice + 1;
+            slicename = this.sliceToFileName(slice);
+            //console.log(slicename);
+            while(slice < endSlice)
+            {
+                //console.log("CROSS slice", slicename.slice(-5), 0, sliceSize);
+                readRequests.push(util.readSlice(slicename, 0, sliceSize));
                 slice = slice + 1;
-                while(slice < endSlice)
-                {
-                    //console.log(slice, 0, sliceSize-1);
-                    // if changing mode to xhr from xhrFF use 0, sliceSize-1 
-                    readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, sliceSize));
-                    slice = slice + 1;
-                }
-                //console.log(slice, 0, endOffset);
-                // xhr - readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset-1));
-                // xhrFF
-                readRequests.push(util.readSlice(this.sliceToFileName(slice), 0, endOffset));
+                slicename = this.sliceToFileName(slice);
+                //console.log(slicename);
             }
+            //console.log("CROSS slice", slicename.slice(-5), 0, endOffset);
+            readRequests.push(util.readSlice(slicename, 0, endOffset));
         }
         
+        
         if (readRequests.length == 0) {
-            return Promise.resolve().then(() => {return new Uint8Array(0).buffer;});
+            return Promise.resolve().then(() => {return new Uint8Array(0).buffer;},(err)=> { throw err;});
         } else if (readRequests.length == 1) {
-            return readRequests[0];
+            //console.log(readRequests[0]);
+            return readRequests[0];//.then(
+              //(ml) => { return ml;}//,
+              //(err)=> { 
+                //console.error("Error reading file " + file + " status:" + err.target.status + ", statusText:" + err.target.statusText);
+                //throw err;
+              //}
+              //);
         } else {
             // Wait until all are resolved and concatenate.
-            console.log("CONCAT");
             return Promise.all(readRequests).then(function(arrays) {
+                //console.log("CONCAT", arrays.length, readRequests.length);
                 var concatenated = new Uint8Array(size);
                 var sizeSum = 0;
                 for (var i = 0; i < arrays.length; ++i) {
@@ -232,26 +232,29 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, 
         return this._readSlice(this.clusterPtrPos + cluster * 8, 16).then(function(clusterOffsets)
         {
             var clusterOffset = readInt(clusterOffsets, 0, 8);
-            var nextCluster = readInt(clusterOffsets, 8, 8);
+            //var nextCluster = readInt(clusterOffsets, 8, 8);
             return that._readSlice(clusterOffset, 1).then(function(compressionType) {
                 var decompressor;
                 var plainBlobReader = function(offset, size) {
+                    //console.log('pbr',offset,size);
                     return that._readSlice(clusterOffset + 1 + offset, size);
                 };
                 if (compressionType[0] === 0 || compressionType[0] === 1) {
-                    // uncompressed
+                    //console.log('uncompressed _readslice');
                     decompressor = { readSlice: plainBlobReader };
                 } else if (compressionType[0] === 4) {
                     decompressor = new xz.Decompressor(plainBlobReader);
                 } else {
                     return new Uint8Array(); // unsupported compression type
                 }
+                //console.log('decompresor: bloboffset - ',blob*4,'size -', 8);
                 return decompressor.readSlice(blob * 4, 8).then(function(data) {
                     var blobOffset = readInt(data, 0, 4);
                     var nextBlobOffset = readInt(data, 4, 4);
+                    //console.log('decompressor passed: blob - ',blobOffset,'size -', nextBlobOffset - blobOffset);
                     return decompressor.readSlice(blobOffset, nextBlobOffset - blobOffset);
                 });
-            });
+            });//, function(err){throw err;});
         });
     };
 
@@ -291,6 +294,8 @@ define(['xzdec_wrapper', 'util', 'utf8', 'zimDirEntry', 'module'], function(xz, 
         create: function(fromString){
             var temp = JSON.parse(fromString);
             var zf = new ZIMFile(temp._file._files);
+            //zf.sliced = temp.type == 'directory' ? true : false;
+            zf.sliceSize = temp.slice;
             zf.articleCount = temp._file.articleCount;
             zf.clusterCount = temp._file.clusterCount;
             zf.urlPtrPos = temp._file.urlPtrPos;

@@ -199,73 +199,40 @@ define(['module'], function(module) {
 
         return (r > 0 ? enc.slice(0, r - 3) : enc) + '==='.slice(r || 3);
     }
-
-    /**
-     * Reads a Uint8Array from the given file starting at byte offset begin and
-     * for given size.
-     * @param {File} file
-     * @param {Integer} begin
-     * @param {Integer} size
-     * @returns {Promise} Promise
-     */
-    function readFileSlice(file, begin, size) {
-        return new Promise(function (resolve, reject){
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                resolve(new Uint8Array(e.target.result));
-            };
-            reader.onerror = reader.onabort = function(e) {
-                reject(e);
-            };
-            reader.readAsArrayBuffer(file.slice(begin, begin + size));    
-        });        
-    }
-
+    var sliceCache = new Map();
     function readXHRSlice(file, begin, size) {
         return new Promise(function(resolve, reject){
-            var req = new XMLHttpRequest();
-            req.onload = function(e){            
-                resolve(new Uint8Array(e.target.response));
-            };
-            req.onerror = req.onabort = function(e) {
-                reject(e);
-            }; 
-            req.open('GET', file.name, true); 
-            req.responseType = "arraybuffer";
-            var end = begin + size;
-            req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
-            req.send(null);
-        });
-    }
-
-    function readFFXHRSlice(file, begin, size){
-        return new Promise(function(resolve, reject){
-            var req = new XMLHttpRequest();
-            req.open('GET', file, true); 
-            if (location.protocol == 'file:') {
-                //console.log("blobloader");
-                req.responseType = "blob";
-                req.onload = function(e) {
-                    var sliced = e.target.response.slice(begin, begin+size);
+            if(sliceCache.has(file)){
+                //console.count('hit');
+                var sliced = sliceCache.get(file).slice(begin, size);
+                var fr = new FileReader();
+                fr.readAsArrayBuffer(sliced);
+                fr.addEventListener("load", function() {
+                    //console.log("read", fr.result);
+                    resolve(new Uint8Array(fr.result));
+                });                
+            }else{
+                var req = new XMLHttpRequest();
+                req.onload = function(e){      
+                    //console.log("xhrblob", begin, size);
+                    sliceCache.set(file, e.target.response);   
+                    //console.count('miss');   
+                    var sliced = e.target.response.slice(begin, size);
                     var fr = new FileReader();
                     fr.readAsArrayBuffer(sliced);
                     fr.addEventListener("load", function() {
+                        //console.log("read", fr.result);
                         resolve(new Uint8Array(fr.result));
                     });
                 };
-            } else {
-                req.responseType = "arraybuffer";
-                var end = begin + size;
-                req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
-                req.onload = function(e) {
-                    resolve(new Uint8Array(e.target.response));
-                };
+                req.onerror = req.onabort = function(e) {
+                    reject(e);
+                }; 
+                req.open('GET', file, true); 
+                req.responseType = "blob";
+                req.send(null);
             }
-            req.onerror = req.onabort = function(e) {
-                reject(e);
-            }; 
-            req.send(null);            
-        });  
+        });
     }
 
     /**
@@ -388,8 +355,7 @@ define(['module'], function(module) {
         readFloatFrom4Bytes : readFloatFrom4Bytes,
         uint8ArrayToHex : uint8ArrayToHex,
         uint8ArrayToBase64 : uint8ArrayToBase64,
-        readSlice : module.config().mode == "file" ? readFileSlice : isFireFox() ? readFFXHRSlice : readXHRSlice,
-        readFileSlice : readFileSlice,
+        readSlice : readXHRSlice,
         binarySearch: binarySearch,
         b64toBlob: b64toBlob,
         uintToString: uintToString,

@@ -165,7 +165,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
     ZIMArchive.prototype.readArticle = function(dirEntry, callback) {
         dirEntry.readData().then(function(data) {
             callback(dirEntry.title, utf8.parse(data));
-        });
+        }, function(err){callback(null, "Probable XHR Error");});
     };
 
     /**
@@ -192,6 +192,7 @@ define(['zimfile', 'zimDirEntry', 'util', 'utf8'],
         // // if (regexpTitleWithoutNameSpace.test(url)) {
         // //   url= "A/" + url;
         // // }
+        console.log(url);
         if (cache && cache.has(url)){
             //console.log("cache hit");
             return Promise.resolve().then(() => cache.get(url));

@@ -30,8 +30,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
  function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, module, control, finder, utf8) {
 
     var settings  = module.config().settings;
-    // Determines if Archives are read via FileReader or XHR Range Requests
-    var READ_MODE = module.config().mode;
     // 'ParseAndLoad' vs 'InterceptAndLoad'
     var contentInjectionMode = 'ParseAndLoad';
     // Setup the default search context and search UI
@@ -108,8 +106,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         });
     }else{ 
         // dislpay the fileselector TODO show maybe unnecessary as its always in view when config is clicked   
-        $('#openLocalFiles').show();
-        $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
+        //$('#openLocalFiles').show();
+        //$('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
         // Handle setting archive via URL
         var params={};
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
@@ -117,12 +115,12 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             setLocalArchiveFromURL(params);
         }else{
 	        // Display the file select components
-            if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+            //if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
                 // Archive files are already selected, 
-                setLocalArchiveFromFileSelect();
-            }else{
+                //setLocalArchiveFromFileSelect();
+            //}else{
                $("#btnConfigure").click();
-            }
+            //}
 	    }
     }
 
@@ -251,51 +249,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         }
     }
 
-    // Called when archive is selected via FileSelector
-    function setLocalArchiveFromFileList(files) {
-        // Reset the cssDirEntryCache and cssBlobCache. Must be done when archive changes.
-        if(cssBlobCache) 
-            cssBlobCache = new Map();
-        if(cssDirEntryCache) 
-            cssDirEntryCache = new Map();
-        selectedArchive = zimArchiveLoader.loadArchiveFromFiles(files, function (archive) {
-            // The archive is set : go back to home page to start searching
-            ui.archiveStatusUpdate(archive);
-            $("#btnHome").click();
-        });
-    }
-
-    /* Sets the localArchive from the File selects populated by user TODO: can be merged with setLocalArchiveFromFileList 
-     */
-    function setLocalArchiveFromFileSelect() {
-        // if firefox is started in xhrff mode loading archive from url and then user switches to archive via fileselector, change the mode to file 
-        // for readslice to use the right mode. This is because init.js won't get reloaded in this case. 
-        if(READ_MODE !== "file"){
-            READ_MODE = "file";
-            require({'baseUrl':'js/lib'},['util'], (u) => {u.readSlice = u.readFileSlice;});
-        }
-        setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
-    }
-
-    /**
-     * This is used in the testing interface to inject a remote archive.
-     */
-    window.setRemoteArchive = function(url) {
-        var request = new XMLHttpRequest();
-        request.open("GET", url, true);
-        request.responseType = "blob";
-        request.onreadystatechange = function () {
-            if (request.readyState === XMLHttpRequest.DONE) {
-                if ((request.status >= 200 && request.status < 300) || request.status === 0) {
-                    // Hack to make this look similar to a file
-                    request.response.name = url;
-                    setLocalArchiveFromFileList([request.response]);
-                }
-            }
-        };
-        request.send(null);
-    };
-
     // snippetController - Controls rate of additions of snippets
     // Not really required if upto < 10-20 with loadmore enabled on Desktop 
     // Is handy when upto is set higher, as an async article read happens for each result  
@@ -365,7 +318,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                                 variantMatches.push([variant, matchCount, from]);
                               },
                               onAllWorkersCompletion: titleSearchDone 
-                            }, selectedArchive, READ_MODE);
+                            }, selectedArchive);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -470,7 +423,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 // NOTE: this just means title index lookup is done for one variant not UI update completion
                 onAllResults: singleVariantDone
                 // onAllWorkerTODO: use to improve searchDone detection promise.all( all dislayinFrame resolved promises)
-            }, selectedArchive, READ_MODE);
+            }, selectedArchive);
         } else {
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
@@ -824,7 +777,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
-                }, selectedArchive, READ_MODE, settings.workerCount);
+                }, selectedArchive, settings.workerCount);
                 f.run({type:"quick", initialImageLoad: settings.initialImageLoad});
             }
 
@@ -926,8 +879,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                             searchDone(); 
                     });
                 }
-            }, selectedArchive, READ_MODE, settings.workerCount 
-        );
+            }, selectedArchive, settings.workerCount );
         f.run();
     }
 
@@ -941,9 +893,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         var stateObj = {};
         var urlParameters;
         var stateLabel;
-        // This will ensure in url mode (as opposed to file selector mode) archive parameter becomes part of the url string. 
-        // Bookmarking links & Setting home page to a url will also be possible.
-        var appendArchive = READ_MODE == "file" ? "" : "&archive="+ selectedArchive._file._files[0].name;
+    
+        var appendArchive = "&archive="+ selectedArchive._file._files[0].name;
 
         if (title && !(""===title)) {
             stateObj.title = title;

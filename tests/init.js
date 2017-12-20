@@ -21,14 +21,9 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-var params={};
-location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
-var mode = params['mode'] || "xhrFF";
 require.config({
     baseUrl: 'www/js/lib',
-    config: {'finder':{workerPath: 'www/dirEntryFinder.js'},
-    		 'util': { mode: mode},'zimfile': { mode: mode},
-    		 '../app': { mode: mode}},
+    config: {'finder':{workerPath: 'www/dirEntryFinder.js'}},
     paths: {
         'jquery': 'jquery-2.1.4'
     }

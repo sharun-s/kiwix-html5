@@ -4,7 +4,7 @@
 var archive, articleCount, urlPtrPos, titlePtrPos, readSlice, wid;
 var imageArray, keyword, maxResults, matcherfn;
 //Comment out to disable logs and timing    
-//console.log = function(){}     
+console.log = function(){}     
 console.time = function(){};
 console.timeEnd =function(){};
 
@@ -87,22 +87,7 @@ function makeIterator(array) {
     };
 }
 
-function readFileSlice(file, begin, size) {
-    console.log(file.name);
-    return new Promise(function (resolve, reject){
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            resolve(new Uint8Array(e.target.result));
-        };
-        reader.onerror = reader.onabort = function(e) {
-            reject(e);
-        };
-        reader.readAsArrayBuffer(file.slice(begin, begin + size));
-    });    
-}
-
-
-function readXHRSlice(file, begin, size) {
+/*function readXHRSlice(file, begin, size) {
     //console.log(file.name);
     return new Promise(function (resolve, reject){
         var req = new XMLHttpRequest();
@@ -118,36 +103,6 @@ function readXHRSlice(file, begin, size) {
         req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
         req.send(null);
     }); 
-}
-
-function readFFXHRSlice(file, begin, size){
-    return new Promise(function (resolve, reject){
-        var req = new XMLHttpRequest();
-        req.open('GET', file.name, true); 
-        if (location.protocol == 'file:') {
-            //console.log("blobloader");
-            req.responseType = "blob";
-            req.onload = function(e) {
-                var sliced = e.target.response.slice(begin, begin+size);
-                var fr = new FileReader();
-                fr.readAsArrayBuffer(sliced);
-                fr.addEventListener("load", function() {
-                    resolve(new Uint8Array(fr.result));
-                });
-            };
-        } else {
-            req.responseType = "arraybuffer";
-            var end = begin + size;
-            req.setRequestHeader('Range', 'bytes='+begin+'-'+end);
-            req.onload = function(e) {
-                resolve(new Uint8Array(e.target.response));
-            };
-        }
-        req.onerror = req.onabort = function(e) {
-            reject(e);
-        }; 
-        req.send(null);
-    });
 }
 
 function _readSlice(archive, offset, size)
@@ -182,6 +137,112 @@ function _readSlice(archive, offset, size)
         });
     }
 };
+*/
+var sliceCache = new Map();
+
+function readXHRSlice(file, begin, size) {
+    return new Promise(function(resolve, reject){
+        if(sliceCache.has(file)){
+            var sliced = sliceCache.get(file).slice(begin, size);
+            var fr = new FileReader();
+            fr.readAsArrayBuffer(sliced);
+            fr.addEventListener("load", function() {
+                //console.log("read", fr.result);
+                resolve(new Uint8Array(fr.result));
+            });                
+        }else{
+            var req = new XMLHttpRequest();
+            req.onload = function(e){      
+                //console.log("xhrblob", begin, size); 
+                sliceCache.set(file, e.target.response);        
+                var sliced = e.target.response.slice(begin, size);
+                var fr = new FileReader();
+                fr.readAsArrayBuffer(sliced);
+                fr.addEventListener("load", function() {
+                    //console.log("read", fr.result);
+                    resolve(new Uint8Array(fr.result));
+                });
+            };
+            req.onerror = req.onabort = function(e) {
+                console.log(file, begin, size);
+                reject(e);
+            }; 
+            req.open('GET', file, true); 
+            req.responseType = "blob";
+            req.send(null);            
+        }  
+
+    });
+}
+
+
+function sliceToFileName (slice){
+    var slices = Math.floor(archive._file._files[0].size / (archive._file.sliceSize));
+    return archive._file._files[0].name +'/'+ slice.toString().padStart(slices.toString().length, "0");
+}
+
+function _readSlice(archive, offset, size)
+{
+    var readRequests = [];
+    var currentOffset = 0;
+    
+    var sliceSize = archive._file.sliceSize;
+    var slice = Math.floor(offset / sliceSize);
+    var slicename = this.sliceToFileName(slice);
+    //console.log(slicename); 
+    var endSlice = Math.floor((offset + size) / sliceSize);
+    
+    currentOffset = offset % sliceSize;
+    var endOffset = (offset + size) % sliceSize 
+    //console.log(offset, size, slice, currentOffset, endSlice, endOffset);
+    if (slice == endSlice){
+        //console.log( slicename.slice(-5), currentOffset, endOffset);
+        readRequests.push(readXHRSlice(slicename, currentOffset, endOffset));            
+    }else{
+        //console.log("CROSS slice", slicename.slice(-5), currentOffset, sliceSize);
+        readRequests.push(readXHRSlice(slicename, currentOffset, sliceSize));
+        slice = slice + 1;
+        slicename = this.sliceToFileName(slice);
+        //console.log(slicename);
+        while(slice < endSlice)
+        {
+            console.log("CROSS slice", slicename.slice(-5), 0, sliceSize);
+            readRequests.push(readXHRSlice(slicename, 0, sliceSize));
+            slice = slice + 1;
+            slicename = this.sliceToFileName(slice);
+            //console.log(slicename);
+        }
+        console.log("CROSS slice", slicename.slice(-5), 0, endOffset);
+        readRequests.push(readXHRSlice(slicename, 0, endOffset));
+    }
+    
+    
+    if (readRequests.length == 0) {
+        return Promise.resolve().then(() => {return new Uint8Array(0).buffer;},(err)=> { throw err;});
+    } else if (readRequests.length == 1) {
+        //console.log(readRequests[0]);
+        return readRequests[0];/*.then(
+          (ml) => { return ml;},
+          (err)=> { 
+            console.error("Error reading file status:" + err.target.status + ", statusText:" + err.target.statusText);
+            throw err;
+          });*/
+    } else {
+        // Wait until all are resolved and concatenate.
+        return Promise.all(readRequests).then(function(arrays) {
+            console.log("CONCAT", arrays.length, readRequests.length);
+            var concatenated = new Uint8Array(size);
+            var sizeSum = 0;
+            for (var i = 0; i < arrays.length; ++i) {
+                concatenated.set(new Uint8Array(arrays[i]), sizeSum);
+                sizeSum += arrays[i].byteLength;
+            }
+            console.log(concatenated);
+            return concatenated;
+        });
+    }
+};
+
 
 function dirEntryByTitleIndex(index)
 {
@@ -480,14 +541,6 @@ onmessage = function(e) {
       urlPtrPos = e.data[2];
       wid = e.data[3];
       imageArray = e.data[4]; //Array.from(new Set(e.data[5])); // don't look up dups
-      if (e.data[5] == "file") {
-        readSlice = readFileSlice;
-      }else if( e.data[5] == "xhrFF"){
-      console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
-        readSlice = readFFXHRSlice;
-      }else{
-        readSlice = readXHRSlice;
-      } 
       init();
     }else
     {
@@ -497,20 +550,12 @@ onmessage = function(e) {
       titlePtrPos = e.data[3];
       keyword = e.data[4];
       maxResults = e.data[5]; 
-      if (e.data[6] == "file") {
-        readSlice = readFileSlice;
-      }else if( e.data[6] == "xhrFF"){
-      console.log("WARNING: direntryfinder is using xhrff workaround - very slow compared to file based access");
-        readSlice = readFFXHRSlice;
-      }else{
-        readSlice = readXHRSlice;
-      }
-      matcherfn = matcherTable[e.data[8]];
+      matcherfn = matcherTable[e.data[7]];
       console.log("MATCHER: " + matcherfn.name);
-      loadmore = e.data[9];
+      loadmore = e.data[8];
       // e.data[7] from index
       //debugger;
-      initKeywordSearch(e.data[7]);
+      initKeywordSearch(e.data[6]);
       
     }
 }

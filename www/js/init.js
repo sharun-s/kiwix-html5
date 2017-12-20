@@ -24,23 +24,6 @@
 var params={};
 location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
 
-// using this to test workaround for bugzilla.mozilla.org/show_bug.cgi?id=1378228
-var isFirefox = typeof InstallTrigger !== 'undefined';
-
-// This value decides what "read" functions modules expose. 
-// Reads may be File based or XHR based.
-var mode = params['mode'] || 'file';
-if (isFirefox && (mode !== 'file')) {
-    mode = 'xhrFF';
-};
-// If archive has been specified in URL always default to xhr mode as File object can't be created
-if (params['archive'] && mode === 'file') {
-    if(isFirefox)
-        mode = 'xhrFF';
-    else
-        mode = 'xhr';
-};
-
 // Convert string to bool if params["case"] exists else default to true
 var caseSense = params.hasOwnProperty('case') ? params['case'] == 'true'  : true;
 
@@ -69,9 +52,8 @@ var appSettings = {
 // Anytime it changes it needs to be updated in each. How?
 require.config({
     baseUrl: 'js/lib',
-    config: {  'util':{mode: mode},'zimfile':{mode: mode},
-               'finder':{workerPath: 'dirEntryFinder.js'},  
-             '../app':{mode: mode, settings: appSettings}
+    config: {'finder':{workerPath: 'dirEntryFinder.js'},  
+             '../app':{settings: appSettings}
     },
     paths: {
         'jquery': 'jquery-2.1.4',

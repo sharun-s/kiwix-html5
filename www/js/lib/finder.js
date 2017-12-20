@@ -24,7 +24,7 @@ define(['util', 'module'], function(util, module) {
     // this changes in test
     var WORKERPATH = module.config().workerPath; 
 
-    function finder(urllist, callbacks, archive, mode, workerCount){
+    function finder(urllist, callbacks, archive, workerCount){
         this.resultstrack=0;
         this.N = workerCount;
         //this.firstpaint=0;
@@ -41,8 +41,6 @@ define(['util', 'module'], function(util, module) {
         this.file = archive;//._file._files[0]; 
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
-        
-        this.mode = mode;
    }
 
     // This is a way to pick distribution of url to worker strategy
@@ -82,8 +80,7 @@ define(['util', 'module'], function(util, module) {
                 that.urlPtrPos,
                 // worker id (TODO: include article title)
                 _startIndex+"-"+Math.floor(endIndex),
-                that.urlArray.slice( startIndex, endIndex), 
-                that.mode]);
+                that.urlArray.slice( startIndex, endIndex)]);
         });
     }
 
@@ -132,7 +129,7 @@ define(['util', 'module'], function(util, module) {
     // if searchContext.caseSensitive = false, for each case variantion of the keyword one worker will be started.
     // if searchContext.caseSensitiva = true, only one worker is created.
     // Use the only the reqd callbacks depending on how finder return values need to be processed 
-    function titleFinder(searchContext, callbacks, archive, mode){
+    function titleFinder(searchContext, callbacks, archive){
         this.allResults=[];
         this.workerCompletions = 0;
         this.ctx = searchContext;
@@ -149,7 +146,6 @@ define(['util', 'module'], function(util, module) {
         this.articleCount = archive._file.articleCount; 
         this.urlPtrPos =  archive._file.urlPtrPos;
         this.titlePtrPos = archive._file.titlePtrPos;
-        this.mode = mode;
         this.run();        
     }
 
@@ -201,7 +197,6 @@ define(['util', 'module'], function(util, module) {
             var msg =[that.file, that.articleCount, that.urlPtrPos, that.titlePtrPos,
                         variant,
                         that.ctx.upto, 
-                        that.mode,
                         that.ctx.from,
                         that.ctx.match, 
                         that.ctx.loadmore ];
