@@ -1,0 +1,258 @@
+<html>
+<meta charset="utf-8">
+
+<body onload=init();>
+<input id="myfile" type="file">
+<script>
+    var knownArchives = { 
+        so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
+           wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
+         quotes: '{"_file":{"_files":[{"name":"wikiquote_en_all_nopic_2017-03.zim","size":121026170}],"articleCount":53511,"clusterCount":252,"urlPtrPos":168,"titlePtrPos":428256,"clusterPtrPos":3359985,"mimeListPos":80,"mainPage":30342,"layoutPage":4294967295},"_language":""}',
+           dict: '{"_file":{"_files":[{"name":"wiktionary_en_simple_all_nopic_2017-01.zim","size":6001233}],"articleCount":25444,"clusterCount":41,"urlPtrPos":168,"titlePtrPos":203720,"clusterPtrPos":1292216,"mimeListPos":80,"mainPage":12520,"layoutPage":4294967295},"_language":""}',
+         voyage: '{"_file":{"_files":[{"name":"wikivoyage_en_all_2017-08.zim","size":731527966}],"articleCount":97674,"clusterCount":581,"urlPtrPos":225,"titlePtrPos":781617,"clusterPtrPos":5992414,"mimeListPos":80,"mainPage":46890,"layoutPage":4294967295},"_language":""}', 
+        test: '{"_file":{"_files":[{"name":"../tests/wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":""}'         
+    };
+
+function utfparse(data, zeroTerminated)
+    {
+        var u0, u1, u2, u3, u4, u5;
+
+        var str = '';
+        for (var idx = 0; idx < data.length; ) {
+            u0 = data[idx++];
+            if (u0 === 0 && zeroTerminated)
+                break;
+            if (!(u0 & 0x80))
+            {
+                str += String.fromCharCode(u0);
+                continue;
+            }
+            u1 = data[idx++] & 63;
+            if ((u0 & 0xe0) == 0xc0)
+            {
+                str += String.fromCharCode(((u0 & 31) << 6) | u1);
+                continue;
+            }
+            u2 = data[idx++] & 63;
+            if ((u0 & 0xf0) == 0xe0)
+                u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
+            else
+            {
+                u3 = data[idx++] & 63;
+                if ((u0 & 0xF8) == 0xF0)
+                    u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
+                else
+                {
+                    u4 = data[idx++] & 63;
+                    if ((u0 & 0xFC) == 0xF8)
+                        u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
+                    else
+                    {
+                        u5 = data[idx++] & 63;
+                        u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
+                    }
+                }
+            }
+            if (u0 < 0x10000)
+                str += String.fromCharCode(u0);
+            else
+            {
+                var ch = u0 - 0x10000;
+                str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+            }
+        }
+        return str;
+}
+
+    function readInt(data, offset, size)
+    {
+        var r = 0;
+        for (var i = 0; i < size; i++)
+        {
+            var c = (data[offset + i] + 256) & 0xff;
+            r += (c * Math.pow(2, 8 * i));
+        }
+        return r;
+    };
+
+    function read(f, begin, size) {
+        return new Promise(function (resolve, reject){
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                resolve(new Uint8Array(e.target.result));
+            };
+            reader.onerror = reader.onabort = function(e) {
+                reject(e);
+            };
+            reader.readAsArrayBuffer(f.slice(begin, begin + size));
+        });
+    }
+
+    function getDE(f, offset)
+    {
+        return read(f, offset, 2048).then(function(data)
+        {
+            var dirEntry =
+            {
+                offset: offset,
+                mimetype: readInt(data, 0, 2),
+                namespace: String.fromCharCode(data[3])
+            };
+            dirEntry.redirect = (dirEntry.mimetype === 0xffff);
+            if (dirEntry.redirect){
+                // this is really dirEntry.redirectTarget. doing this to keep record size uniform 
+                dirEntry.cluster = readInt(data, 8, 4);
+                dirEntry.blob = 0;
+            }else
+            {
+                dirEntry.cluster = readInt(data, 8, 4);
+                dirEntry.blob = readInt(data, 12, 4);
+            }
+            dirEntry.url = '';
+            dirEntry.title = '';
+            var pos = dirEntry.redirect ? 12 : 16;
+            if (data.subarray){
+                dirEntry.url = utfparse(data.subarray(pos), true);
+                while (data[pos] !== 0)
+                    pos++;
+                 dirEntry.title = utfparse(data.subarray(pos + 1), true);
+                return dirEntry;
+            } else {
+                return null;
+            }
+        });
+    };
+
+    function getWholeSortedUrlIndex()
+    {
+        return read(file, a.urlPtrPos, 8*a.articleCount).then(function(data)
+        {
+            console.time('fill');
+            console.log(data.length, a.articleCount);
+            for (var j = 0; j < a.articleCount*8; j=j+8) {
+                urlidx.push(readInt(data, j, 8));
+            };
+            console.timeEnd('fill');
+            //return readInt(data, 0, 8);
+        });/*.then(function(dirEntryPos)
+        {
+            var temp = getDE(file, dirEntryPos);
+            return temp;
+        });*/
+    };
+    // this doesn't seem to work above 1MB data:text/plain
+    function downloadObjectAsCSV(filename){
+        let csv = obj2csv(index);
+        let link = document.createElement('a')
+        link.id = 'download-csv'
+        link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+        link.setAttribute('download', filename + '.csv');
+        document.body.appendChild(link);
+        document.querySelector('#download-csv').click();
+    }
+
+    function obj2csv(urlidx){
+        let csv='';
+        for(let row = 0; row < urlidx.length; row++){
+            let keysAmount = Object.keys(urlidx[row]).length;
+            let keysCounter = 0;
+            //if {keysAmounts == 7} redirect 
+            //if {keysAmounts == 8} articlescsv
+            //if {keysAmounts > 8 } errorscsv 
+            for(let key in urlidx[row]){
+               csv += urlidx[row][key] + (keysCounter+1 < keysAmount ? '\t' : '\r\n' );
+               keysCounter++;
+            }
+            keysCounter = 0;
+        }
+        return csv;
+    }
+
+function downloadblob(format){
+    let link = document.createElement('a')
+    // there is an upper limit to downloadable blob size so use DownloadObjectAsCSV for now
+    var b;
+    if (format == 'json'){
+        b = new Blob([JSON.stringify(index)], {type: 'application/json'});
+    }else {
+        b = new Blob([obj2csv(index)]);    
+    }
+    link.href = URL.createObjectURL(b);        
+    link.setAttribute('download', filename + '.csv');
+    document.body.appendChild(link);
+    link.click();    
+}
+
+function startChain(id) {
+  var cnt = 0;  
+  return Promise.resolve().then(function next() {
+        var de = des.next();
+        if (!de.done) {
+            cnt++;
+            var c = des.current();
+            var p = getDE(file, de.value);
+            p.then(function (d){
+                index.push(d);
+            });
+            return p.then(next); // continue the chain
+        }else{
+            return cnt; //resolve and stop chain
+        }
+    });
+}
+
+function makeIterator(array) {
+    var nextIndex = 0;
+    
+    return {
+        current: function() { return nextIndex-1},
+       next: function() {
+           return nextIndex < array.length ?
+               {value: array[nextIndex++], done: false} :
+               {done: true};
+       },
+       length: array.length
+    };
+}
+
+var urlidx = [], index=[], errors=[], redirects=[], keyMatchingFileSelected='dummy';
+var a = JSON.parse(knownArchives['test'])._file;
+var file = a._files[0];
+var readPromises = [];
+var N = 5;
+console.log(N);
+var des, jobs=[];
+
+function init(){
+    var fileSelected = function()
+    {
+        console.time('DumpTime');
+        var fileInput = document.querySelector("#myfile");
+        file = fileInput.files[0];
+        console.log(file.name);
+        // @@fudge!!!!!! just to get article count nothing else
+        keyMatchingFileSelected = Object.keys(knownArchives).filter((i, idx, a) => {return JSON.parse(knownArchives[i])._file._files[0].name.includes( file.name);} )[0];
+        a = JSON.parse(knownArchives[keyMatchingFileSelected])._file;
+        //document.write(knownArchives[])
+        getWholeSortedUrlIndex(a).then(() =>{
+            des = makeIterator(urlidx);    
+            console.time('jobs'+N);
+            for (var k = 0; k < N; k += 1) {
+                var id = k +1;
+                jobs.push(startChain(id));
+            }
+            Promise.all(jobs).then(function(){            
+                console.timeEnd('jobs'+N);
+                console.timeEnd('DumpTime');
+                //downloadblob('csv');
+                downloadObjectAsCSV(keyMatchingFileSelected);
+            });    
+        });
+    }
+    document.querySelector("#myfile").onchange=fileSelected;
+}
+
+
+</script>
+
+</body>
