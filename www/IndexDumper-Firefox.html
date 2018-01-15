@@ -94,7 +94,7 @@ function utfparse(data, zeroTerminated)
         {
             var dirEntry =
             {
-                offset: offset,
+                //offset: offset,
                 mimetype: readInt(data, 0, 2),
                 namespace: String.fromCharCode(data[3])
             };
@@ -142,11 +142,12 @@ function utfparse(data, zeroTerminated)
     };
     // this doesn't seem to work above 1MB data:text/plain
     function downloadObjectAsCSV(filename){
+        let minutes = Math.round((Date.now() - startTime) / 60000);
         let csv = obj2csv(index);
         let link = document.createElement('a')
         link.id = 'download-csv'
         link.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
-        link.setAttribute('download', filename + '.csv');
+        link.setAttribute('download', filename  +'-'+ N+ '-'+minutes+'-'+startIndex+'-'+endIndex+ '.csv');
         document.body.appendChild(link);
         document.querySelector('#download-csv').click();
     }
@@ -189,10 +190,13 @@ function startChain(id) {
         var de = des.next();
         if (!de.done) {
             cnt++;
-            var c = des.current();
             var p = getDE(file, de.value);
             p.then(function (d){
                 index.push(d);
+                /*if (id===1 && cnt%50000 === 0 ){
+                        document.writeln(((Date.now() - startTime) / 60000).toFixed(2) +':' + des.current());
+                        document.close();
+                    }*/
             });
             return p.then(next); // continue the chain
         }else{
@@ -216,12 +220,15 @@ function makeIterator(array) {
 }
 
 var urlidx = [], index=[], errors=[], redirects=[], keyMatchingFileSelected='dummy';
-var a = JSON.parse(knownArchives['test'])._file;
-var file = a._files[0];
+var a; //= JSON.parse(knownArchives['test'])._file;
+var file;// = a._files[0];
 var readPromises = [];
-var N = 5;
+var startIndex = 0;
+var endIndex = 10000;
+var N = 2;
 console.log(N);
 var des, jobs=[];
+var startTime = Date.now();
 
 function init(){
     var fileSelected = function()
@@ -235,7 +242,7 @@ function init(){
         a = JSON.parse(knownArchives[keyMatchingFileSelected])._file;
         //document.write(knownArchives[])
         getWholeSortedUrlIndex(a).then(() =>{
-            des = makeIterator(urlidx);    
+            des = makeIterator(urlidx.slice(startIndex, endIndex));    
             console.time('jobs'+N);
             for (var k = 0; k < N; k += 1) {
                 var id = k +1;
@@ -251,8 +258,6 @@ function init(){
     }
     document.querySelector("#myfile").onchange=fileSelected;
 }
-
-
 </script>
-
 </body>
+

@@ -1,0 +1,7 @@
+.echo on
+.mode tabs
+create table quotes(offset int, mime integer, namespace text, redirect boolean, cluster integer, blob integer, url text, title text);
+.import quo.csv quotes
+.save quotes.db
+select count(*) from quotes;
+.quit
