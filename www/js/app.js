@@ -190,6 +190,9 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         if(params["title"]){
             pushBrowserHistoryState(params["title"]);
             goToArticle(params["title"]);                
+        }else if(params["c"] && params["b"]){
+            var destring = '|||' + params['c'] + '|' + params['b'] + '|dummyurl|dummytitle||';
+            findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
         }else if(params.hasOwnProperty("titleSearch")){
             startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
         }else if(params["imageSearch"]){
