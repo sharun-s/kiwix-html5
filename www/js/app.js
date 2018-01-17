@@ -191,8 +191,19 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             pushBrowserHistoryState(params["title"]);
             goToArticle(params["title"]);                
         }else if(params["c"] && params["b"]){
-            var destring = '|||' + params['c'] + '|' + params['b'] + '|dummyurl|dummytitle||';
-            findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
+            var destring = '||'+ params['n'] +'|' + params['c'] + '|' + params['b'] + '|dummyurl|dummytitle||';
+            if (params['n'] == 'I' ){
+                var dirEntry = selectedArchive.parseDirEntryId(destring);
+                dirEntry.readData().then((data) =>{
+                    var blob = new Blob([data], {type: 'image'});
+                    var url = URL.createObjectURL(blob);
+                    $('#articleContent').contents().find('body').html('<img src='+url+'></img>');                    
+                });
+            }
+                //selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob)
+                //        .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), $("articleContent"), imageBlob);
+            else
+                findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
         }else if(params.hasOwnProperty("titleSearch")){
             startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
         }else if(params["imageSearch"]){
