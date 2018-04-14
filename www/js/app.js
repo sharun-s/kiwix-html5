@@ -718,6 +718,14 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     return false;
                 });   
             }
+        }else if (url.substring(0, 4) === "geo:") {
+            let coords = url.substring(4).split(',');
+            let title = window.location.search.match(/title=([^&]*)\.html/)[1];
+            //TODO: conform to abnf - https://docs.microsoft.com/en-us/windows/uwp/launch-resume/launch-maps-app#bingmaps-parameter-reference
+            coords[0] = coords[0].substring(0,10); // temp hack
+            coords[1] = coords[1].substring(0,10); // temp hack
+            $(this).attr("href", "bingmaps:?collection=point." + coords[0] + "_" + coords[1]+"_" + title);
+            console.log("bingmaps:?collection=point." + coords[0] + "_" + coords[1]+"_" + title);
         }else if (url.match(regexpImageLink)
             && (util.endsWith(lowerCaseUrl, ".png")
                 || util.endsWith(lowerCaseUrl, ".svg")
