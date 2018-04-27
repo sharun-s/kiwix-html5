@@ -725,7 +725,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             coords[0] = coords[0].substring(0,10); // temp hack
             coords[1] = coords[1].substring(0,10); // temp hack
             $(this).attr("href", "bingmaps:?collection=point." + coords[0] + "_" + coords[1]+"_" + title);
-            console.log("bingmaps:?collection=point." + coords[0] + "_" + coords[1]+"_" + title);
+            //console.debug("bingmaps:?collection=point." + coords[0] + "_" + coords[1]+"_" + title);
         }else if (url.match(regexpImageLink)
             && (util.endsWith(lowerCaseUrl, ".png")
                 || util.endsWith(lowerCaseUrl, ".svg")
@@ -756,6 +756,9 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 goToArticle(decodedURL);
                 return false;
             });
+            // NOTE: to switch immediately to the new tab, browser settings need to be changed [eg: On Firefox preferences>tabs]. 
+            $(this).attr('href', location.href.replace( /[\?#].*|$/, "?archive="+params['archive']+"&title="+url));
+            $(this).attr("target", "_blank");
         }
     }
 
