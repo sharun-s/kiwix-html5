@@ -670,7 +670,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         if(!zimArchiveLoader.URL2Archive.hasOwnProperty(temp.hostname))
             return false; 
         var parts = temp.pathname.split('/');
-        //console.log(parts);
+        // This code handles cases where hostname + a bit of the path maps to an archive
+        // eg en.wikipedia.org/wiki/ or en.wiktionary.org/wiki/ 
         const cnt = parts.length;
         if ( cnt == 1)
             return false;
@@ -681,8 +682,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 var archive = zimArchiveLoader.URL2Archive[temp.host + basePath];
                 // TODO assumption here is parts[cnt-1] refers to title, not so in SO zims eg: questions/id/title 
                 if (archive == "so" && parts[1] == "questions")
-                        return "./../index.html?archive=" + archive + "&title=question/" + parts[2] + ".html";
-                return "./../index.html?archive=" + archive + "&title=" + parts[cnt-1].replace(/%20/g,"_") + ".html";
+                        return {'archive':archive,'title':"question/" + parts[2] + ".html",'url':"./../index.html?archive=" + archive + "&title=question/" + parts[2] + ".html"};
+                return {'archive':archive, 'title':parts[cnt-1].replace(/%20/g,"_") + ".html" ,'url':"./../index.html?archive=" + archive + "&title=" + parts[cnt-1].replace(/%20/g,"_") + ".html"};
             }
         }
         return false; 
@@ -707,16 +708,34 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             // It's an anchor link : do nothing TODO: Add to TOC
         }else if (url.substring(0, 4) === "http") {
             // It's an external link : open in a new tab
-            var newurl = existsInKnownArchives(url);
-            if(!newurl)
+            var result = existsInKnownArchives(url);
+            if(!result)
                 $(this).attr("target", "_blank");
             else{
-                //$(this).attr("href", newurl);
-                $(this).on('click', function(e) {
-                    //pushBrowserHistoryState(newurl);
-                    window.location.href = newurl; // iframe location change not enough when archive is changed.
-                    return false;
-                });   
+                // if hostname belongs to a known archive [2 cases] 
+                // when link is clicked new page injected of archive already loaded  
+                // or new archive needs to be loaded 
+                //console.log(result.archive, params['archive'], url);
+                if (result.archive == selectedArchive._file._files[0].name){
+                    $(this).on('click', function(e) {
+                        var decodedURL = decodeURIComponent(result.title);
+                        pushBrowserHistoryState(decodedURL);
+                        goToArticle(decodedURL);
+                    });
+                }else{
+                    // In case archive is a diff archive archive obj has to be reloaded
+                    $(this).on('click', function(e) {
+                        //ui.reset();    
+                        selectedArchive = zimArchiveLoader.loadArchiveFromURL(result.archive);
+                        //ui.archiveStatusUpdate(selectedArchive);
+                        var decodedURL = decodeURIComponent(result.title);
+                        pushBrowserHistoryState(decodedURL);
+                        goToArticle(decodedURL);
+                    });                   
+                } 
+                // When opened in new tab/window, new/existing archive name must be injected into url for it to work
+                // In this case click handler doesn't run.
+                $(this).attr("href", location.href.replace( /[\?#].*|$/, "?archive="+result.archive+"&title="+result.title));  
             }
         }else if (url.substring(0, 4) === "geo:") {
             let coords = url.substring(4).split(',');
@@ -756,8 +775,9 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 goToArticle(decodedURL);
                 return false;
             });
-            // NOTE: to switch immediately to the new tab, browser settings need to be changed [eg: On Firefox preferences>tabs]. 
-            $(this).attr('href', location.href.replace( /[\?#].*|$/, "?archive="+params['archive']+"&title="+url));
+             
+            // For new tab to work inject archive name into link
+            $(this).attr('href', location.href.replace( /[\?#].*|$/, "?archive="+selectedArchive._file._files[0].name+"&title="+url));
             $(this).attr("target", "_blank");
         }
     }
