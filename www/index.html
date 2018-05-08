@@ -152,7 +152,7 @@
                     </p>
                     <h2 id="URLs">URLs</h2>
                     <p>
-                        Direct access to content via URLs is possible. This can be a bit slower than when loading content via the FileSelector. Being able to access content via URL allows making use of inbuilt browser capabilities like bookmarking pages, setting home pages, load archive on click, simpler testing etc.
+                        Direct access to content via URLs is possible. This can be a bit slower than when loading content via the FileSelector. Being able to access content via URL allows making use of inbuilt browser capabilities like bookmarking pages, setting home page, load archive on click, open link in new tabs/windows, simpler testing etc.
                         <dl>
                             <dt>Show Article</dt>
                             <dd><small>file://c:/kiwix/index.html</small>?archive=wiki&<strong>title</strong>=<mark>Paris.html</mark></dd>
@@ -169,6 +169,8 @@
                             <dd><small>file://[path to kiwix directory]/index.html</small>?archive=wiki&<strong>imageSearch</strong>=<mark>Vincent Van Gogh<mark></dd>
                             <dt>Archive Stats</dt>
                             <dd><small>file://[path to kiwix directory]/index.html</small>?archive=wiki</dd>
+                            <dt>Direct Access via ClusterID, BlobID, Namespace</dt>
+                            <dd><small>file://[path to kiwix directory]/index.html</small>?archive=wiki&<strong>c=22891&b=0&n=A</strong> will return the Paris article in the wiki zim</dd>
                             <small><strong>NOTE:</strong> "archive" can be set to shortcuts such as wiki, quotes, dict etc or the actual file names such as wiki_en_all_12_16-1.zim, wikiquotes_en_all.zim etc. To add a shortcut create a new entry in knownArchives table in zimArchiveLoader.js following the instructions there. </small>
                         </dl>
                     </p>

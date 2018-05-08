@@ -32,7 +32,7 @@ KEYWORD=$2
 CLAUSE=(
 	"where redirect='false' and title like '$KEYWORD' limit 1"
 	"where redirect='false' and url like '%$KEYWORD%' limit 1"
-	"where namespace!='A' and redirect='false' and url like '$KEYWORD' limit 1"
+	"where namespace!='A' and redirect='false' and url like '%$KEYWORD%' limit 1"
 	)
 
 #if no keyword specified exit
@@ -43,8 +43,8 @@ else
 fi
 echo "${QUERY}"
 if [ $x ]; then  
-./sqlite3.exe ${ARCHIVE}.db "${QUERY}" | awk -v ar="$ARCHIVE" -F '|' '{ printf "archive=%s&c=%s&b=%s&n=%s&url=%s",ar,$1,$2,$3,$4 }' ;
+./sqlite3.exe ${ARCHIVE}.db "${QUERY}" | awk -v ar="$ARCHIVE" -F '|' '{ printf "archive=%s&c=%s&b=%s&n=%s&title=%s",ar,$1,$2,$3,$4 }' ;
 else
-./sqlite3.exe "${ARCHIVE}".db "${QUERY}" | awk -v ar="$ARCHIVE" -v bp="$BROWSERPATH" -v kp="$KIWIXPATH" -F '|' '{ printf "\"%s\" -url \"%s?archive=%s&c=%s&b=%s&n=%s&url=%s\"",bp,kp,ar,$1,$2,$3,$4 }' | sh ;
+./sqlite3.exe "${ARCHIVE}".db "${QUERY}" | awk -v ar="$ARCHIVE" -v bp="$BROWSERPATH" -v kp="$KIWIXPATH" -F '|' '{ printf "\"%s\" -url \"%s?archive=%s&c=%s&b=%s&n=%s&title=%s\"",bp,kp,ar,$1,$2,$3,$4 }' | sh ;
 fi
 exit 0

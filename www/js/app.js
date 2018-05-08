@@ -186,12 +186,13 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     function setLocalArchiveFromURL(params){
         ui.reset();    
         selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
-        ui.archiveStatusUpdate(selectedArchive);
-        if(params["title"]){
-            pushBrowserHistoryState(params["title"]);
-            goToArticle(params["title"]);                
-        }else if(params["c"] && params["b"]){
-            var destring = '||'+ params['n'] +'|' + params['c'] + '|' + params['b'] + '|dummyurl|dummytitle||';
+        ui.archiveStatusUpdate(selectedArchive);                
+        if(params["c"] && params["b"]){
+            let tmptitle = params['title'].replace(/_/,' ').slice(0,-5);
+            // This is for direct access to a particular cluster+blob via a url.
+            // Enables script/query.sh to directly access an article via a 'destring'
+            var destring = '||'+ params['n'] +'|' + params['c'] + '|' + params['b'] + '|'+params['title']+'|'+tmptitle+'||';
+            pushBrowserHistoryState(params['title']);
             if (params['n'] == 'I' ){
                 var dirEntry = selectedArchive.parseDirEntryId(destring);
                 dirEntry.readData().then((data) =>{
@@ -204,7 +205,11 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 //        .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), $("articleContent"), imageBlob);
             else
                 findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
-        }else if(params.hasOwnProperty("titleSearch")){
+        }else if(params["title"]){
+            pushBrowserHistoryState(params["title"]);
+            goToArticle(params["title"]);
+        }
+        else if(params.hasOwnProperty("titleSearch")){
             startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
         }else if(params["imageSearch"]){
             startImageSearch(decodeURIComponent(params["imageSearch"]));
