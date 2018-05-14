@@ -9,8 +9,9 @@ usage() { echo -e "Usage: $0 [-i|u] [-x] ARCHIVE KEYWORD\n \
 #ARCHIVE=$2
 QUERY="select cluster, blob, namespace, url from "
 IDX=0
+MAINDIR=$(dirname $(pwd))
 BROWSERPATH='C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe'
-KIWIXPATH='file:///C:/<some path>/www/index.html'
+KIWIXPATH='file:///$(MAINDIR)www/index.html'
 while getopts "i|ux" opt; do 
 	#echo $opt $OPTARG $OPTIND
 	case "${opt}" in
@@ -41,6 +42,17 @@ if [ -z "${KEYWORD}" ]; then
 else
 	QUERY="${QUERY}${ARCHIVE} ${CLAUSE[$IDX]}";
 fi
+
+if [ ! -f sqlite3.exe ]; then
+    echo "ERROR: sqlite3 missing in current directory! Exiting..."
+    exit 1
+fi
+tmp="$ARCHIVE.db"
+if [ ! -f "${tmp}" ]; then
+	echo -e "ERROR: index file missing in current diretory.\nTo create an index from a ZIM file use the www/IndexDumper-Firefox.html\n"
+	exit 1
+fi 
+
 echo "${QUERY}"
 if [ $x ]; then  
 ./sqlite3.exe ${ARCHIVE}.db "${QUERY}" | awk -v ar="$ARCHIVE" -F '|' '{ printf "archive=%s&c=%s&b=%s&n=%s&title=%s",ar,$1,$2,$3,$4 }' ;
