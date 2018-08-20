@@ -284,7 +284,7 @@ define(['jquery', 'zimArchive', 'zimDirEntry', 'util', 'utf8', 'finder'],
                                     done();
                                 }
             };
-            var f = new finder.urlSearch(urlList, callbacks, localZimArchive, "xhr", 2);
+            var f = new finder.urlSearch(urlList, callbacks, localZimArchive, "file", 2);
             f.run({type:"quick", initialImageLoad: 2}); 
         });
         
