@@ -2,16 +2,10 @@
 define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
 
 	var catalogue = [];
+	var lang="en";
+	var doc;
+
 	function getLatestCatalogue(){
-        var namespaceResolver = (function () {
-            var prefixMap = {
-                a: "http://www.w3.org/2005/Atom",
-                ospd: "http://opds-spec.org/2010/catalog"
-            };
-            return function (prefix) {
-                return prefixMap[prefix] || null;
-            };
-        }());
         var x = new XMLHttpRequest();
         x.open("GET", "http://library.kiwix.org/catalog/root.xml", true);
         x.onprogress = function(event){
@@ -24,9 +18,28 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
         x.onreadystatechange = function () {
           if (x.readyState == 4 && x.status == 200)
           {
-            var doc = x.responseXML;
-            var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_en_") and contains(@href,"2018")]', doc, namespaceResolver, 0, null);
+            doc = x.responseXML;
+            processDoc();
+          }
+        };
+        x.send(null);
+    }
+
+    function processDoc(){
+    	var namespaceResolver = (function () {
+            var prefixMap = {
+                a: "http://www.w3.org/2005/Atom",
+                ospd: "http://opds-spec.org/2010/catalog"
+            };
+            return function (prefix) {
+                return prefixMap[prefix] || null;
+            };
+        }());
+        
+    	    var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and contains(@href,"2018")]', doc, namespaceResolver, 0, null);
+    	    console.log(link);
             var result=link.iterateNext();
+            catalogue=[]
             while(result){
             	catalogue.push({
                 url: result.attributes["href"].value,
@@ -36,12 +49,10 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
                 description: result.parentElement.children[4].textContent, // description
                 creator: result.parentElement.children[6].textContent // creator
                 });
+                console.log(result.attributes["href"].value);
                 result=link.iterateNext();
             }
             generateCatalogueUI();
-          }
-        };
-        x.send(null);
     }
 
     function generateCatalogueUI(){
@@ -54,7 +65,7 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
                 groups[item.title] = [item];
         });
         // group links by title, sort groups by lenth, sort links in group by date
-        var groupHTML = '<ul id="accordian" class="list-group">';
+        var groupHTML=''; //= '<ul id="accordian" class="list-group">';
         for(var group in groups){
             groups[group].sort(function(a,b){return new Date(b.date) - new Date(a.date);});
         }
@@ -73,8 +84,9 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
             }
             groupHTML = groupHTML + groupHeader + items.join( "" ) +"</ul>";
         }
-        groupHTML = groupHTML + '</ul>';
-        jqueryNode.append(groupHTML);
+        //groupHTML = groupHTML + '</ul>';
+        //jqueryNode.html(groupHTML);
+        $("#accordian").html(groupHTML);
     }
     var items = [];
     var jqueryNode;
@@ -92,14 +104,53 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
         });*/
         jqueryNode.append(items.join( "" ));
         // Add downloadable ZIM's
-        jqueryNode.append("<h5>Available Archives:</h5> \
-        	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files) </p>\
-        	<p> (For the latest list in all other languages please visit the Kiwix <a href='http://wiki.kiwix.org/content'>website.</a>)</p>\
+        jqueryNode.append("<h4>Available Archives:</h4> \
+        	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files). For the latest archives in other languages please visit <a href='http://wiki.kiwix.org/content'><mark>Kiwix.org</mark></a>)</p>\
         	<button id='getLatest'>UPDATE CATALOGUE</button> \
+        	<label for='langSelect'>Language</label> \
+        	<select id='langSelect'>\
+        	<option value='ar'>العربية</option>\
+        	‎<option value='az'>azərbaycanca</option>\
+        	‎<option value='bn'>বাংলা</option>\
+        	<option value='ca'>català</option>\
+        	<option value='da'>dansk</option>\
+        	<option value='de'>Deutsch</option>\
+        	<option value='el'>Ελληνικά</option>\
+        	<option value='en' selected>‎English</option> \
+        	<option value='es'> español</option> \
+        	<option value='fa'>فارسی</option> \
+        	<option value='fr'>français</option> \
+        	<option value='gl'>galego</option> \
+        	<option value='he'>עברית</option> \
+        	<option value='id'>Bahasa Indonesia</option> \
+        	<option value='it'>italiano</option> \
+        	<option value='ja'>日本語</option>\
+        	<option value='ka'>ქართული</option>\
+        	<option value='ko'>한국어</option>\
+        	<option value='ku-latn'>Kurdî (latînî)‎‎</option>\
+        	<option value='lt'>lietuvių</option>\
+        	<option value='ml'>മലയാളം</option>\
+        	<option value='ms'>Bahasa Melayu</option> \
+        	‎<option value='nl'>Nederlands</option>\
+        	<option value='pl'>polski</option>\
+        	<option value='ps'>پښتو</option>\
+        	<option value='pt'>português</option>\
+        	<option value='ru'>русский</option> ‎\
+        	<option value='sd'>سنڌي</option> ‎\
+        	<option value='tr'>Türkçe</option> ‎\
+        	<option value='ur'>اردو</option> ‎\
+        	<option value='zh'>中文</option> ‎\
+        	‎<option value='zh-cn'> 中文（中国大陆）‎</option> ‎\
+        	‎<option value='zh-tw'>中文（台灣）‎</option></select>\
         	<div class='progress'> \
   				<div class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> \
   				</div> \
-			</div> \ ");
+			</div> <ul id='accordian' class='list-group'></ul>\ ");
+        $("#langSelect").on("change",function (){
+			lang = this.value;
+    		console.log(lang + " lang selected");
+    		processDoc();
+        });
         $("#getLatest").on("click",getLatestCatalogue);         
     };
 
