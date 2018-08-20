@@ -1,5 +1,5 @@
 'use strict';
-define(['jquery', 'zimArchiveLoader', 'favicons'], function($, zimArchiveLoader, icons) {
+define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
 
 	var catalogue = [];
 	function getLatestCatalogue(){
