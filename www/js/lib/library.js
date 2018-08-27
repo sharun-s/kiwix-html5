@@ -102,7 +102,16 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
             +";base64,"+item.favicon+ "'><strong>" + item.title +"</strong> "
             +item.date+ " " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item.filename+"&random=&apos;);'> LOAD</button></li>");
         });*/
-        jqueryNode.append(items.join( "" ));
+        zimArchiveLoader.onDiskMatches().then(function(zimsOnDisk){
+            jqueryNode.append("<h4>Detected Archives On Disk: </h4>");
+
+            $.each( zimsOnDisk, function( i, item ) {
+                var temp = item.split('_');
+                items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item+"&random=&apos;);'> LOAD</button></li>");
+            });
+            jqueryNode.append(items.join( "" ));
+        });
+        
         // Add downloadable ZIM's
         jqueryNode.append("<h4>Available Archives:</h4> \
         	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files). <mark>NOTE:</mark> Download may take a few seconds to start. For the latest archives in other languages please visit <a href='http://wiki.kiwix.org/content'><mark>Kiwix.org</mark></a>)</p>\
