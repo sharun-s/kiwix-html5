@@ -1,0 +1,213 @@
+
+
+<html>
+<meta charset="utf-8">
+<script>
+/* 
+pseudofile is basically a string when parsed creates a pseudo file object. 
+As opposed to a native file object with file pointer etc 
+the string can be converted to a zimarchive object using JSON.parse
+This object is then used by the app to render/search for content 
+
+Example:
+wiki: '{"_file":
+			{"_files":[
+				{	"name":"wikipedia_en_all_2016-12.zim",
+					"size": 62695819637
+				}],
+				"articleCount":17454230,
+				"clusterCount":90296,
+				"urlPtrPos":236,
+				"titlePtrPos":139634076,
+				"clusterPtrPos":1237308322,
+				"mimeListPos":80,
+				"mainPage":4294967295,
+				"layoutPage":4294967295
+			},
+		"_language":""}'
+
+Since split zim's are supported the _files array can have multiple entries for each split piece
+When not split it just has one entry.
+
+The list of psuedo file objects (knownArchives) mechanism allows doing away with FileSelector to open ZIM's 
+and is reqd to support URL mode[i.e. using links like they are meant to be used - bookmarkable/cut/copy/paste/open in new tab/open url from command line etc]
+Note:
+Firefox only allows xhr to file:// in same local directory in which source resides
+Relative urls can't be used to an external directory
+Session storage based on file:// based urls is not supported 
+updating knownarchives for now will be a process external to the app. See issue #2 in repo
+
+So two different js files
+one used by the app
+one used to generate knownarchives
+*/
+
+//knownArchives
+
+//go through catalog_onlynames
+//function setupknownArchives(urllist){
+	// go through urllist
+	// util.readSlice(url, 0, 80)
+//}
+
+//function createPsuedoFileObject(){}
+
+//function add(pfo){}
+
+//var params={};
+//location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+
+var header;
+var knownArchives={};
+var name;
+
+function makeIterator(array) {
+    var nextIndex = 0;
+    
+    return {
+        current: function() { return nextIndex-1},
+       next: function() {
+           return nextIndex < array.length ?
+               {value: array[nextIndex++], done: false} :
+               {done: true};
+       },
+       length: array.length
+    };
+}
+function startChain(id) {
+  var cnt = 0;  
+  return Promise.resolve().then(function next() {
+        var de = des.next();
+        if (!de.done) {
+            cnt++;
+            console.log(de.value);
+            return read(de.value, 0, 88).then(processHeader).then(next); // continue the chain
+        }else{
+            return cnt; //resolve and stop chain
+        }
+    });
+}
+
+function readInt(data, offset, size)
+{
+    var r = 0;
+    for (var i = 0; i < size; i++)
+    {
+        c = (data[offset + i] + 256) & 0xff;
+        r += leftShift(c, 8 * i);
+    }
+    return r;
+};
+
+function leftShift(int, bits) {return int * Math.pow(2, bits);}
+
+function processHeader(response){
+	r = new Uint8Array(response);
+	header = {
+		response: r,
+		articleCount: readInt(r, 24, 4),
+	    clusterCount: readInt(r, 28, 4),
+	    urlPtrPos: readInt(r, 32, 8),
+	    titlePtrPos: readInt(r, 40, 8),
+	    clusterPtrPos: readInt(r, 48, 8),
+	    mimeListPos: readInt(r, 56, 8),
+	    mainPage: readInt(r, 64, 4),
+	    layoutPage: readInt(r, 68, 4)
+	};
+	//console.log(header);
+    //Promise.all(load()).then((values)=>{values.forEach((item)=>dump(item.title))});
+knownArchives[name]=JSON.stringify({"_file": 
+			{"_files":[ 
+				{	"name":name, "size": 62695819637 }], 
+				"articleCount":header.articleCount, 
+				"clusterCount":header.clusterCount, 
+				"urlPtrPos":header.urlPtrPos, 
+				"titlePtrPos":header.titlePtrPos, 
+				"clusterPtrPos":header.clusterPtrPos, 
+				"mimeListPos":header.mimeListPos, 
+				"mainPage":header.mainPage, 
+				"layoutPage":header.layoutPage 
+			}, 
+		"_language":""});
+}
+
+
+function read(archive_url, bytestart, byteend,){
+	return new Promise(function(resolve, reject){	
+	var req = new XMLHttpRequest();
+	req.open('GET', archive_url, true);
+	name = archive_url; 
+	req.overrideMimeType('text\/plain; charset=x-user-defined');// response will be a string
+    
+		req.responseType = "blob";
+		req.addEventListener("load", function() {
+		    var sliced = req.response.slice(bytestart, byteend-bytestart);
+		    //console.log("loaded and sliced");
+		    try{
+		    	var fr = new FileReader();
+		    	fr.readAsArrayBuffer(sliced);
+		    	fr.addEventListener("load", function() {
+		      		resolve(fr.result);
+		    	});
+		    }catch(ex){
+		    	console.log(ex);
+		    }
+		});
+		
+	  	req.send(null);
+	});	
+}
+
+function downloadblob(format){
+    let link = document.createElement('a')
+    // there is an upper limit to downloadable blob size so use DownloadObjectAsCSV for now
+    var b;
+    
+    if (format == 'json'){
+        b = new Blob([JSON.stringify(knownArchives)], {type: 'application/json'});
+    }else {
+        b = new Blob([obj2csv(index)]);    
+    }
+    link.href = URL.createObjectURL(b);        
+    link.setAttribute('download', filename + '.js');
+    document.body.appendChild(link);
+    link.click();    
+}
+
+var N=1;
+var jobs=[];
+function processUrls(names){
+	var zims = names.split('\n');
+	
+    des = makeIterator(zims);    
+    console.log('starting...');
+    for (var k = 0; k < N; k += 1) {
+        //var id = k +1;
+        jobs.push(startChain(k));
+    }
+    Promise.all(jobs).then(function(){            
+                console.timeEnd('DumpTime');
+                console.log("All done");
+                //downloadblob('csv');
+                //downloadObjectAsCSV(keyMatchingFileSelected);
+    });    
+}
+
+function init(){
+	console.time('DumpTime');
+	var xhr = new XMLHttpRequest();
+    xhr.addEventListener('readystatechange', (output) => {
+      if (xhr.readyState === 4) {
+        var response = xhr.responseText;
+        processUrls(response);
+      }
+    });
+
+    xhr.open('GET', 'catalog_onlynames.txt', true);
+    xhr.overrideMimeType('text\/plain; charset=x-user-defined');
+    xhr.send();
+}
+
+</script>
+<body onload=init();></body>
+</html>

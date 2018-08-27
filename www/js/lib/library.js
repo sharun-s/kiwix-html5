@@ -105,7 +105,7 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
         jqueryNode.append(items.join( "" ));
         // Add downloadable ZIM's
         jqueryNode.append("<h4>Available Archives:</h4> \
-        	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files). For the latest archives in other languages please visit <a href='http://wiki.kiwix.org/content'><mark>Kiwix.org</mark></a>)</p>\
+        	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files). <mark>NOTE:</mark> Download may take a few seconds to start. For the latest archives in other languages please visit <a href='http://wiki.kiwix.org/content'><mark>Kiwix.org</mark></a>)</p>\
         	<button id='getLatest'>UPDATE CATALOGUE</button> \
         	<label for='langSelect'>Language</label> \
         	<select id='langSelect'>\
