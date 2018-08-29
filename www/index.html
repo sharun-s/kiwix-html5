@@ -110,23 +110,22 @@
 
                 <div id="about" style="display: none;" class="container">
                     <p class="lead"><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    Kiwix : Offline Web Archive Reader <small>(Version:2.2-WIP)</small>
-                     </p>
-                    <p>Official Site : <a href="http://www.kiwix.org/" target="_blank">www.kiwix.org</a></p> 
-                    <h2 id="Usage">Usage</h2>
+                    Kiwix : Offline Web Archive Reader <a href="http://www.kiwix.org/" target="_blank">kiwix.org</a></p> 
+                    <h3 id="Usage" style='border-bottom:2px solid #004499'>Usage</h3>
                     <dl>
                     <dt>Step 1 : Download a Web Archive</dt>
-                    <dd> Offline Web Archives in the open <a hred="openzim.org">ZIM format</a> can be downloaded at the <a href="http://download.kiwix.org" target="_blank">Kiwix</a> website.
+                    <dd> Offline web archives or <a hred="openzim.org">ZIM files</a> can be downloaded from the catalogue in the Config screen [<span class="glyphicon glyphicon-wrench"></span>] or from <a href="http://library.kiwix.org" target="_blank">kiwix.org</a>
                     </dd>
                     <p class="small">Check the size as many of the files are large (several GB). Large files can be split into smaller files. To load split files see <a href="http://www.kiwix.org/wiki/FAQ">the Kiwix FAQ</a>
                     </p>
-                    <dt>Step 2 : Load Archive</dt><dd> Goto the Config menu <span class="glyphicon glyphicon-wrench"> and select your ZIM file</dd>
-                    <dt>Step 3 :<dt> <dd>Enjoy browsing your offline web archive!</dd></dl>
+                    <dt>Step 2 : Load Archive</dt><dd> Goto the Config menu [<span class="glyphicon glyphicon-wrench">]</span> and select your ZIM file</dd>
+                    <dt>Step 3 : Browse or Search<dt> <dd>Enjoy browsing your offline web archive!</dd></dl>
                     
-                    <h2 id="Quick_Test">Quick Test</h2> 
+                    <h3 id="Quick_Test" style='border-bottom:2px solid #004499'>Quick Test</h3> 
                     <p>To load a Random Article from the "Ray Charles" Archive that comes with the app - it contains some wikipedia articles about Ray Charles. <a href="./index.html?archive=test&random=" target="_blank">TEST ARCHIVE</a> 
                     </p>
-                    <ul> Once loaded you could -   
+                    <p>Once loaded you can -</p>
+                    <ul>    
                         <li>Hit <span class="glyphicon glyphicon-home"></span> for the main page of the archive. 
                         </li>
                         <li>Hit <span class="glyphicon glyphicon-random"></span> to get another Random Article
@@ -137,7 +136,7 @@
                         </li>
                     </ul>
                     
-                    <h2 id="Notes">Notes</h2>
+                    <h3 id="Notes" style='border-bottom:2px solid #004499'>Notes</h3>
                     This branch is based on the <a href="https://github.com/kiwix/kiwix-js/" target="_blank">Kiwix-JS</a> Project. Code is available <a href="https://github.com/sharun-s/kiwix-html5/" target="_blank">here</a>. 
                     The javascript code has many pieces that allow it to be used in 5 different "modes" detailed below. Find the right repo on the KIWIX github page to suite your needs. This version is focused on <strong>Standalone</strong> mode.
 
@@ -150,9 +149,9 @@
                     </li><li>WebApp (phone gap/corova based) on app store
                     </li><li>NativeApp eg the Firefox OS app</li></ul>
                     </p>
-                    <h2 id="URLs">URLs</h2>
+                    <h3 id="URLs" style='border-bottom:2px solid #004499'>Link Format</h3>
                     <p>
-                        Direct access to content via URLs is possible. This can be a bit slower than when loading content via the FileSelector. Being able to access content via URL allows making use of inbuilt browser capabilities like bookmarking pages, setting home page, load archive on click, open link in new tabs/windows, simpler testing etc.
+                        Direct access to content via links is possible. Being able to access content via links allows making use of inbuilt browser capabilities like bookmarking pages, setting home page, load archive on click, open link in new tabs/windows, simpler testing etc.
                         <dl>
                             <dt>Show Article</dt>
                             <dd><small>file://c:/kiwix/index.html</small>?archive=wiki&<strong>title</strong>=<mark>Paris.html</mark></dd>
@@ -174,7 +173,7 @@
                             <small><strong>NOTE:</strong> "archive" can be set to shortcuts such as wiki, quotes, dict etc or the actual file names such as wiki_en_all_12_16-1.zim, wikiquotes_en_all.zim etc. To add a shortcut create a new entry in knownArchives table in zimArchiveLoader.js following the instructions there. </small>
                         </dl>
                     </p>
-                    <h2 id="License">License</h2>
+                    <h3 id="License" style='border-bottom:2px solid #004499'>License</h3>
                     <p>This application is licensed under the GPL v3 license :
                     <br />
                     <i>
@@ -192,7 +191,7 @@
                     <br />along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>
                     </i>
                     </p>
-                    <h2 id="Resources">Main libraries and resources used :</h2>
+                    <h3 id="Resources" style='border-bottom:2px solid #004499'>Main Libraries And Resources Used:</h3>
                     <ul>
                         <li><a href="http://jquery.com/" target="_blank">jQuery</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
                         <li><a href="http://getbootstrap.com/" target="_blank">Bootstrap</a> 3, released under the <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache license 2.0</a>, which includes icons from <a href="http://glyphicons.com/">Glyphicons</a></li>
@@ -203,16 +202,17 @@
                         <li>Emscripten to generate a XZ decompressor in javascript : <a href="https://github.com/kripken/emscripten" target="_blank">https://github.com/kripken/emscripten</a>, released under the <a href="https://github.com/kripken/emscripten" target="_blank">MIT license</a></li>
                         <li><a href="http://tukaani.org/xz/embedded.html">XZ Embedded</a> (the XZ library converted to Javascript with Emscripten), in public domain</li>
                     </ul>
-                    <h2 id="Platforms">Platforms</h2>
-                    FirefoxOS - Web Extensions - Android - iOS - Windows - available <a href="http://github.com/kiwix" target="_blank">here</a> or at <a href="http://www.kiwix.org" target="_blank">kiwix.org</a> 
+                    <h3 id="Platforms" style='border-bottom:2px solid #004499'>Platforms Specific Apps</h3>
+                    FirefoxOS - Web Extensions - Android - iOS - Windows - download at <a href="http://www.kiwix.org" target="_blank">kiwix.org</a>. Source code available at <a href="http://github.com/kiwix" target="_blank">here</a> 
                 </div>
 
                 <div id="configuration" style="display: none;" class="container">
-                    <h4>File Selector</h4>
+                    <h3>Welcome to Kiwix - the offline web archive reader!</h3>
+                    <p class='text-muted'> This is the configuration screen. Open or download an archive to get started. For help, click <span class="glyphicon glyphicon-info-sign"></span> in the menu above.</p>
+                    <ul id="detectedzims" style="padding:2px;"></ul>
+                    <h4 style='border-bottom:2px solid #004499'>Load An Archive</h4>
                     <div id="openLocalFiles" style="display: none;" >
-                        <p>Please select the archive (.zim file) to load, or multi-select .zimaa, .zimab etc if loading a split archive. <small>(Or visit <a target="_blank" href="http://wiki.kiwix.org/wiki/Content#Download"><mark>Kiwix.org</mark></a> to download an archive)</small></p>
                         <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" /></p>   
-                        <p><small><i class="text-info">Only Wikimedia (wiki*.zim*)</i> files have been tested. <i class="text-info">Audio, Video and Dynamic Content</i> is currently unsupported. To lookup old/submit new issues visit the <a target="_blank" href="http://github.com/kiwix/kiwix-js/issues">Kiwix-JS Issue Tracker</a></small></p>
                         <ul id="zims" style="padding:2px;"></ul>
                     </div>
                     <div id="scanningForArchives" style="display: none;">
@@ -222,31 +222,6 @@
                         <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
                         <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
                     </div>
-                    <!-- <h4>Display</h4>
-                    <p>
-                        <b>Style </b>
-                         For Wikipedia Files: 
-                            <label class"radio-inline" for="cssModeDesktopRadio">
-                            <input type="radio"  name="cssInjectionMode" value="desktop" id="cssModeDesktopRadio" checked> Desktop
-                        </label> 
-                        <label class"radio-inline" for="cssModeMobileRadio">
-                            <input type="radio" name="cssInjectionMode" value="mobile" id="cssModeMobileRadio"> Mobile
-                        </label>  
-                        <br/>
-                        <b>Cache</b>
-                        Use In-App Cached Styles: <label for="cssCacheModeCheck"><input type="checkbox" name="cssCacheMode" value="local" id="cssCacheModeCheck">
-                        </label> 
-                        <small> ( Recommended For Wikipedia ZIM )</small>
-                    </p>
-                    <h4>Expert Settings</h4>
-                    <div id="contentInjectionModeDiv">
-                        Content injection mode <small>(Don't touch unless you know what you're doing) </small>: <br/>
-                        <input type="radio" name="contentInjectionMode" value="jquery" id="jQueryModeRadio" checked><label for="jQueryModeRadio">&nbsp; Document Parsing Based Injection</label> (slow and memory hungry, but safer)
-                            <br>
-                        <input type="radio" name="contentInjectionMode" value="serviceworker" id="serviceworkerModeRadio"><label for="serviceworkerModeRadio">&nbsp; Request Interception Based Injection</label> (faster but unstable, and not supported by all platforms. In particular, Firefox extensions do not allow ServiceWorkers for now)
-                    </div> 
-                    <div id="serviceWorkerStatus"></div>
-                    <div id="messageChannelStatus"></div> -->
                 </div> 
 
                 <div id="welcomeText" class="container category-padding">

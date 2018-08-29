@@ -40,7 +40,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     var protocolHandlers = ["so://", "so-tags://", "so-page://", "so:", "wiki://", "wiki:"];
 
     //setupSearchUI(searchContext);
-    library.loadCatalogue($("#zims"));
+    library.loadDownloadables($("#zims"));
+    library.loadDetected($("#detectedzims"));
             
     // Compile some regular expressions needed to modify links
     var regexpImageLink = /^.?\/?[^:]+:(.*)/;

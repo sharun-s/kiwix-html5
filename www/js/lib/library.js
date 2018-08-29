@@ -89,33 +89,29 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
         $("#accordian").html(groupHTML);
     }
     var items = [];
-    var jqueryNode;
+
+    function loadDetected(jqn){
+        zimArchiveLoader.onDiskMatches().then(function(zimsOnDisk){
+            jqn.append("<h4 style='border-bottom:2px solid #004499'>Detected Archives</h4>");
+            if (zimsOnDisk.length===0){
+                jqn.append("<mark>These are <strong>NO</strong> <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder. Try the options below...</mark>");
+            }else{
+                jqn.append("<small class='text-muted'>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</small>");
+                $.each( zimsOnDisk, function( i, item ) {
+                    var temp = item.split('_');
+                    items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item+"&random=&apos;);'> LOAD</button></li>");
+                });
+                jqn.append(items.join( "" ));                
+            }
+        });        
+    }
 
 	function load( jqn ) {    
-		jqueryNode = jqn;
-        // Add links to ZIM on disk. Onclick change selected archive
-        /*var onDisk = zimArchiveLoader.onDiskMatches(catalogue);
-        jqueryNode.append("<h4>Detected Archives On Disk: </h4>");
-        
-        $.each( onDisk, function( i, item ) {
-            items.push( "<li class='list-group-item small' id='" + i + "'>" + "<img width='24px' height='24px' src='data:"+item.faviconMimeType
-            +";base64,"+item.favicon+ "'><strong>" + item.title +"</strong> "
-            +item.date+ " " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item.filename+"&random=&apos;);'> LOAD</button></li>");
-        });*/
-        zimArchiveLoader.onDiskMatches().then(function(zimsOnDisk){
-            jqueryNode.append("<h4>Detected Archives On Disk: </h4>");
-
-            $.each( zimsOnDisk, function( i, item ) {
-                var temp = item.split('_');
-                items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item+"&random=&apos;);'> LOAD</button></li>");
-            });
-            jqueryNode.append(items.join( "" ));
-        });
-        
         // Add downloadable ZIM's
-        jqueryNode.append("<h4>Available Archives:</h4> \
-        	<p> The Update button gets the latest downloadable <strong>English</strong> Archives (ZIM files). <mark>NOTE:</mark> Download may take a few seconds to start. For the latest archives in other languages please visit <a href='http://wiki.kiwix.org/content'><mark>Kiwix.org</mark></a>)</p>\
-        	<button id='getLatest'>UPDATE CATALOGUE</button> \
+        jqn.append("<h4 style='border-bottom:2px solid #004499'>Downloadable Archives</h4> \
+        	<small class='text-muted'> The Update button gets the latest list of downloadable archives from <a href='library.kiwix.org'>kiwix.org</a>. After the download completes, copy the zim file into the <strong>'www'</strong> directory of your kiwix folder</small> \
+            <p><small><mark>Download may take a few seconds to start.</small></p> \
+        	<button id='getLatest'>Update Catalogue</button> \
         	<label for='langSelect'>Language</label> \
         	<select id='langSelect'>\
         	<option value='ar'>العربية</option>\
@@ -152,7 +148,7 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
         	‎<option value='zh-cn'> 中文（中国大陆）‎</option> ‎\
         	‎<option value='zh-tw'>中文（台灣）‎</option></select>\
         	<div class='progress'> \
-  				<div class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> \
+  				<div class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='height:20%;width:0%'> \
   				</div> \
 			</div> <ul id='accordian' class='list-group'></ul>\ ");
         $("#langSelect").on("change",function (){
@@ -164,6 +160,7 @@ define(['jquery', 'zimArchiveLoader'], function($, zimArchiveLoader) {
     };
 
 	return {
-        loadCatalogue: load,
+        loadDownloadables: load,
+        loadDetected:loadDetected
     };
 });
