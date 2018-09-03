@@ -801,6 +801,55 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         return urls;        
     }
 
+    async function loadVid(vidNode){
+        console.log(vidNode);
+        var sourceNode = $($(vidNode).find('source')[0]);
+        var vidurl = sourceNode.attr('src');
+        // removes rel url part ../../ etc vids in ted talks, url look like I/123.mp4
+        var v = vidurl.match(regexpImageUrl);
+        if(v)
+            v=decodeURIComponent(v[1]);
+        else{
+            console.error("Unrecognized vid URL! Not retrieving - "+vidurl); 
+            return;
+        }
+        console.log('loading '+v);
+
+        var direntry = await selectedArchive.getDirEntryByURL(v);
+        var viddata = await direntry.readData();
+        var blob = new Blob([viddata], {type: 'video'});
+        var url = URL.createObjectURL(blob);
+        
+        var trackNode = $(vidNode).find('track[srclang="en"]')[0];
+        var suburl = trackNode.getAttribute('src');
+        console.log(suburl);
+        var s = suburl.match(regexpMetadataUrl);
+        if(s)
+            suburl=decodeURIComponent(s[1]);
+        else{
+            console.error("Unrecognized vid URL! Not retrieving - "+s); 
+            return;
+        }
+        console.log('loading '+suburl);
+
+        var subsdirentry = await selectedArchive.getDirEntryByURL(suburl);
+        var subsdata = await subsdirentry.readData();
+        var subsblob = new Blob([subsdata], {type:'text/vtt'});
+        var subs = URL.createObjectURL(subsblob); 
+        sourceNode.attr('src', url);
+        /*$(trackNode).attr('src', subs);
+        $(vidNode).on("loadedmetadata", function() {
+             $(trackNode).on("load", function() {
+                this.mode = "showing";
+                  //video.textTracks[0].mode = "showing"; // thanks Firefox
+             });
+             
+         });*/
+        $(vidNode).append('<track src="'+subs+'" default kind="subtitles" srclang="en" label="English">');
+        //console.log(vidNode.textTracks.length);
+        vidNode.textTracks[vidNode.textTracks.length-1].mode = "showing";
+        $(vidNode).load();
+    }
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -813,6 +862,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         $("#articleContent").contents().scrollTop(0);
         // BUG: handle cases where src is a non zim url or a data url
         htmlArticle = htmlArticle.replace(/(<img\s+[^>]*\b)src(\s*=)/ig, "$1data-src$2");
+        //htmlArticle = htmlArticle.replace(/preload="auto"/, "");
+        //htmlArticle = htmlArticle.replace(/<track.*>/ig,"");
         var iframe = document.getElementById('articleContent');
         var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
         var $iframe = $('#articleContent').contents();
@@ -828,7 +879,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
 
             // Load images
             var imageLoadCompletions = [];
-            var imgNodes = $iframeBody.find('img');//$('#articleContent img');
+            var imgNodes = $iframeBody.find('img');
+            var vidNodes = $iframeBody.find('video');
             // Refer #278 & #297 - For math heavy page use the controller - TEMP Solution till ZIM files support mathjax
             // No need for the controller otherwise. Alternately use local mathjax see SO - q/31891619
             var svgmathload = imgNodes.filter(".mwe-math-fallback-image-inline").length;
@@ -877,6 +929,10 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     }
                 }, selectedArchive, READ_MODE, settings.workerCount);
                 f.run({type:"quick", initialImageLoad: settings.initialImageLoad});
+            }
+            if (vidNodes.length > 0){
+                // TED pages usually have only 1 vid so this just temo till code stabilizes
+                loadVid(vidNodes[0]);
             }
 
             // Load CSS content
@@ -1121,7 +1177,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         var subsdirentry = await selectedArchive.getDirEntryByURL(suburl);
         var subsdata = await subsdirentry.readData();
         var blob = new Blob([viddata], {type: 'video'});
-        var subsblob = new Blob([subsdata], {type: 'video'});
+        var subsblob = new Blob([subsdata], {type: 'text/vtt'});
         var url = URL.createObjectURL(blob);
         var subs = URL.createObjectURL(subsblob);
         var vidhtml = $('<video controls src='+url+'></video>');
