@@ -1111,16 +1111,22 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         return "";
     }
 
-    // Video test on wiki-en-2016-12
-    async function testVid(){
-        var url = decodeURIComponent('I/m/-Pluto-FlyoverAnimation-20150918.webm.jpg');
+    // Video test on ted_en_technology_2018-07.zim
+    // after loading zim on devconsole run - var a;require({baseUrl:'js/lib'},['../app'], function(z){a=z.testVid('I/896/video.mp4','-/896/subs/subs_en.vtt')});
+    async function testVid(vidurl, suburl){
+        var url = decodeURIComponent(vidurl);
         //console.log(url); 
-        var dev = await selectedArchive.getDirEntryByURL(url);
-        var data = await dev.readData();
-        var blob = new Blob([data], {type: 'video'});
+        var direntry = await selectedArchive.getDirEntryByURL(url);
+        var viddata = await direntry.readData();
+        var subsdirentry = await selectedArchive.getDirEntryByURL(suburl);
+        var subsdata = await subsdirentry.readData();
+        var blob = new Blob([viddata], {type: 'video'});
+        var subsblob = new Blob([subsdata], {type: 'video'});
         var url = URL.createObjectURL(blob);
-        $('#articleContent').contents().find('body').html('<img src='+url+'></img>');
-        //$('#articleContent').contents().find('body').html('<video src='+url+'></video>');                
+        var subs = URL.createObjectURL(subsblob);
+        var vidhtml = $('<video controls src='+url+'></video>');
+        vidhtml.append('<track src="'+subs+'" default kind="subtitles" srclang="en" label="English">');
+        $('#articleContent').contents().find('body').html(vidhtml);
     }
 
     return { 
