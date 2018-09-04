@@ -218,8 +218,12 @@ define(['jquery'], function($) {
             $("title").html("Kiwix");
             resetUI();
             $('#about').show();
+            $('#btnBack').hide();
+            $('#btnForward').hide();
+            $('#btnHomeBottom').hide();
+            $('#navigationButtons').fadeTo('slow',1);
             // TODO: Not reqd each time - store it statically once about/help page settles
-            setupTableOfContents(document.getElementById("about"));
+            // setupTableOfContents(document.getElementById("about"));
             return false;
         });
     }
@@ -246,6 +250,10 @@ define(['jquery'], function($) {
     function onConfig(fn){
         $('#btnConfigure').on('click', function(e) {
             $("title").html("Kiwix");
+            $('#btnBack').hide();
+            $('#btnForward').hide();
+            $('#btnHomeBottom').hide();
+            $('#navigationButtons').fadeTo('slow',1);
             resetUI();
             $('#configuration').show();
             fn();

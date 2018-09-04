@@ -109,22 +109,21 @@
                 </div>
 
                 <div id="about" style="display: none;" class="container">
-                    <p class="lead"><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    Kiwix : Offline Web Archive Reader <a href="http://www.kiwix.org/" target="_blank">kiwix.org</a></p> 
-                    <h3 id="Usage" style='border-bottom:2px solid #004499'>Usage</h3>
+                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
+                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3> 
+                    <h4 id="Usage" style='border-bottom:2px solid #004499'>Basic Usage</h4>
                     <dl>
                     <dt>Step 1 : Download a Web Archive</dt>
-                    <dd> Offline web archives or <a hred="openzim.org">ZIM files</a> can be downloaded from the catalogue in the Config screen [<span class="glyphicon glyphicon-wrench"></span>] or from <a href="http://library.kiwix.org" target="_blank">kiwix.org</a>
+                    <dd> Offline Web Archives or <a href="openzim.org">ZIM</a> files can be downloaded from the catalogue in the Config screen [<span class="glyphicon glyphicon-wrench"></span>] or from <a href="http://library.kiwix.org" target="_blank">kiwix.org</a>
+                    <span class="text-muted small">Check the size as many of the files are large (several GB). Large files can be split into smaller files. To load split files see <a href="http://www.kiwix.org/wiki/FAQ">the Kiwix FAQ</a></span>
                     </dd>
-                    <p class="small">Check the size as many of the files are large (several GB). Large files can be split into smaller files. To load split files see <a href="http://www.kiwix.org/wiki/FAQ">the Kiwix FAQ</a>
-                    </p>
                     <dt>Step 2 : Load Archive</dt><dd> Goto the Config menu [<span class="glyphicon glyphicon-wrench">]</span> and select your ZIM file</dd>
                     <dt>Step 3 : Browse or Search<dt> <dd>Enjoy browsing your offline web archive!</dd></dl>
                     
-                    <h3 id="Quick_Test" style='border-bottom:2px solid #004499'>Quick Test</h3> 
-                    <p>To load a Random Article from the "Ray Charles" Archive that comes with the app - it contains some wikipedia articles about Ray Charles. <a href="./index.html?archive=test&random=" target="_blank">TEST ARCHIVE</a> 
+                    <h4 id="Quick_Test" style='border-bottom:2px solid #004499'>Quick Test</h4> 
+                    <p>To load a Random Article, from the sample "Ray Charles" Archive that comes with the app >>> <a href="./index.html?archive=test&random=" target="_blank">TEST ARCHIVE</a> 
                     </p>
-                    <p>Once loaded you can -</p>
+                    <p>It contains some Wikipedia articles related to Ray Charles and his music. Once the archive loads, you can -</p>
                     <ul>    
                         <li>Hit <span class="glyphicon glyphicon-home"></span> for the main page of the archive. 
                         </li>
@@ -135,21 +134,7 @@
                         <li> <strong>Pro Tip:</strong> To scroll through the entire archive's index, open the filter drop down by pressing <span class="glyphicon glyphicon-filter small"></span>. Select "Return All". Now hit <span class="glyphicon glyphicon-search"></span>. It will load the first 10 entires in the index. The <kbd class="success">LoadMore</kbd> will allow you to load the next 10. 
                         </li>
                     </ul>
-                    
-                    <h3 id="Notes" style='border-bottom:2px solid #004499'>Notes</h3>
-                    This branch is based on the <a href="https://github.com/kiwix/kiwix-js/" target="_blank">Kiwix-JS</a> Project. Code is available <a href="https://github.com/sharun-s/kiwix-html5/" target="_blank">here</a>. 
-                    The javascript code has many pieces that allow it to be used in 5 different "modes" detailed below. Find the right repo on the KIWIX github page to suite your needs. This version is focused on <strong>Standalone</strong> mode.
-
-                    <p class="small">
-                    <ul>
-                    <li><strong>Standalone</strong> - distribute zims and code folder on a usb key/sdcard with instructions to click the index.html file to run. It requires least instructions to anyone with low computer literacy i.e. most people who are offline.
-                    </li><li>Local server based
-                        which would make duplications of massive zims across many clients unnecessary for local classroom type scenarios
-                    </li><li>WebExtension - kiwix-js
-                    </li><li>WebApp (phone gap/corova based) on app store
-                    </li><li>NativeApp eg the Firefox OS app</li></ul>
-                    </p>
-                    <h3 id="URLs" style='border-bottom:2px solid #004499'>Link Format</h3>
+                    <h4 id="URLs" style='border-bottom:2px solid #004499'>Link Format</h4>
                     <p>
                         Direct access to content via links is possible. Being able to access content via links allows making use of inbuilt browser capabilities like bookmarking pages, setting home page, load archive on click, open link in new tabs/windows, simpler testing etc.
                         <dl>
@@ -173,7 +158,21 @@
                             <small><strong>NOTE:</strong> "archive" can be set to shortcuts such as wiki, quotes, dict etc or the actual file names such as wiki_en_all_12_16-1.zim, wikiquotes_en_all.zim etc. To add a shortcut create a new entry in knownArchives table in zimArchiveLoader.js following the instructions there. </small>
                         </dl>
                     </p>
-                    <h3 id="License" style='border-bottom:2px solid #004499'>License</h3>
+                    <h4 id="Notes" style='border-bottom:2px solid #004499'>Developer Notes</h4>
+                    This branch is based on the <a href="https://github.com/kiwix/kiwix-js/" target="_blank">Kiwix-JS</a> Project. Code is available <a href="https://github.com/sharun-s/kiwix-html5/" target="_blank">here</a>. 
+                    The javascript code has many pieces that allow it to be used in 5 different "modes" detailed below. Find the right repo on the KIWIX github page to suite your needs. This version is focused on <strong>Standalone</strong> mode.
+
+                    <p class="small">
+                    <ul>
+                    <li><strong>Standalone</strong> - distribute zims and code folder on a usb key/sdcard with instructions to click the index.html file to run. It requires least instructions to anyone with low computer literacy i.e. most people who are offline.
+                    </li><li>Local server based
+                        which would make duplications of massive zims across many clients unnecessary for local classroom type scenarios
+                    </li><li>WebExtension - kiwix-js
+                    </li><li>WebApp (phone gap/corova based) on app store
+                    </li><li>NativeApp eg the Firefox OS app</li></ul>
+                    </p>
+                    
+                    <h4 id="License" style='border-bottom:2px solid #004499'>License</h4>
                     <p>This application is licensed under the GPL v3 license :
                     <br />
                     <i>
@@ -191,7 +190,7 @@
                     <br />along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>
                     </i>
                     </p>
-                    <h3 id="Resources" style='border-bottom:2px solid #004499'>Main Libraries And Resources Used:</h3>
+                    <h4 id="Resources" style='border-bottom:2px solid #004499'>Main Libraries And Resources Used:</h4>
                     <ul>
                         <li><a href="http://jquery.com/" target="_blank">jQuery</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
                         <li><a href="http://getbootstrap.com/" target="_blank">Bootstrap</a> 3, released under the <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache license 2.0</a>, which includes icons from <a href="http://glyphicons.com/">Glyphicons</a></li>
@@ -207,8 +206,9 @@
                 </div>
 
                 <div id="configuration" style="display: none;" class="container">
-                    <h3>Welcome to Kiwix - the offline web archive reader!</h3>
-                    <p class='text-muted'> This is the configuration screen. Open or download an archive to get started. For help, click <span class="glyphicon glyphicon-info-sign"></span> in the menu above.</p>
+                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
+                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3>
+                    <p class='text-muted small'>For help, click <span class="glyphicon glyphicon-info-sign"></span> in the menu above.</p>
                     <ul id="detectedzims" style="padding:2px;"></ul>
                     <h4 style='border-bottom:2px solid #004499'>Load An Archive</h4>
                     <div id="openLocalFiles" style="display: none;" >

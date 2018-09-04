@@ -673,7 +673,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     function existsInKnownArchives(url){
         var temp = new URL(url);
         //console.log(temp);
-        if(!zimArchiveLoader.URL2Archive.hasOwnProperty(temp.hostname))
+        if(!library.URL2Archive.hasOwnProperty(temp.hostname))
             return false; 
         var parts = temp.pathname.split('/');
         // This code handles cases where hostname + a bit of the path maps to an archive
@@ -684,8 +684,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         for(var i=0;i<cnt;i++){
             var basePath = parts.slice(0, i).join('/');
             //console.log(basePath);
-            if(zimArchiveLoader.URL2Archive.hasOwnProperty(temp.host + basePath )){
-                var archive = zimArchiveLoader.URL2Archive[temp.host + basePath];
+            if(library.URL2Archive.hasOwnProperty(temp.host + basePath )){
+                var archive = library.URL2Archive[temp.host + basePath];
                 // TODO assumption here is parts[cnt-1] refers to title, not so in SO zims eg: questions/id/title 
                 if (archive == "so" && parts[1] == "questions")
                         return {'archive':archive,'title':"question/" + parts[2] + ".html",'url':"./../index.html?archive=" + archive + "&title=question/" + parts[2] + ".html"};
@@ -837,14 +837,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         var subsblob = new Blob([subsdata], {type:'text/vtt'});
         var subs = URL.createObjectURL(subsblob); 
         sourceNode.attr('src', url);
-        /*$(trackNode).attr('src', subs);
-        $(vidNode).on("loadedmetadata", function() {
-             $(trackNode).on("load", function() {
-                this.mode = "showing";
-                  //video.textTracks[0].mode = "showing"; // thanks Firefox
-             });
-             
-         });*/
         $(vidNode).append('<track src="'+subs+'" default kind="subtitles" srclang="en" label="English">');
         //console.log(vidNode.textTracks.length);
         vidNode.textTracks[vidNode.textTracks.length-1].mode = "showing";
