@@ -162,6 +162,7 @@ define(['jquery'], function($) {
     var items = [];
 
     function loadDetected(jqn){
+        items = [];
         //jqn.append("<h4 style='border-bottom:2px solid #004499'>Detected Archives</h4>");
         jqn.append("<h4>Detected Archives</h4>");
         jqn.append("<div class='progress' style='height:4px;'> \
@@ -175,9 +176,12 @@ define(['jquery'], function($) {
                 jqn.append("<small class='text-muted'>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</small>");
                 $.each( zimsOnDisk, function( i, item ) {
                     var temp = item.split('_');
-                    items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button onclick='location.href = location.href.replace( /[\?#].*|$/, &apos;?archive="+item+"&random=&apos;);'> LOAD</button></li>");
+                    var loadurl = location.href.replace( /[\?#].*|$/, "?archive="+item+"&random=");
+                    items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button data-zim='"+loadurl+"'> LOAD</button></li>");
                 });
-                jqn.append(items.join( "" ));                
+                jqn.append(items.join( "" ));
+                // Using this instead of inline onclick handler cause FF "sometimes" throws CSP blocked loading resources at self script-src
+                jqn.on('click', "[data-zim]", (e) => location.href = e.target.dataset['zim'] ) ;
             }
         }); // TODO add a .catch()      
     }
