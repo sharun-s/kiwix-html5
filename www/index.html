@@ -45,46 +45,52 @@
                 <nav role="navigation">
                     <!-- Issue here is for some small screens search bar can get small. Can be handled by shrinking buttons collapse. Refer git history for sample code.
                     Use "container" in div to center the toolbar if reqd --> 
-                    <div class="">
+                    <div class="navbar-fixed-top">
                         <form id="filters"></form>
                         <form id="formArticleSearchnew">
-                            <span class="input-group">
-                                <span class="input-group-btn">
+                            <span class="input-group" >
+                                <span class="alert alert-info" id='infomsg' style="display:none;float:left;width:100%;margin:0;padding:6px;border:0px;"></span>
+                                <span class="input-group-btn" id='bar1'>
                                     <button id="btnHome" type="button" class="btn btn-default">
                                     <img src="./img/icons/kiwix-19.png"/>
                                     </button>
-                                <button id="filterDropDown" type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-filter small"></span> <span class="caret small"></span></button>
-                                <ul class="dropdown-menu">
-                                  <li class="disabled small"><a href="#">Use URL Index</a></li>
-                                  <li class="active small"><a href="#">Use Title Index</a></li>
-                                  <li class="disabled small"><a href="#">Use Title Index<small>(Brute Force)</small></a></li>
-                                  <li role="separator" class="divider"></li>
-                                  <!-- values of the "match" group below should be the same as values in dirEntryFinder.js matcherTable until better impl in place. Anything added there should be added here-->
-                                  <li class="small"><input value="PrefixAndArticleMatch" type="radio" form="filters" name="match" checked>PrefixMatch</input></li>
-                                  <li class="small"><input value="SubstringMatch" type="radio" form="filters" name="match"></input>SubstringMatch</li>
-                                  <li class="small"><input value="All" type="radio" name="match" form="filters">Return All</input></li>
-                                  <li class="small"><input value="NoMatch" type="radio" form="filters" name="match">Return None - Perf Test</input></li>
-                                  <li class="small"><input type="checkbox" id="caseSensitive" form="filters" style="color:blue;" >Case Sensitive - No Variants</a></li>
-                                  <li class="small"><a style="color:blue;" href="#">Resolve Redirects</a></li>
-                                  <li class="small"><a href="#">Remove Dups</a></li>
-                                  <!--<li role="seperator" class="divider"></li>-->
-                                  <li class="input-group">
-                                        <span class="input-group-addon primary" style="padding:2px 20px;font-size:12px;border-radius:4px 4px 0px 0px;text-align:left;" form="filters" id="fromindex-addon">Start From</span>
-                                        <input type="text" class="form-control" style="width:100%;border:1px solid #ccc;border-radius:0px 0px 0px 0px;" id="from" form="filters" aria-describedby="fromindex-addon"></input>
-                                  </li>
-                                  <li class="input-group xs">
-                                        <span class="input-group-addon" style="padding:2px 20px;font-size:12px;text-align:left;border-radius:0px 0px 0px 0px;" id="traverse-addon">Traverse Upto</span>
-                                        <input type="text" class="form-control" style="border-radius:0px 0px 4px 4px;" id="upto" form="filters" aria-describedby="traverse-addon"></input>
-                                  </li>
-                                  <input type="submit" form="filters" style="display:none;" />
-                                </ul>    
+                                    <button id="filterDropDown" type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <span class="glyphicon glyphicon-filter small"></span>
+                                        <span class="caret small"></span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                      <li class="disabled small"><a href="#">Use URL Index</a></li>
+                                      <li class="active small"><a href="#">Use Title Index</a></li>
+                                      <li class="disabled small"><a href="#">Use Title Index<small>(Brute Force)</small></a></li>
+                                      <li role="separator" class="divider"></li>
+                                      <!-- values of the "match" group below should be the same as values in dirEntryFinder.js matcherTable until better impl in place. Anything added there should be added here-->
+                                      <li class="small"><input value="PrefixAndArticleMatch" type="radio" form="filters" name="match" checked>PrefixMatch</input></li>
+                                      <li class="small"><input value="SubstringMatch" type="radio" form="filters" name="match"></input>SubstringMatch</li>
+                                      <li class="small"><input value="All" type="radio" name="match" form="filters">Return All</input></li>
+                                      <li class="small"><input value="NoMatch" type="radio" form="filters" name="match">Return None - Perf Test</input></li>
+                                      <li class="small"><input type="checkbox" id="caseSensitive" form="filters" style="color:blue;" >Case Sensitive - No Variants</a></li>
+                                      <li class="small"><a style="color:blue;" href="#">Resolve Redirects</a></li>
+                                      <li class="small"><a href="#">Remove Dups</a></li>
+                                      <!--<li role="seperator" class="divider"></li>-->
+                                      <li class="input-group">
+                                            <span class="input-group-addon primary" style="padding:2px 20px;font-size:12px;border-radius:4px 4px 0px 0px;text-align:left;" form="filters" id="fromindex-addon">Start From</span>
+                                            <input type="text" class="form-control" style="width:100%;border:1px solid #ccc;border-radius:0px 0px 0px 0px;" id="from" form="filters" aria-describedby="fromindex-addon"></input>
+                                      </li>
+                                      <li class="input-group xs">
+                                            <span class="input-group-addon" style="padding:2px 20px;font-size:12px;text-align:left;border-radius:0px 0px 0px 0px;" id="traverse-addon">Traverse Upto</span>
+                                            <input type="text" class="form-control" style="border-radius:0px 0px 4px 4px;" id="upto" form="filters" aria-describedby="traverse-addon"></input>
+                                      </li>
+                                      <input type="submit" form="filters" style="display:none;" />
+                                    </ul>    
                                 </span>
                                 <input type="search" id="prefix" placeholder="Search..." 
                                 class="form-control" />
-                                <span class="input-group-btn">
+                                <span class="input-group-btn" id='bar3'>
                                     <a class="btn btn-primary btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
                                     <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
                                     <a class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
+                                </span>
+                                <span class="input-group-btn" id='bar4'>
                                     <a class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>
                                     <a class="btn btn-default" title="About" id="btnAbout"><span class="glyphicon glyphicon-info-sign"></span></a>
                                 </span>
@@ -94,7 +100,7 @@
                 </nav>
             </header>
             <article class="view-content">
-                <div id="formArticleSearchResults" class="container">
+                <div id="formArticleSearchResults" class="container" style="margin-top:35px;">
                     <div class="row">                       
                         <!-- List of articles matching the typed prefix -->
                         <div id="articleListWithHeader">
@@ -106,143 +112,16 @@
                         <img src="img/spinner.gif" alt="Please wait..." />
                     </div> -->
                 </div>
-
-                <div id="about" style="display: none;" class="container">
-                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3> 
-                    <p class="lead">In many places the Internet can be slow, unreliable, censored, distracting or even dangerous to use. Kiwix is an <strong>offline</strong> solution that allows you to access educational content like Wikipedia, WikiMedicine, TED Talks, StackExchange Q&A content from Parenting to Aviation to Sports without need for an internet connection.</p>
-                    <h4 id="Usage" style='border-bottom:2px solid #004499'>So how does it work?</h4>
-                    <p>The offline web content or archive is packaged as a <a href='openzim.org'>ZIM</a> file. </p>
-                    <dl>
-                    <dt>1. Download a Web Archive</dt>
-                    <dd><a href="openzim.org">ZIM</a> files can be downloaded from the catalogue in the Settings screen [<span class="glyphicon glyphicon-wrench"></span>] or from <a href="http://library.kiwix.org" target="_blank">kiwix.org</a>
-                    </dd>
-                    <dt>2. Load Archive</dt><dd> Place the downloaded file in the <strong>'www'</strong> directory of your Kiwix folder. Refresh this page. Hit the Load Button.</dd>
-                    <dt>3. Browse or Search the Archive<dt> <dd>Enjoy browsing your offline web archive!</dd></dl>
-                    
-                    <h4 id="Quick_Test" style='border-bottom:2px solid #004499'>Quick Start</h4>
-                    <p>The sample "Ray Charles" Archive that comes with the app, contains some Wikipedia articles related to Ray Charles and his music. To browse its contents >>> <a href="./index.html?archive=test&random=" target="_blank">TEST ARCHIVE</a> 
-                    </p>
-                    <dl>Things to try after the archive loads,    
-                        <dt>Home Button</dt>
-                        <dd>In the menu above, hit <span class="glyphicon glyphicon-home"></span> or the <img src="./img/icons/kiwix-19.png"/> icon to load the main page of the archive. 
-                        </dd>
-                        <dt>Random Article</dt>
-                        <dd><span class="glyphicon glyphicon-random"></span> will load another Random Article
-                        </dd>
-                        <dt>Settings Page</dt>
-                        <dd><span class="glyphicon glyphicon-wrench"></span> will show the ZIM files found in the default storage location, allows loading of archives from elsewhere on disk or downloading a new archive from the kiwix online catalogue. 
-                        </dd>
-                        <dt>Search Bar</dt>
-                        <dd>You can also try searching by typing a phrase/keyword in the search bar pressing <kbd>ENTER</kbd> or hitting <span class="glyphicon glyphicon-search"></span> or <span class="glyphicon glyphicon-camera"></span> for imageSearch
-                        </dd>
-                        <dd> <strong>Pro Tip:</strong> To scroll through the entire archive's index, open the filter drop down by pressing <span class="glyphicon glyphicon-filter small"></span>. Select "Return All". Now hit <span class="glyphicon glyphicon-search"></span>. It will load the first 10 entires in the index. The <kbd class="success">LoadMore</kbd> will allow you to load the next 10. 
-                        </dd>
-                    </dl>
-                    <h4 id="URLs" style='border-bottom:2px solid #004499'>Link Format</h4>
-                    
-                        Direct access to content via links is possible. This allows using inbuilt browser capabilities like bookmarking pages, setting home page(to a random page from wikiquotes for example), load archive on click, open link in new tabs/windows, simpler testing etc. These options usually aren't available in the platform specific apps or have to be rebuilt for each platform.
-                        <table class="table table-bordered">
-                            <caption>Full url pasted in browser should look like this - file://[path to kiwix directory]/{link format} 
-                            <strong>NOTE:</strong> "archive" can be set to shortcuts such as wiki, quotes, dict etc or the actual file names such as wiki_en_all_12_16-1.zim, wikiquotes_en_all.zim etc. To add a shortcut create a new entry in knownArchives table in zimArchiveLoader.js following the instructions there. </caption>
-                            <thead>
-                                <tr>
-                                  <th scope="col">Feature</th>
-                                  <th scope="col">Link Format</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <th scope="row">Load Article</th>
-                              <td>index.html?archive=wiki&<strong>title</strong>=<mark>Paris.html</mark></td>
-                          </tr>
-                          <tr>
-                              <th scope="row">Random Article</th>
-                              <td>index.html?archive=wiki&<strong>random=</strong></td>
-                          </tr>
-                          <tr>
-                              <th scope="row">Search</th>
-                              <td><small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=<mark>Paris</mark><br/>
-                                <small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=<mark>Paris</mark>&<strong>upto</strong>=<mark>50</mark>
-                                <br/>
-                                <small>Empty string will return everything in the TitleIndex</small><br/>  
-                                <small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=&<strong>from</strong>=<mark>0</mark>&<strong>upto</strong>=<mark>100</mark>&<strong>match</strong>=<mark>All</mark>
-                              </td>
-                            </tr>
-                            <tr>
-                              <th scope="row">ImageSearch by Title</th>
-                              <td>index.html?archive=wiki&<strong>imageSearch</strong>=<mark>Vincent Van Gogh<mark></td>
-                              </tr>
-                              <tr>
-                                <th scope="row">Direct Access via ClusterID, BlobID, Namespace</th>
-                                <td>index.html?archive=wiki&<strong>c=22891&b=0&n=A</strong> will return the Paris article in the wiki ZIM</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    <h4 id="Notes" style='border-bottom:2px solid #004499'>Developer Notes</h4>
-                    This branch is based on the <a href="https://github.com/kiwix/kiwix-js/" target="_blank">Kiwix-JS</a> Project. Code is available <a href="https://github.com/sharun-s/kiwix-html5/" target="_blank">here</a>. 
-                    The javascript code has many pieces that allow it to be used in 5 different "modes" detailed below. Find the right repo on the KIWIX github page to suite your needs. This version is focused on <strong>Standalone</strong> mode.
-
-                    <p class="small">
-                    <ul>
-                    <li><strong>Standalone</strong> - distribute zims and code folder on a usb key/sdcard with instructions to click the index.html file to run. It requires least instructions to anyone with low computer literacy i.e. most people who are offline.
-                    </li><li>Local server based
-                        which would make duplications of massive zims across many clients unnecessary for local classroom type scenarios
-                    </li><li>WebExtension - kiwix-js
-                    </li><li>WebApp (phone gap/corova based) on app store
-                    </li><li>NativeApp eg the Firefox OS app</li></ul>
-                    </p>
-                    <h4 id="Platforms" style='border-bottom:2px solid #004499'>Platforms Specific Apps</h4>
-                    Many Kiwix versions customized to various platorms such as FirefoxOS, Android, iOS, Windows, Browser Extensions etc can be downloaded at <a href="http://www.kiwix.org" target="_blank">kiwix.org</a>. The source code for each app is available on <a href="http://github.com/kiwix" target="_blank">Github</a>
-                    <h4 id="License" style='border-bottom:2px solid #004499'>License</h4>
-                    This application is licensed under the GPL v3 license :
-                    <p>
-                    <i>
-                    Kiwix is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. Kiwix is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>
-                    </i>
-                    </p>
-                    <h4 id="Resources" style='border-bottom:2px solid #004499'>Main Libraries And Resources Used:</h4>
-                    <ul>
-                        <li><a href="http://jquery.com/" target="_blank">jQuery</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
-                        <li><a href="http://getbootstrap.com/" target="_blank">Bootstrap</a> 3, released under the <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache license 2.0</a>, which includes icons from <a href="http://glyphicons.com/">Glyphicons</a></li>
-                        <li><a href="http://www.requirejs.org/" target="_blank">RequireJS</a> 2, released under the <a href="https://github.com/jrburke/requirejs/blob/master/LICENSE" target="_blank">MIT license or new BSD license</a></li>
-                        <li><a href="http://qunitjs.com/" target="_blank">QUnit</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
-                        <li>Kiwix logo from <a href="http://www.kiwix.org/" target="_blank">kiwix.org</a>, released under the <a href="http://creativecommons.org/licenses/by-sa/3.0/" target="_blank">Creative Commons Attribution Share Alike</a></li>
-                        <li>OpenZIM specifications from <a href="http://www.openzim.org//wiki/OpenZIM" target="_blank">www.openzim.org</a>, released under the <a href="http://creativecommons.org/licenses/by-sa/3.0/" target="_blank">Creative Commons Attribution Share Alike</a></li>
-                        <li>Emscripten to generate a XZ decompressor in javascript : <a href="https://github.com/kripken/emscripten" target="_blank">https://github.com/kripken/emscripten</a>, released under the <a href="https://github.com/kripken/emscripten" target="_blank">MIT license</a></li>
-                        <li><a href="http://tukaani.org/xz/embedded.html">XZ Embedded</a> (the XZ library converted to Javascript with Emscripten), in public domain</li>
-                    </ul>
-                </div>
-
-                <div id="configuration" style="display: none;" class="container">
-                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3>
-                    <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-info-sign" style="border:1px black"></span></p>
-                    <ul id="detectedzims" style="padding:2px;"></ul>
-                    <ul id="zims" style="padding:2px;"></ul>
-                    <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
-                    <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>
-                    <div id="openLocalFiles" style="display: none;" >
-                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" />
-                        </p>
-                    </div>
-                    <div id="scanningForArchives" style="display: none;">
-                        <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
-                    </div>
-                    <div id="chooseArchiveFromLocalStorage" style="display: none;">
-                        <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
-                        <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
-                    </div>
-                </div>               
+                <!--margin top 35px is thanks to navbarfixed at the top-->               
                 <iframe id="articleContent" src="A/dummyArticle.html" style="width:100%;border:0;">&nbsp;</iframe>
 			</article>
             <footer>
-                <div id="navigationButtons" style="background:rgba(0,0,0,0.2);" class="navbar-fixed-bottom text-center">
-                        <a class="btn btn-primary btn-sm pull-left" id="btnHomeBottom" title="Home"><span class="glyphicon glyphicon-home"></span></a>
-                        <a class="btn btn-sm" id="btnBack" title="Back"><span class="glyphicon glyphicon-circle-arrow-left"></span></a><span id="appStatus"></span>
-                        <a class="btn btn-sm" id="btnForward" title="Forward"><span class="glyphicon glyphicon-circle-arrow-right"></span></a>
-                        <a class="btn btn-primary btn-sm pull-right" id="btnTop" title="Top" href="#top"><span class="glyphicon glyphicon-arrow-up"></span></a>
+                <div id="navigationButtons" style="background:rgba(0,0,0,0.2);" class="navbar-fixed-bottom ">
+                        <!--<a class="btn btn-primary btn-sm pull-left" id="btnHomeBottom" title="Home"><span class="glyphicon glyphicon-home"></span></a>
+                        <a class="btn btn-sm" id="btnBack" title="Back"><span class="glyphicon glyphicon-circle-arrow-left"></span></a><span id="appStatus" class='btn'></span>
+                        <a class="btn btn-sm" id="btnForward" title="Forward"><span class="glyphicon glyphicon-circle-arrow-right"></span></a>-->
+                        <span class="alert alert-info text-center" id='infomsgb' style="float:left;width:100%;margin:0;padding:6px;border:0px;"></span>
+                        <!-- <a class="btn btn-danger btn-sm" id="btnTop" title="Top" href="#top"><span class="glyphicon glyphicon-arrow-up"></span></a> -->
                 </div>
             </footer>
         </section>

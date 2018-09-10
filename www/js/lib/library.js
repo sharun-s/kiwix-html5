@@ -164,12 +164,14 @@ define(['jquery'], function($) {
                 jqn.append("<small class='text-muted'>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</small>");
                 $.each( zimsOnDisk, function( i, item ) {
                     var temp = item.split('_');
-                    var loadurl = location.href.replace( /[\?#].*|$/, "?archive="+item+"&random=");
-                    items.push( "<li class='list-group-item small' id='" + i + "'><strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> ("+item + ") " +" <button data-zim='"+loadurl+"'> LOAD</button></li>");
+                    var loadurl = location.href.replace( /settings\.html[\?#].*|settings\.html$/, "index.html?archive="+item+"&random=");
+                    items.push( "<li class='list-group-item small' id='" + i + "'> <strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> <span class=''>"+item+"</span>"
+                    //+"<button class='badge' onclick=location.href=&apos;"+loadurl+"&apos;>LOAD</button></li>"); 
+                        +"<a target='_top' class='badge' href='"+loadurl+"'>LOAD</a></li>");
                 });
                 jqn.append(items.join( "" ));
                 // Using this instead of inline onclick handler cause FF "sometimes" throws CSP blocked loading resources at self script-src
-                jqn.on('click', "[data-zim]", (e) => location.href = e.target.dataset['zim'] ) ;
+                //jqn.on('click', "[data-zim]", (e) => window.location.href = e.target.dataset['zim'] ) ;
             }
         }); // TODO add a .catch()      
     }

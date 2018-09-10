@@ -146,17 +146,41 @@ define(['jquery'], function($) {
     }
 
     function statusUpdate(text, type){
-        if(type)
-            $("#appStatus").removeClass().addClass(type).text(text);
-        else
-        {
-            $("#appStatus").removeClass().addClass("bg-danger").text(text);
-            //$('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
-        }    
+        showInfo(text, true);
+        // if(type)
+        //     $("#appStatus").removeClass().addClass(type).html(text);
+        // else
+        // {
+        //     $("#appStatus").removeClass().addClass("bg-danger").html(text);
+        //     //$('#appStatus').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+        // }    
     }
 
     function statusUpdateHTML(html){
-        $("#appStatus").removeClass().html(html);
+        $("#infomsgb").html(html);
+        //$("#appStatus").removeClass().html(html);
+    }
+
+    function showInfo(text, disappear){
+        if (text){
+            //$("#bar1").hide();
+            //$("#prefix").hide();
+            //$("#bar3").hide();
+            $("#infomsgb").fadeTo(0,1);
+            $("#infomsgb").css('padding',6);
+            $("#infomsgb").html("<strong>"+text+"</strong>");
+            // if ( disappear ){
+            //     window.setTimeout(function(){$("#infomsgb").fadeTo(500,0,function(){
+            //         $("#bar1").show();
+            //         $("#prefix").show();
+            //         $("#bar3").show();
+            //         $(this).text("");
+            //         $(this).css('padding',0);
+            //     })},700);
+            // }else{
+            //     console.log(text);
+            // }
+        }
     }
 
     function archiveStatusUpdate(selectedArchive){
@@ -164,11 +188,11 @@ define(['jquery'], function($) {
             if(selectedArchive.isReady()){
                 var name = selectedArchive._file._files[0].name;
                 //if(name && name !=="undefined")
-                statusUpdate(selectedArchive._file._files[0].name, "bg-success");
+                statusUpdate("LOADED: "+selectedArchive._file._files[0].name, "bg-success");
             }else
-                statusUpdate("Archive not set!!", "btn-danger"); 
+                statusUpdate("Archive Not Set!!", "alert alert-danger"); 
         }catch (e){
-            statusUpdate("Archive not set!!", "btn-danger");
+            statusUpdate("Archive Not Set!!", "alert alert-danger");
         }
     }
 
@@ -197,7 +221,7 @@ define(['jquery'], function($) {
 
     function setupHandlers(){
         // Bottom bar :
-        $('#btnBack').on('click', function(e) {
+        /*$('#btnBack').on('click', function(e) {
             history.back();
             return false;
         });
@@ -208,16 +232,19 @@ define(['jquery'], function($) {
         $('#btnHomeBottom').on('click', function(e) {
             $('#btnHome').click();
             return false;
-        });
-        $('#btnTop').on('click', function(e) {
-            $("#articleContent").contents().scrollTop(0);
-            // We return true, so that the link to #top is still triggered (useful in the About section)
-            return true;
-        });
+        });*/
+        // $('#btnTop').on('click', function(e) {
+        //     $("#articleContent").contents().scrollTop(0);
+        //     // We return true, so that the link to #top is still triggered (useful in the About section)
+        //     return true;
+        // });
         $('#btnAbout').on('click', function(e) {
             $("title").html("Kiwix");
             resetUI();
-            $('#about').show();
+            showInfo("- Help Page -", false);
+            document.getElementById('articleContent').src = 'about.html';
+            resizeIFrame();
+            //$('#about').show();
             // TODO: Not reqd each time - store it statically once about/help page settles
             // setupTableOfContents(document.getElementById("about"));
             return false;
@@ -247,8 +274,12 @@ define(['jquery'], function($) {
         $('#btnConfigure').on('click', function(e) {
             $("title").html("Kiwix");
             resetUI();
-            $('#configuration').show();
+            showInfo("Settings Page -", false);
+            //$('#configuration').show();
+            //console.log(document);
+            document.getElementById('articleContent').src = 'settings.html';
             fn();
+            resizeIFrame();
             return false;
         });
     } 
@@ -318,10 +349,29 @@ define(['jquery'], function($) {
         }
     }
 
+    function elementHeight(el){
+        return el[0].getBoundingClientRect().bottom - el[0].getBoundingClientRect().top; 
+    }
+
+    /**
+     * Resize the IFrame height, so that it fills the whole available height in the window
+     * iframe height is being set unnecessarily when settings or about page are clicked
+     */
+    function resizeIFrame() {
+        //console.log("about", ui.isElementInView($("")))
+        var height = $(window).outerHeight()
+                - $("#top").outerHeight(true)
+                //- $("#articleListWithHeader").outerHeight(true)
+                // TODO : this 5 should be dynamically computed, and not hard-coded
+                - $("#navigationButtons").outerHeight(true);
+        $("#articleContent").css("height", height + "px");
+    }
+
     /**
      * Functions and classes exposed by this module
      */
     return {
+        resizeIFrame: resizeIFrame,
         feedNodeWithBlob: feedNodeWithBlob,
         removeUrlParameters: removeUrlParameters,
         toc: TableOfContents,

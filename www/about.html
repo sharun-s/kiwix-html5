@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Kiwix</title>
+        <link rel="icon" href="img/icons/kiwix-32.png" sizes="32x32" />
+        <meta name="description" content="Offline Wikipedia reader">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="css/bootstrap.css" rel="stylesheet" media="screen"/>
+        <link href="css/bootstrap-theme.css" rel="stylesheet" media="screen"/>
+    </head>
+    <body role="application">
+        <section id="search-article" role="region">
+            <article class="view-content">
+                <div id="formArticleSearchResults" class="container">
+                    <div class="row">                       
+                        <!-- List of articles matching the typed prefix -->
+                        <div id="articleListWithHeader">
+                            <div id="articleList" class="list-group">
+                            </div>
+                        </div>     
+                    </div>
+                    <!-- <div id="searchingForArticles" class="floating" style="display: none;">
+                        <img src="img/spinner.gif" alt="Please wait..." />
+                    </div> -->
+                </div>
+                <div id="about" class="container">
+                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
+                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3> 
+                    <p class="lead">In many places the Internet can be slow, unreliable, censored, distracting or even dangerous to use. Kiwix is an <strong>offline</strong> solution that allows you to access educational content like Wikipedia, WikiMedicine, TED Talks, StackExchange Q&A content from Parenting to Aviation to Sports without need for an internet connection.</p>
+                    <h4 id="Usage" style='border-bottom:2px solid #004499'>So how does it work?</h4>
+                    <p>The offline web content or archive is packaged as a <a href='openzim.org'>ZIM</a> file. </p>
+                    <dl>
+                    <dt>1. Download a Web Archive</dt>
+                    <dd><a href="openzim.org">ZIM</a> files can be downloaded from the catalogue in the Settings screen [<span class="glyphicon glyphicon-wrench"></span>] or from <a href="http://library.kiwix.org" target="_blank">kiwix.org</a>
+                    </dd>
+                    <dt>2. Load Archive</dt><dd> Place the downloaded file in the <strong>'www'</strong> directory of your Kiwix folder. Refresh this page. Hit the Load Button.</dd>
+                    <dt>3. Browse or Search the Archive<dt> <dd>Enjoy browsing your offline web archive!</dd></dl>
+                    
+                    <h4 id="Quick_Test" style='border-bottom:2px solid #004499'>Quick Start</h4>
+                    <p>The sample "Ray Charles" Archive that comes with the app, contains some Wikipedia articles related to Ray Charles and his music. To browse its contents >>> <a href="./index.html?archive=test&random=" target="_top">TEST ARCHIVE</a> 
+                    </p>
+                    <dl>Things to try after the archive loads,    
+                        <dt>Home Button</dt>
+                        <dd>In the menu above, hit <span class="glyphicon glyphicon-home"></span> or the <img src="./img/icons/kiwix-19.png"/> icon to load the main page of the archive. 
+                        </dd>
+                        <dt>Random Article</dt>
+                        <dd><span class="glyphicon glyphicon-random"></span> will load another Random Article
+                        </dd>
+                        <dt>Settings Page</dt>
+                        <dd><span class="glyphicon glyphicon-wrench"></span> will show the ZIM files found in the default storage location, allows loading of archives from elsewhere on disk or downloading a new archive from the kiwix online catalogue. 
+                        </dd>
+                        <dt>Search Bar</dt>
+                        <dd>You can also try searching by typing a phrase/keyword in the search bar pressing <kbd>ENTER</kbd> or hitting <span class="glyphicon glyphicon-search"></span> or <span class="glyphicon glyphicon-camera"></span> for imageSearch
+                        </dd>
+                        <dd> <strong>Pro Tip:</strong> To scroll through the entire archive's index, open the filter drop down by pressing <span class="glyphicon glyphicon-filter small"></span>. Select "Return All". Now hit <span class="glyphicon glyphicon-search"></span>. It will load the first 10 entires in the index. The <kbd class="success">LoadMore</kbd> will allow you to load the next 10. 
+                        </dd>
+                    </dl>
+                    <h4 id="URLs" style='border-bottom:2px solid #004499'>Link Format</h4>
+                    
+                        Direct access to content via links is possible. This allows using inbuilt browser capabilities like bookmarking pages, setting home page(to a random page from wikiquotes for example), load archive on click, open link in new tabs/windows, simpler testing etc. These options usually aren't available in the platform specific apps or have to be rebuilt for each platform.
+                        <table class="table table-bordered">
+                            <caption>Full url pasted in browser should look like this - file://[path to kiwix directory]/{link format} 
+                            <strong>NOTE:</strong> "archive" can be set to shortcuts such as wiki, quotes, dict etc or the actual file names such as wiki_en_all_12_16-1.zim, wikiquotes_en_all.zim etc. To add a shortcut create a new entry in knownArchives table in zimArchiveLoader.js following the instructions there. </caption>
+                            <thead>
+                                <tr>
+                                  <th scope="col">Feature</th>
+                                  <th scope="col">Link Format</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <th scope="row">Load Article</th>
+                              <td>index.html?archive=wiki&<strong>title</strong>=<mark>Paris.html</mark></td>
+                          </tr>
+                          <tr>
+                              <th scope="row">Random Article</th>
+                              <td>index.html?archive=wiki&<strong>random=</strong></td>
+                          </tr>
+                          <tr>
+                              <th scope="row">Search</th>
+                              <td><small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=<mark>Paris</mark><br/>
+                                <small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=<mark>Paris</mark>&<strong>upto</strong>=<mark>50</mark>
+                                <br/>
+                                <small>Empty string will return everything in the TitleIndex</small><br/>  
+                                <small>index.html</small>?archive=wiki&<strong>titleSearch</strong>=&<strong>from</strong>=<mark>0</mark>&<strong>upto</strong>=<mark>100</mark>&<strong>match</strong>=<mark>All</mark>
+                              </td>
+                            </tr>
+                            <tr>
+                              <th scope="row">ImageSearch by Title</th>
+                              <td>index.html?archive=wiki&<strong>imageSearch</strong>=<mark>Vincent Van Gogh<mark></td>
+                              </tr>
+                              <tr>
+                                <th scope="row">Direct Access via ClusterID, BlobID, Namespace</th>
+                                <td>index.html?archive=wiki&<strong>c=22891&b=0&n=A</strong> will return the Paris article in the wiki ZIM</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4 id="Notes" style='border-bottom:2px solid #004499'>Developer Notes</h4>
+                    This branch is based on the <a href="https://github.com/kiwix/kiwix-js/" target="_blank">Kiwix-JS</a> Project. Code is available <a href="https://github.com/sharun-s/kiwix-html5/" target="_blank">here</a>. 
+                    The javascript code has many pieces that allow it to be used in 5 different "modes" detailed below. Find the right repo on the KIWIX github page to suite your needs. This version is focused on <strong>Standalone</strong> mode.
+
+                    <p class="small">
+                    <ul>
+                    <li><strong>Standalone</strong> - distribute zims and code folder on a usb key/sdcard with instructions to click the index.html file to run. It requires least instructions to anyone with low computer literacy i.e. most people who are offline.
+                    </li><li>Local server based
+                        which would make duplications of massive zims across many clients unnecessary for local classroom type scenarios
+                    </li><li>WebExtension - kiwix-js
+                    </li><li>WebApp (phone gap/corova based) on app store
+                    </li><li>NativeApp eg the Firefox OS app</li></ul>
+                    </p>
+                    <h4 id="Platforms" style='border-bottom:2px solid #004499'>Platforms Specific Apps</h4>
+                    Many Kiwix versions customized to various platorms such as FirefoxOS, Android, iOS, Windows, Browser Extensions etc can be downloaded at <a href="http://www.kiwix.org" target="_blank">kiwix.org</a>. The source code for each app is available on <a href="http://github.com/kiwix" target="_blank">Github</a>
+                    <h4 id="License" style='border-bottom:2px solid #004499'>License</h4>
+                    This application is licensed under the GPL v3 license :
+                    <p>
+                    <i>
+                    Kiwix is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. Kiwix is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>
+                    </i>
+                    </p>
+                    <h4 id="Resources" style='border-bottom:2px solid #004499'>Main Libraries And Resources Used:</h4>
+                    <ul>
+                        <li><a href="http://jquery.com/" target="_blank">jQuery</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
+                        <li><a href="http://getbootstrap.com/" target="_blank">Bootstrap</a> 3, released under the <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache license 2.0</a>, which includes icons from <a href="http://glyphicons.com/">Glyphicons</a></li>
+                        <li><a href="http://www.requirejs.org/" target="_blank">RequireJS</a> 2, released under the <a href="https://github.com/jrburke/requirejs/blob/master/LICENSE" target="_blank">MIT license or new BSD license</a></li>
+                        <li><a href="http://qunitjs.com/" target="_blank">QUnit</a> 2, released under the <a href="http://jquery.org/license" target="_blank">MIT license</a></li>
+                        <li>Kiwix logo from <a href="http://www.kiwix.org/" target="_blank">kiwix.org</a>, released under the <a href="http://creativecommons.org/licenses/by-sa/3.0/" target="_blank">Creative Commons Attribution Share Alike</a></li>
+                        <li>OpenZIM specifications from <a href="http://www.openzim.org//wiki/OpenZIM" target="_blank">www.openzim.org</a>, released under the <a href="http://creativecommons.org/licenses/by-sa/3.0/" target="_blank">Creative Commons Attribution Share Alike</a></li>
+                        <li>Emscripten to generate a XZ decompressor in javascript : <a href="https://github.com/kripken/emscripten" target="_blank">https://github.com/kripken/emscripten</a>, released under the <a href="https://github.com/kripken/emscripten" target="_blank">MIT license</a></li>
+                        <li><a href="http://tukaani.org/xz/embedded.html">XZ Embedded</a> (the XZ library converted to Javascript with Emscripten), in public domain</li>
+                    </ul>
+                </div>
+        </article>
+       </section>
+    </body>
+</html>

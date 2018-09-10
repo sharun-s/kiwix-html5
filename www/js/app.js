@@ -38,10 +38,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     var searchContext = {from:settings.from, upto:settings.maxResults, match:settings.match, caseSensitive:settings.caseSensitive, loadmore:false};
     var selectedArchive = null;    
     var protocolHandlers = ["so://", "so-tags://", "so-page://", "so:", "wiki://", "wiki:"];
-
-    //setupSearchUI(searchContext);
-    library.loadDownloadables($("#zims"));
-    library.loadDetected($("#detectedzims"));
             
     // Compile some regular expressions needed to modify links
     var regexpImageLink = /^.?\/?[^:]+:(.*)/;
@@ -67,19 +63,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         console.log("jQuery tried to run some javascript with eval(), which is not allowed in packaged applications");
     };
     
-    /**
-     * Resize the IFrame height, so that it fills the whole available height in the window
-     */
-    function resizeIFrame() {
-        var height = $(window).outerHeight()
-                - $("#top").outerHeight(true)
-                //- $("#articleListWithHeader").outerHeight(true)
-                // TODO : this 5 should be dynamically computed, and not hard-coded
-                - $("#navigationButtons").outerHeight(true);
-        $("#articleContent").css("height", height + "px");
-    }
-    $(document).ready(resizeIFrame);
-    $(window).resize(resizeIFrame);
+    $(document).ready(ui.resizeIFrame);
+    $(window).resize(ui.resizeIFrame);
 
     ui.setupHandlers();
     ui.onHome(goToMainArticle);
@@ -118,12 +103,12 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             setLocalArchiveFromURL(params);
         }else{
 	        // Display the file select components
-            if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+            //if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
                 // Archive files are already selected, 
-                setLocalArchiveFromFileSelect();
-            }else{
+            //    setLocalArchiveFromFileSelect();
+            //}else{
                $("#btnConfigure").click();
-            }
+            //}
 	    }
     }
 
@@ -391,7 +376,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
             //alert("Archive not set : please select an archive");
-            ui.status("Archive not set!");
+            //ui.status("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -495,7 +480,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            ui.status("Archive not set!");
+            //ui.status("Archive not set!");
             $("#btnConfigure").click();
         }
     }
@@ -911,11 +896,11 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     onFirstWorkerCompletion: function(){
                         // initialImageLoad in 'quick' mode complete
                         // NOTE: any waiting that is done here will hold up all other worker starts
-                        return Promise.all(cssLoaded).then(()=>console.timeEnd("TimeToFirstPaint"));
+                        return Promise.all(cssLoaded).then(()=>{console.timeEnd("TimeToFirstPaint");});
                     }, 
                     onAllWorkersCompletion: function(resultsCount){
                         Promise.all(imageLoadCompletions).then(function (){
-                            //console.log("Images loaded:" + resultsCount);
+                            ui.status("Article Load Complete!"+" Images Loaded! Image count:" + resultsCount );
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
@@ -938,8 +923,9 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     loadCSS(link, hrefMatch[1]);
                 }
             });
+            Promise.all(cssLoaded).then(()=>{ui.status("Article Load Complete!")});
             //console.log("# of css files loading:" + cssLoaded.length);
-            ui.setupTableOfContents(innerDoc);    
+            //ui.setupTableOfContents(innerDoc);    
         }
     }
 
@@ -972,7 +958,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         } );//$('#articleContent img');
         if(imgNodes.length==0)
         {
-            console.log(foundDirEntry.title +" no images found");
+            ui.status(foundDirEntry.title +" no images found");
             ResultSet.set(foundDirEntry.title, {images:[],redirectedFrom:foundDirEntry.redirectedFrom, dup:""});
             articlesMatchedProcessed++;
             if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
@@ -1021,6 +1007,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                         console.timeEnd(foundDirEntry.title + " "+resultsCount+" Image Lookup+Read+Inject Time");
                         articlesMatchedProcessed++;
                         console.log(totalFound, articlesMatchedProcessed, nonArticlesMatchedProcessed);
+                        ui.status("Images Found:"+totalFound);
                         if(totalFound == articlesMatchedProcessed + nonArticlesMatchedProcessed)
                             searchDone(); 
                     });
@@ -1068,7 +1055,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     // common code used by gotoArticle/gotoMainArticle/gotoRandomArticle
     function injectContent(dirEntry){
         $("title").html(dirEntry.title);
-        ui.status("Reading...", "bg-warning");
+        ui.status("Reading...", "bg-danger");
         $('#articleContent').contents().find('body').html("");
         readArticle(dirEntry);
     }
@@ -1082,14 +1069,14 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         selectedArchive.getDirEntryByURL(url).then(function(dirEntry) {
             if (dirEntry === null || dirEntry === undefined) {
                 //alert("Article with url " + url + " not found in the archive");
-                ui.status("Article not found:"+ url);
+                ui.status("Article Not Found:"+ url);
             }
             else {
                 injectContent(dirEntry);
             }
         }).catch(function() { 
             //alert("Error reading article with title " + url);
-            ui.status("Error reading " + url); 
+            ui.status("Error Reading " + url); 
         });
     }
     
@@ -1097,7 +1084,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         if (selectedArchive !== null && selectedArchive.isReady()) {    
             selectedArchive.getRandomDirEntry(function(dirEntry) {
                 if (dirEntry === null || dirEntry === undefined) {
-                    ui.status("Error finding random article.");
+                    ui.status("Error Finding Random Article.");
                 }
                 else {
                     if (dirEntry.namespace === 'A') {
@@ -1116,7 +1103,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             // We have to remove the focus from the search field,
             // so that the keyboard does not stay above the message
             $("#searchArticles").focus();
-            ui.status("Archive not set!");
+            ui.status("Archive Not Set!");
             $("#btnConfigure").click();
         }
     }
@@ -1141,7 +1128,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 }
             });            
         }else{
-            ui.status("Archive not set!", 'btn-danger');
+            ui.status("Archive Not Set!", 'bg-danger');
         }
     }
 

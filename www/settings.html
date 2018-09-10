@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Kiwix</title>
+        <link rel="icon" href="img/icons/kiwix-32.png" sizes="32x32" />
+        <meta name="description" content="Offline Wikipedia reader">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="css/bootstrap.css" rel="stylesheet" media="screen"/>
+        <link href="css/bootstrap-theme.css" rel="stylesheet" media="screen"/>
+        <script type="text/javascript" src="js/lib/require.js"></script>
+    </head>
+    <body role="application">
+        <section id="search-article" role="region">
+            <article class="view-content">
+                <div id="configuration" class="container">
+                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
+                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3>
+                    <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-info-sign" style="border:1px black"></span></p>
+                    <ul id="detectedzims" style="padding:2px;"></ul>
+                    <ul id="zims" style="padding:2px;"></ul>
+                    <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
+                    <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>
+                    <div id="openLocalFiles" style="display: none;" >
+                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" />
+                        </p>
+                    </div>
+                    <div id="scanningForArchives" style="display: none;">
+                        <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
+                    </div>
+                    <div id="chooseArchiveFromLocalStorage" style="display: none;">
+                        <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
+                        <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
+                    </div>
+                </div>               
+			</article>
+        </section>
+    </body>
+    <script>
+        console.log(require);
+        require({baseUrl:'js/lib',
+            paths: {'jquery': 'jquery-2.1.4'}},['library'], function(library){
+            library.loadDownloadables($("#zims"));
+            library.loadDetected($("#detectedzims"));
+        });
+    </script>
+</html>
