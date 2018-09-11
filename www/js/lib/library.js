@@ -3,6 +3,7 @@ define(['jquery'], function($) {
 
 	var catalogue = [];
 	var lang="en";
+    var prefix="";
 	var doc;
 
     // The knownArchive object contains all known zims that can be loaded and is created by scripts/getCatalogueMetaData
@@ -95,9 +96,10 @@ define(['jquery'], function($) {
             };
         }());
         
-    	    var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and contains(@href,"2018")]', doc, namespaceResolver, 0, null);
-    	    console.log(link);
-            var result=link.iterateNext();
+    	    var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and contains(@href,"2018") and starts-with(@href,"http://download.kiwix.org/zim/'+prefix+'")]', doc, namespaceResolver, 0, null);
+    	    var result=link.iterateNext();
+            //console.log(link);
+            //console.log(result);
             catalogue=[]
             while(result){
             	catalogue.push({
@@ -108,7 +110,7 @@ define(['jquery'], function($) {
                 description: result.parentElement.children[4].textContent, // description
                 creator: result.parentElement.children[6].textContent // creator
                 });
-                console.log(result.attributes["href"].value);
+                //console.log(result.attributes["href"].value);
                 result=link.iterateNext();
             }
             generateCatalogueUI();
@@ -176,6 +178,12 @@ define(['jquery'], function($) {
         }); // TODO add a .catch()      
     }
 
+    function filterCatalogueByName(){
+        prefix = this.value;
+        console.log(prefix + " prefix selected");
+        processDoc();
+    }
+
 	function load( jqn ) {    
         // Add downloadable ZIM's
         jqn.append("<h4 style='border-bottom:2px solid #004499'>Downloadable Archives</h4> \
@@ -217,6 +225,7 @@ define(['jquery'], function($) {
         	<option value='zh'>中文</option> ‎\
         	‎<option value='zh-cn'> 中文（中国大陆）‎</option> ‎\
         	‎<option value='zh-tw'>中文（台灣）‎</option></select>\
+            <input type='text' id='dwFilter' placeholder='Filter Names...'>\
         	<div class='progress' style='height:4px;'> \
   				<div id='updateprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> \
   				</div> \
@@ -226,7 +235,8 @@ define(['jquery'], function($) {
     		console.log(lang + " lang selected");
     		processDoc();
         });
-        $("#getLatest").on("click",getLatestCatalogue);         
+        $("#getLatest").on("click",getLatestCatalogue); 
+        $("#dwFilter").on("keyup", filterCatalogueByName);        
     };
 
 	return {
