@@ -16,8 +16,25 @@
                 <div id="configuration" class="container">
                     <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
                     <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3>
-                    <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-info-sign" style="border:1px black"></span></p>
-                    <ul id="detectedzims" style="padding:2px;"></ul>
+                    <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-question-sign" style="border:1px black"></span></p>
+                    <!-- <ul id="detectedzims" style="padding:2px;"></ul> -->
+                    <table class='table table-condensed small'>
+                        <h4>Detected archives</h4>
+                        <div class='progress' style='height:2px;margin-bottom:2px'> 
+                            <div id='scanprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> 
+                            </div> 
+                        </div>
+                        <caption>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</caption>
+                        <thead>
+                            <tr>
+                                <th scope='col'>Title</th>
+                                <th scope='col'>Filename</th>
+                                <th scope='col'>Links</th>
+                            </tr>
+                        </thead>
+                        <tbody id='detectedzims'>                            
+                        </tbody>
+                    </table>
                     <ul id="zims" style="padding:2px;"></ul>
                     <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
                     <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>

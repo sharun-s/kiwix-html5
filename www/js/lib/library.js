@@ -150,32 +150,63 @@ define(['jquery'], function($) {
         $("#accordian").html(groupHTML);
     }
     var items = [];
+    function renderList(jqn, zimsOnDisk){
+        if (zimsOnDisk.length===0){
+            jqn.append("<mark>These are <strong>NO</strong> <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder. Try the options below...</mark>");
+        }else{
+            jqn.append("<small class='text-muted'>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</small>");
+            $.each( zimsOnDisk, function( i, item ) {
+                    var temp = item.split('_'); // HACK to get a readable name from long file name
+                    var baseurl = location.href.replace( /settings\.html[\?#].*|settings\.html$/, "index.html?archive="+item);
+                    var homepg= baseurl + "&home=";
+                    var randompg = baseurl +"&random=";
+                    items.push( "<li class='list-group-item text-center' id='" + i + "'>\
+                        <strong style='float:left;'>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong>\
+                        <small>"+item+"</small> \
+                        <span>\
+                        <a target='_top' class='btn btn-xs' href='"+homepg+"' title='Home Page'><span class='glyphicon glyphicon-home'></span></a>\
+                        <a target='_top' class='btn btn-xs' href='"+baseurl+"' title='Details'><span class='glyphicon glyphicon-info-sign'></span></a>\
+                        <a target='_top' class='btn btn-xs' href='"+randompg+"' title='Random Article'><span class='glyphicon glyphicon-random'></span></a></span></li>");
+                });
+            jqn.append(items.join( "" ));
+        }
+    }
 
-    function loadDetected(jqn){
-        items = [];
+    function initList(){
         //jqn.append("<h4 style='border-bottom:2px solid #004499'>Detected Archives</h4>");
         jqn.append("<h4>Detected Archives</h4>");
         jqn.append("<div class='progress' style='height:4px;'> \
             <div id='scanprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> \
             </div> \
             </div>");
-        onDiskMatches().then(function(zimsOnDisk){
-            if (zimsOnDisk.length===0){
-                jqn.append("<mark>These are <strong>NO</strong> <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder. Try the options below...</mark>");
-            }else{
-                jqn.append("<small class='text-muted'>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</small>");
-                $.each( zimsOnDisk, function( i, item ) {
-                    var temp = item.split('_');
-                    var loadurl = location.href.replace( /settings\.html[\?#].*|settings\.html$/, "index.html?archive="+item+"&random=");
-                    items.push( "<li class='list-group-item small' id='" + i + "'> <strong>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</strong> <span class=''>"+item+"</span>"
-                    //+"<button class='badge' onclick=location.href=&apos;"+loadurl+"&apos;>LOAD</button></li>"); 
-                        +"<a target='_top' class='badge' href='"+loadurl+"'>LOAD</a></li>");
+    }
+
+    function renderTable(jqn, zimsOnDisk){
+        if (zimsOnDisk.length===0){
+            jqn.append("<mark>These are <strong>NO</strong> <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder. Try the options below...</mark>");
+        }else{
+            $.each( zimsOnDisk, function( i, item ) {
+                    var temp = item.split('_'); // HACK to get a readable name from long file name
+                    var baseurl = location.href.replace( /settings\.html[\?#].*|settings\.html$/, "index.html?archive="+item);
+                    var homepg= baseurl + "&home=";
+                    var randompg = baseurl +"&random=";
+                    items.push( "<tr id='" + i + "'>\
+                        <th scope='row'>" + temp[0].charAt(0).toUpperCase() + temp[0].slice(1) +"</th>\
+                        <td>"+item+"</td> \
+                        <td>\
+                        <a target='_top' class='btn btn-primary btn-xs' href='"+homepg+"' title='Home Page'><span class='glyphicon glyphicon-home'></span></a>\
+                        <a target='_top' class='btn btn-primary btn-xs' href='"+baseurl+"' title='Details'><span class='glyphicon glyphicon-info-sign'></span></a>\
+                        <a target='_top' class='btn btn-primary btn-xs' href='"+randompg+"' title='Random Article'><span class='glyphicon glyphicon-random'></span></a>\
+                        </td></tr>");
                 });
-                jqn.append(items.join( "" ));
-                // Using this instead of inline onclick handler cause FF "sometimes" throws CSP blocked loading resources at self script-src
-                //jqn.on('click', "[data-zim]", (e) => window.location.href = e.target.dataset['zim'] ) ;
-            }
-        }); // TODO add a .catch()      
+            console.log()
+            jqn.append(items.join( "" ));
+        }
+    }
+
+    function loadDetected(jqn){
+        items = [];
+        onDiskMatches().then((zimsOnDisk)=>{ renderTable(jqn, zimsOnDisk); }); // TODO add a .catch()      
     }
 
     function filterCatalogueByName(){

@@ -199,17 +199,18 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
         }else if(params["imageSearch"]){
             startImageSearch(decodeURIComponent(params["imageSearch"]));
+        }else if("home" in params){
+            goToMainArticle();
         }else if("random" in params){
             goToRandomArticle();
         }
         else{
             selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
                 selectedArchive.readArticle(dirEntry, 
-                    (de,content) => $('#articleContent').contents().find('body').html("Loaded archive:"+selectedArchive._file._files[0].name+". It contains:<br>"+
+                    (de,content) => $('#articleContent').contents().find('body').html("Loaded Archive: <strong class='label-primary'>"+selectedArchive._file._files[0].name+"</strong>. It contains:<br>"+
                         content.split(';').join('<br>')+
-                        "<br>Total Article Count:" + selectedArchive._file.articleCount));
+                        "<br>Total Document Count:" + selectedArchive._file.articleCount));
             });
-            //testVid();
         }
     }
 
@@ -900,7 +901,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     }, 
                     onAllWorkersCompletion: function(resultsCount){
                         Promise.all(imageLoadCompletions).then(function (){
-                            ui.status("Article Load Complete!"+" Images Loaded! Image count:" + resultsCount );
+                            ui.status("Article Load Complete!"+" Images Loaded! Image Count:" + resultsCount );
                             console.timeEnd("Total Image Lookup+Read+Inject Time");
                         });
                     }
