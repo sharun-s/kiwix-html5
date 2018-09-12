@@ -160,16 +160,10 @@ function read(archive_url, bytestart, byteend,){
 
 function downloadblob(format){
     let link = document.createElement('a')
-    // there is an upper limit to downloadable blob size so use DownloadObjectAsCSV for now
-    var b;
-    
-    if (format == 'json'){
-        b = new Blob([JSON.stringify(knownArchives)], {type: 'application/json'});
-    }else {
-        b = new Blob([obj2csv(index)]);    
-    }
+    // if upper limit to downloadable blob size is hit check out DownloadObjectAsCSV in IndexDumper-Firefox.html
+    var b = new Blob([JSON.stringify(knownArchives)], {type: 'application/json'});
     link.href = URL.createObjectURL(b);        
-    link.setAttribute('download', filename + '.js');
+    link.setAttribute('download', 'knownArchives.js');
     document.body.appendChild(link);
     link.click();    
 }
@@ -188,7 +182,7 @@ function processUrls(names){
     Promise.all(jobs).then(function(){            
                 console.timeEnd('DumpTime');
                 console.log("All done");
-                //downloadblob('csv');
+                //downloadblob('json');
                 //downloadObjectAsCSV(keyMatchingFileSelected);
     });    
 }
