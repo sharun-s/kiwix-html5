@@ -19,7 +19,7 @@
                     <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-question-sign" style="border:1px black"></span></p>
                     <!-- <ul id="detectedzims" style="padding:2px;"></ul> -->
                     <table class='table table-condensed small'>
-                        <h4>Detected archives</h4>
+                        <h4>Detected Archives</h4>
                         <div class='progress' style='height:2px;margin-bottom:2px'> 
                             <div id='scanprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> 
                             </div> 
@@ -54,11 +54,26 @@
         </section>
     </body>
     <script>
-        console.log(require);
-        require({baseUrl:'js/lib',
-            paths: {'jquery': 'jquery-2.1.4'}},['library'], function(library){
+        require({
+            baseUrl: 'js/lib',
+            paths: {
+                'jquery': 'jquery-2.1.4',
+                'bootstrap': 'bootstrap'
+            },
+            shim: {
+                'jquery' : {
+                    exports : '$'
+                },
+                'bootstrap': {
+                    deps: ['jquery']
+                }
+            }
+        }, function(){
+        require(['bootstrap']);
+        require(
+            ['library'], function(library){
             library.loadDownloadables($("#zims"));
             library.loadDetected($("#detectedzims"));
-        });
+        });});
     </script>
 </html>

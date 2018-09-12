@@ -95,9 +95,12 @@ define(['jquery'], function($) {
                 return prefixMap[prefix] || null;
             };
         }());
-        
-    	    var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and contains(@href,"2018") and starts-with(@href,"http://download.kiwix.org/zim/'+prefix+'")]', doc, namespaceResolver, 0, null);
-    	    var result=link.iterateNext();
+            // with prefix filter
+    	    var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and starts-with(@href,"http://download.kiwix.org/zim/'+prefix+'")]', doc, namespaceResolver, 0, null);
+    	    // with year filter
+            //var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_") and contains(@href,"2018")]', doc, namespaceResolver, 0, null);
+            //var link = doc.evaluate('/a:feed/a:entry/a:link[@type="application/x-zim" and contains(@href,"_'+lang+'_")]', doc, namespaceResolver, 0, null);
+            var result=link.iterateNext();
             //console.log(link);
             //console.log(result);
             catalogue=[]
@@ -135,13 +138,23 @@ define(['jquery'], function($) {
         for(var i=0;i<groupsSorted.length;i++){
             var items = [], subGroup = groups[groupsSorted[i]];
             // Group Header
-            var groupHeader = '<a class="list-group-item" data-toggle="collapse" href="#g'+i+'" ><span class="badge">'+ subGroup.length+'</span><strong> '+groupsSorted[i]+'</strong> <span class="small"> <em>'
-            +subGroup[0].description+'</em> - Creator:<strong>'+ subGroup[0].creator+
-            '</strong></a><ul style="padding:2px" id="g'+i+'" class="collapse  list-group">'; 
+            var groupHeader = '<a class="list-group-item small" data-toggle="collapse" href="#g'+i+'" >\
+                <span class="badge">'+ subGroup.length+'</span><strong> '+groupsSorted[i]+'</strong>\
+                <span class="small"> <em>'+subGroup[0].description+'</em>\
+             - Creator:<strong>'+ subGroup[0].creator+ '</strong>\
+             </a>\
+            <ul style="padding:2px" id="g'+i+'" class="collapse  list-group">'; 
             for(var j=0;j<subGroup.length;j++){
                 var item = subGroup[j];
+                // torrent name as per convention on wiki.kiwix.org/wiki/content
+                var name = item.url.slice(30,-10).split('/')[1];
+                var torrent = "http://download.kiwix.org/zim/"+ name.slice(0,-8) +".zim.torrent";
                 items.push("<li class ='list-group-item small' style='padding:2px'> \
-                	<a href='"+item.url.slice(0,-6) +"'>"+item.url.slice(30,-10).split('/')[1]+" <span class='glyphicon glyphicon-download'></span></a> </li>");	                
+                	<a href='"+item.url.slice(0,-6) +"'>"+name+
+                    " <span class='glyphicon glyphicon-download'></span></a>\
+                    <a href='"+torrent +"'>\
+                    <span class='glyphicon glyphicon-magnet'></span></a>\
+                     </li>");	                
             }
             groupHTML = groupHTML + groupHeader + items.join( "" ) +"</ul>";
         }
@@ -199,7 +212,6 @@ define(['jquery'], function($) {
                         <a target='_top' class='btn btn-primary btn-xs' href='"+randompg+"' title='Random Article'><span class='glyphicon glyphicon-random'></span></a>\
                         </td></tr>");
                 });
-            console.log()
             jqn.append(items.join( "" ));
         }
     }
@@ -220,9 +232,9 @@ define(['jquery'], function($) {
         jqn.append("<h4 style='border-bottom:2px solid #004499'>Downloadable Archives</h4> \
         	<small class='text-muted'> The Update button gets the latest list of downloadable archives from <a href='library.kiwix.org'>kiwix.org</a>. After the download completes, copy the zim file into the <strong>'www'</strong> directory of your kiwix folder</small> \
             <p><small><mark>Download may take a few seconds to start.</small></p> \
-        	<button id='getLatest'>Update Catalogue</button> \
-        	<label for='langSelect'>Language</label> \
-        	<select id='langSelect'>\
+            <button id='getLatest' class='btn btn-primary'>Update Catalogue</button> \
+        	<input type='text' id='dwFilter' placeholder='Filter Names'>\
+        	<select id='langSelect' class='small'>\
         	<option value='ar'>العربية</option>\
         	‎<option value='az'>azərbaycanca</option>\
         	‎<option value='bn'>বাংলা</option>\
@@ -256,7 +268,6 @@ define(['jquery'], function($) {
         	<option value='zh'>中文</option> ‎\
         	‎<option value='zh-cn'> 中文（中国大陆）‎</option> ‎\
         	‎<option value='zh-tw'>中文（台灣）‎</option></select>\
-            <input type='text' id='dwFilter' placeholder='Filter Names...'>\
         	<div class='progress' style='height:4px;'> \
   				<div id='updateprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> \
   				</div> \
