@@ -51,7 +51,7 @@ var appSettings = {
     match: params['match'] || 'PrefixAndArticleMatch',
     caseSensitive: caseSense,
     // if false user has to hit enter or press the search button after typing
-    autoComplete : false,
+    autoComplete : true,
     autoCompleteResubmitTimer: 700,
     includeSnippet: false,
     maxAsyncSnippetReads: 5,
@@ -71,7 +71,7 @@ require.config({
     baseUrl: 'js/lib',
     config: {  'util':{mode: mode},
                'finder':{workerPath: 'dirEntryFinder.js'},  
-             '../app':{mode: mode, settings: appSettings}
+             '../app':{mode: mode, settings: appSettings, isFirefox:isFirefox}
     },
     paths: {
         'jquery': 'jquery-2.1.4',

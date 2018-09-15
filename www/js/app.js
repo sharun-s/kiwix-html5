@@ -32,6 +32,11 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     var settings  = module.config().settings;
     // Determines if Archives are read via FileReader or XHR Range Requests
     var READ_MODE = module.config().mode;
+    if (!module.config().isFirefox){
+        alert('ERROR! This experimental version of Kiwix only works on Firefox. Aborting app load...');
+        location.href = 'https://www.mozilla.org/en-US/firefox/new/';
+        return;
+    }
     // 'ParseAndLoad' vs 'InterceptAndLoad'
     var contentInjectionMode = 'ParseAndLoad';
     // Setup the default search context and search UI
@@ -74,7 +79,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     if(settings.autoComplete)
         $('#prefix').on('keyup', function(e) {
                 if (selectedArchive !== null && selectedArchive.isReady()) 
-                    ui.autoComplete(e, settings.autoCompleteResubmitTimer);
+                    uiSearch.autoComplete(e, settings.autoCompleteResubmitTimer);
         });    
     $('#searchArticles').on('click', function(e) {
         startSearch($('#prefix').val(), true);

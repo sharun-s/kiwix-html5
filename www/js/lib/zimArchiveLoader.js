@@ -20,7 +20,7 @@
  * along with Kiwix (file LICENSE-GPLv3.txt).  If not, see <http://www.gnu.org/licenses/>
  */
 'use strict';
-define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies', 'library'], function(zimArchive, $, abstractFilesystemAccess, cookies, library) {
+define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies', 'knownArchives'], function(zimArchive, $, abstractFilesystemAccess, cookies, knownArchives) {
 
     var storages, directories, scanDone;
     // Only required on FFOS can be extended to other platforms
@@ -85,7 +85,7 @@ define(['zimArchive', 'jquery', 'abstractFilesystemAccess', 'cookies', 'library'
 
     // Allows for shortcuts or full filename of ZIM in URL
     function loadArchiveFromURL(urlArchiveParam){
-        var psuedoArchive = library.knownArchives[urlArchiveParam];
+        var psuedoArchive = knownArchives.all[urlArchiveParam];
         var archiveToLoad = psuedoArchive ? psuedoArchive : '{"_file":{"_files":[{"name":"undefined"}]}}';
         return loadArchiveFromString(archiveToLoad);    
     }            
