@@ -14,28 +14,131 @@
         <section id="search-article" role="region">
             <article class="view-content">
                 <div id="configuration" class="container">
-                    <h3><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
-                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h3>
+                    <h5><img src="img/icons/kiwix-60.png" alt="Kiwix icon"/>
+                    <a href="http://www.kiwix.org/" target="_blank">Kiwix</a> - The Offline Web Archive Reader!</h5>
                     <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-question-sign" style="border:1px black"></span></p>
-                    <table class='table table-condensed small'>
-                        <h4>Detected Archives</h4>
-                        <div class='progress' style='height:2px;margin-bottom:2px'> 
-                            <div id='scanprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'> 
-                            </div> 
+                    <ul class="nav nav-tabs">
+                        <li role="presentation" class="active">
+                            <a href="#home" id="home-tab" role="tab" data-toggle="tab" aria-controls="home" aria-expanded="true">Detected Archives</a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#profile" role="tab" id="profile-tab" data-toggle="tab" aria-controls="profile">Downloadable Archives</a>
+                        </li>
+                        <li role="presentation" class="dropdown"> <a href="#" class="dropdown-toggle" id="myTabDrop1" data-toggle="dropdown" aria-controls="myTabDrop1-contents">Settings <span class="caret"></span></a> <ul class="dropdown-menu" aria-labelledby="myTabDrop1" id="myTabDrop1-contents"> <li><a href="#dropdown1" role="tab" id="dropdown1-tab" data-toggle="tab" aria-controls="dropdown1">General</a></li> <li><a href="#dropdown2" role="tab" id="dropdown2-tab" data-toggle="tab" aria-controls="dropdown2">Search</a></li> </ul>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade active in" role="tabpanel" id="home" aria-labelledby="home-tab">
+                        <table class='table table-condensed small'>
+                            <div class='progress' style='height:2px;margin-bottom:8px'>
+                                <div id='scanprogress' class='progress-bar' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'>
+                                </div>
+                            </div>
+                            <caption>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</caption>
+                            <thead>
+                                <tr>
+                                    <th scope='col'>Title</th>
+                                    <th scope='col'>Filename</th>
+                                    <th scope='col'>Links</th>
+                                </tr>
+                            </thead>
+                            <tbody id='detectedzims'>
+                            </tbody>
+                        </table>
                         </div>
-                        <caption>These are <a href='openzim.org'>zim</a> files found in the default storage location - the <strong>'www'</strong> directory of your kiwix folder</caption>
-                        <thead>
+                        <div class="tab-pane fade" role="tabpanel" id="profile" aria-labelledby="profile-tab">
+                            <ul id="zims" style="padding:2px;"></ul>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown1" aria-labelledby="dropdown1-tab">
+                            <table class='table table-condensed small'>
+                            <caption>Table lists default values which can be changed in www/js/init.js</caption>
+                            <thead>
+                                <tr>
+                                    <th scope='col'>Setting</th>
+                                    <th scope='col'>Value</th>
+                                    <th scope='col'>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                             <tr>
-                                <th scope='col'>Title</th>
-                                <th scope='col'>Filename</th>
-                                <th scope='col'>Links</th>
+                                <th scope='row'>Initial #Images Loaded</th>
+                                <td>5</td><td>optimizes article load</td>
                             </tr>
-                        </thead>
-                        <tbody id='detectedzims'>                            
-                        </tbody>
-                    </table>
-                    <ul id="zims" style="padding:2px;"></ul>
-                    <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
+                            <tr>
+                                <th scope='row'>Max Async Image Reads</th>
+                                <td>3</td><td>optimizes article load</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Initial #Images Loaded</th>
+                                <td>5</td><td>optimizes article load</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Worker Count</th>
+                                <td>2</td><td>In above the fold mode/"quick" mode workerCount+1 workers will run</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Max Async Article Reads</th>
+                                <td>2</td><td>Image search loads images in artilces from article titles matching search phrase </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown2" aria-labelledby="dropdown2-tab">
+                            <table class='table table-condensed small'>
+                            <caption>Table lists default values which can be changed in www/js/init.js</caption>
+                            <thead>
+                                <tr>
+                                    <th scope='col'>Setting</th>
+                                    <th scope='col'>Value</th>
+                                    <th scope='col'>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <th scope='row'>Auto Complete</th>
+                                <td>True</td><td>if false user has to hit enter or press the search button after typing</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>autoCompleteResubmitTimer</th>
+                                <td>700</td><td></td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Include Snippet</th>
+                                <td>False</td><td>First para of article is included in search result</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>maxAsyncSnippetReads</th>
+                                <td>5</td><td>search performance optimization</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Include Thumbnail</th>
+                                <td>True</td><td></td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Max Results</th>
+                                <td>10</td><td>use 'upto' param in titleSearch url (see about page)</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>From index location</th>
+                                <td>0</td><td>use 'from' param in titleSearch url (see about page)</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Include Snippet</th>
+                                <td>False</td><td>First para of article is included in search result</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>Matching</th>
+                                <td>PrefixAndArticleMatch</td><td>By default, matching of search phrase is done against begining of article titles. This can be changed to SubstringMatch to match anywhere in the title</td>
+                            </tr>
+                            <tr>
+                                <th scope='row'>caseSensitive matching</th>
+                                <td>True</td><td>use 'case' param in titleSearch url (see about page)</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                    <!-- <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
                     <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>
                     <div id="openLocalFiles" style="display: none;" >
                         <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" />
@@ -47,7 +150,7 @@
                     <div id="chooseArchiveFromLocalStorage" style="display: none;">
                         <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
                         <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
-                    </div>
+                    </div> -->
                 </div>               
 			</article>
         </section>
