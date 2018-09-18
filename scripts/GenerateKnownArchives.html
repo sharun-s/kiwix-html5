@@ -47,14 +47,7 @@ var js_tail = "return { \
 });"
 
 var header;
-// add zims that are on disk but not in kiwix catalog here so that they show up in detected archive list
-var knownArchives={
-	test: '{"_file":{"_files":[{"name":"wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":"",alias:"ray"}',
-	so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
-    //"stackoverflow.com_eng_all_2017-05.zim": '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
-    //"wikipedia_en_all_2016-12.zim": '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
-    wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
-};
+var knownArchives={};
 var name;
 
 function makeIterator(array) {
@@ -114,19 +107,19 @@ function processHeader(response){
 	if (header.articleCount===0) return false;
 	//console.log(header);
     //Promise.all(load()).then((values)=>{values.forEach((item)=>dump(item.title))});
-knownArchives[name]=JSON.stringify({"_file": 
-			{"_files":[ 
-				{	"name":name, "size": 62695819637 }], 
-				"articleCount":header.articleCount, 
-				"clusterCount":header.clusterCount, 
-				"urlPtrPos":header.urlPtrPos, 
-				"titlePtrPos":header.titlePtrPos, 
-				"clusterPtrPos":header.clusterPtrPos, 
-				"mimeListPos":header.mimeListPos, 
-				"mainPage":header.mainPage, 
-				"layoutPage":header.layoutPage 
+knownArchives[name]=JSON.stringify({'_file': 
+			{'_files':[ 
+				{	name:name, size: 62695819637 }], 
+				articleCount:header.articleCount, 
+				clusterCount:header.clusterCount, 
+				urlPtrPos:header.urlPtrPos, 
+				titlePtrPos:header.titlePtrPos, 
+				clusterPtrPos:header.clusterPtrPos, 
+				mimeListPos:header.mimeListPos, 
+				mainPage:header.mainPage, 
+				layoutPage:header.layoutPage 
 			}, 
-		"_language":""});
+		'_language':''});
 }
 
 
@@ -179,25 +172,46 @@ function processUrls(names){
     }
     Promise.all(jobs).then(function(){            
                 console.timeEnd('DumpTime');
-                if (confirm('Created - ' + Object.getOwnPropertyNames(knownArchives).length+' entries. Write to disk?'))
-                	downloadblob('json');
+                if (confirm('Created - ' + Object.getOwnPropertyNames(knownArchives).length+' entries. Write to disk?')){
+                	if (params["file"])
+                		document.write(JSON.stringify(knownArchives));
+                	else
+                		downloadblob('json');
+                }
                 //downloadObjectAsCSV(keyMatchingFileSelected);
     });    
 }
 
+var params={};
+
 function init(){
 	console.time('DumpTime');
-	var xhr = new XMLHttpRequest();
-    xhr.addEventListener('readystatechange', (output) => {
-      if (xhr.readyState === 4) {
-        var response = xhr.responseText;
-        processUrls(response);
-      }
-    });
+    location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+    //if a file param containing one zim filename is specified just dump string to screen. 
+    if(params["file"]){
+    	processUrls(params["file"]);
+    }else{
+    	// add zims that are on disk but not in kiwix catalog here so that they show up in detected archive list
+		knownArchives={ 
+					test:'{"_file":{"_files":[{"name":"wikipedia_en_ray_charles_2015-06.zim","size":1476042}],"articleCount":458,"clusterCount":215,"urlPtrPos":195,"titlePtrPos":3859,"clusterPtrPos":30811,"mimeListPos":80,"mainPage":238,"layoutPage":4294967295},"_language":"",alias:"ray"}', 
+					so: '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
+				    "stackoverflow.com_eng_all_2017-05.zim": '{"_file":{"_files":[{"name":"stackoverflow.com_eng_all_2017-05.zim","size":55332776056}],"articleCount":70576346,"clusterCount":72703,"urlPtrPos":383,"titlePtrPos":564611151,"clusterPtrPos":5690486065,"mimeListPos":80,"mainPage":21299347,"layoutPage":4294967295},"_language":""}',
+				    "wikipedia_en_all_2016-12.zim": '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}',
+				    wiki: '{"_file":{"_files":[{"name":"wikipedia_en_all_2016-12.zim","size":62695819637}],"articleCount":17454230,"clusterCount":90296,"urlPtrPos":236,"titlePtrPos":139634076,"clusterPtrPos":1237308322,"mimeListPos":80,"mainPage":4294967295,"layoutPage":4294967295},"_language":""}'
+				};
 
-    xhr.open('GET', 'catalog_onlynames.txt', true);
-    xhr.overrideMimeType('text\/plain; charset=x-user-defined');
-    xhr.send();
+		var xhr = new XMLHttpRequest();
+	    xhr.addEventListener('readystatechange', (output) => {
+	      if (xhr.readyState === 4) {
+	        var response = xhr.responseText;
+	        processUrls(response);
+	      }
+	    });
+
+	    xhr.open('GET', 'catalog_onlynames.txt', true);
+	    xhr.overrideMimeType('text\/plain; charset=x-user-defined');
+	    xhr.send();
+    }
 }
 
 </script>
