@@ -252,8 +252,7 @@ define(['jquery','knownArchives'],function($, knownArchives) {
 
 	function load( jqn ) {    
         // Add downloadable ZIM's
-        jqn.append("<h4 style='border-bottom:2px solid #004499'>Downloadable Archives</h4> \
-        	<small class='text-muted'> The Update button gets the latest list of downloadable archives from <a href='library.kiwix.org'>kiwix.org</a>. After the download completes, copy the zim file into the <strong>'www'</strong> directory of your kiwix folder</small> \
+        jqn.append("<small class='text-muted'> The Update button gets the latest list of downloadable archives from <a href='library.kiwix.org'>kiwix.org</a>. After the download completes, copy the zim file into the <strong>'www'</strong> directory of your kiwix folder</small> \
             <p><small><mark>Download may take a few seconds to start.</small></p> \
             <button id='getLatest' class='btn btn-primary'>Update Catalogue</button> \
         	<input type='text' id='dwFilter' placeholder='Filter Names'>\

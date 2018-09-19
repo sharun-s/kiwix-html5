@@ -847,6 +847,31 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         vidNode.textTracks[vidNode.textTracks.length-1].mode = "showing";
         $(vidNode).load();
     }
+    
+    async function loadAudio(audioNode){
+        console.log(audioNode);
+        var sourceNode = $($(audioNode).find('source')[0]);
+        var audiourl = sourceNode.attr('src');
+        // removes rel url part ../../ 
+        var a = audiourl.match(regexpImageUrl);
+        if(a)
+            a=decodeURIComponent(a[1]);
+        else{
+            console.error("Unrecognized vid URL! Not retrieving - "+audiourl); 
+            return;
+        }
+        console.log('loading '+a);
+
+        var direntry = await selectedArchive.getDirEntryByURL(a);
+        var audiodata = await direntry.readData();
+        var blob = new Blob([audiodata], {type: 'audio'});
+        var url = URL.createObjectURL(blob);
+        
+        sourceNode.attr('src', url);
+        
+        $(audioNode).load();
+    }
+
     /**
      * Display the the given HTML article in the web page,
      * and convert links to javascript calls
@@ -855,6 +880,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
      * @param {String} htmlArticle
      */
     async function displayArticleInFrame(title, htmlArticle) {
+        //This log dump is useful when content in zim has issues 
+        //console.log(htmlArticle);
         // Scroll the iframe to its top
         $("#articleContent").contents().scrollTop(0);
         // BUG: handle cases where src is a non zim url or a data url
@@ -878,6 +905,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             var imageLoadCompletions = [];
             var imgNodes = $iframeBody.find('img');
             var vidNodes = $iframeBody.find('video');
+            var audioNodes = $iframeBody.find('audio');
             // Refer #278 & #297 - For math heavy page use the controller - TEMP Solution till ZIM files support mathjax
             // No need for the controller otherwise. Alternately use local mathjax see SO - q/31891619
             var svgmathload = imgNodes.filter(".mwe-math-fallback-image-inline").length;
@@ -928,8 +956,11 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 f.run({type:"quick", initialImageLoad: settings.initialImageLoad});
             }
             if (vidNodes.length > 0){
-                // TED pages usually have only 1 vid so this just temo till code stabilizes
+                // TED pages usually have only 1 vid so this just temporary till code testing completes
                 loadVid(vidNodes[0]);
+            }
+            if (audioNodes.length > 0){
+                loadAudio(audioNodes[0]);
             }
 
             // Load CSS content
