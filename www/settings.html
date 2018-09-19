@@ -24,6 +24,9 @@
                         <li role="presentation">
                             <a href="#profile" role="tab" id="profile-tab" data-toggle="tab" aria-controls="profile">Downloadable Archives</a>
                         </li>
+                        <!-- <li role="presentation" class="disabled">
+                            <a href="#loadArchive" role="tab" id="loadArchive-tab" data-toggle="tab" aria-controls="profile">Load</a>
+                        </li> -->
                         <li role="presentation" class="dropdown"> <a href="#" class="dropdown-toggle" id="myTabDrop1" data-toggle="dropdown" aria-controls="myTabDrop1-contents">Settings <span class="caret"></span></a> <ul class="dropdown-menu" aria-labelledby="myTabDrop1" id="myTabDrop1-contents"> <li><a href="#dropdown1" role="tab" id="dropdown1-tab" data-toggle="tab" aria-controls="dropdown1">General</a></li> <li><a href="#dropdown2" role="tab" id="dropdown2-tab" data-toggle="tab" aria-controls="dropdown2">Search</a></li> </ul>
                         </li>
                     </ul>
@@ -49,6 +52,21 @@
                         <div class="tab-pane fade" role="tabpanel" id="profile" aria-labelledby="profile-tab">
                             <ul id="zims" style="padding:2px;"></ul>
                         </div>
+                        <!-- <div class="tab-pane fade" role="tabpanel" id="loadArchive" aria-labelledby="loadArchive-tab">
+                          <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
+                          <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>
+                          <div id="openLocalFiles" >
+                            <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" />
+                            </p>
+                        </div>
+                        <div id="scanningForArchives" style="display: none;">
+                            <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
+                        </div>
+                        <div id="chooseArchiveFromLocalStorage" style="display: none;">
+                            <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
+                            <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
+                        </div>  
+                        </div> -->
                         <div class="tab-pane fade" role="tabpanel" id="dropdown1" aria-labelledby="dropdown1-tab">
                             <table class='table table-condensed small'>
                             <caption>Table lists default values which can be changed in www/js/init.js</caption>
@@ -138,19 +156,6 @@
                         </table>
                         </div>
                     </div>
-                    <!-- <h4 style='border-bottom:2px solid #004499'>Load An Archive (old method)</h4>
-                    <p class='small'>NOTE: ZIM files can be loaded from any location on disk by this method, but link related operations like bookmarking/open link in new tab/inter-archive links etc will not work. For the best experience download and copy files to the default storage location 'www' in the kiwix folder</p>
-                    <div id="openLocalFiles" style="display: none;" >
-                        <p><input type="file" id="archiveFiles" multiple class="btn" accept=".zim,.dat,.idx,.txt,.zimaa,.zimab,.zimac,.zimad,.zimae,.zimaf,.zimag,.zimah,.zimai,.zimaj,.zimak,.zimal,.zimam,.ziman,.zimao,.zimap,.zimaq,.zimar,.zimas,.zimat,.zimau,.zimav,.zimaw,.zimax,.zimay,.zimaz,.zimba,.zimbb,.zimbc,.zimbd,.zimbe,.zimbf,.zimbg,.zimbh,.zimbi,.zimbj,.zimbk,.zimbl,.zimbm,.zimbn,.zimbo,.zimbp,.zimbq,.zimbr,.zimbs,.zimbt,.zimbu,.zimbv,.zimbw,.zimbx,.zimby,.zimbz" />
-                        </p>
-                    </div>
-                    <div id="scanningForArchives" style="display: none;">
-                        <br /> Scanning for archives... Please wait <img src="img/spinner.gif" alt="Please wait..." />
-                    </div>
-                    <div id="chooseArchiveFromLocalStorage" style="display: none;">
-                        <br /> Please select the archive you want to use : <select id="archiveList" class="form-control"></select>
-                        <br /> Click <a id="btnRescanDeviceStorage">here</a> to rescan your SD Cards and internal memory
-                    </div> -->
                 </div>               
 			</article>
         </section>

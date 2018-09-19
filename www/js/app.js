@@ -88,7 +88,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         searchContext.loadmore = false;
         startImageSearch($('#prefix').val());
     });    
-
+/*TODO: Has to be rewritten to support new iframe
     if (zimArchiveLoader.storageExists()) {
         zimArchiveLoader.findArchives(ui.populateListOfArchives);
         $('#archiveList').on('change', setLocalArchiveFromArchiveList);
@@ -97,25 +97,25 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             $('#scanningForArchives').show();
             zimArchiveLoader.scanForArchives(ui.populateDropDownListOfArchives);
         });
-    }else{ 
+    }else{
         // dislpay the fileselector TODO show maybe unnecessary as its always in view when config is clicked   
-        $('#openLocalFiles').show();
-        $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);
+        //$('#openLocalFiles').show();
+        $('#archiveFiles').on('change', setLocalArchiveFromFileSelect);*/
         // Handle setting archive via URL
         var params={};
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
         if(params["archive"]){
             setLocalArchiveFromURL(params);
         }else{
-	        // Display the file select components
-            //if (document.getElementById('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
+	        
+            //if (iframesettingsbody.('archiveFiles').files && document.getElementById('archiveFiles').files.length>0) {
                 // Archive files are already selected, 
             //    setLocalArchiveFromFileSelect();
             //}else{
                $("#btnConfigure").click();
             //}
 	    }
-    }
+    //}
 
     function startSearch(keyword, uiReset, uiKeywordSet){
         searchContext.keyword = keyword;
