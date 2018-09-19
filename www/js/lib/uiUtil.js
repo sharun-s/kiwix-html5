@@ -161,25 +161,41 @@ define(['jquery'], function($) {
         //$("#appStatus").removeClass().html(html);
     }
 
+    // should run if selectedarchive is not set
+    function disableUI(){
+        $("#btnHome").prop("disabled","true");
+        $("#filterDropDown").prop("disabled","true");
+        $("#prefix").prop("disabled","true");
+        $("#btnRandomArticle").addClass("disabled");
+        $("#searchArticles").addClass("disabled");
+        $("#searchImages").addClass("disabled");
+        // if ( disappear ){
+        //     window.setTimeout(function(){$("#infomsgb").fadeTo(500,0,function(){
+        //         $("#bar1").show();
+        //         $("#prefix").show();
+        //         $("#bar3").show();
+        //         $(this).text("");
+        //         $(this).css('padding',0);
+        //     })},700);
+        // }else{
+        //     console.log(text);
+        // }
+    }
+    // should run if selectedarchive is set
+    function enableUI(){
+        $("#btnHome").removeAttr("disabled");
+        $("#filterDropDown").removeAttr("disabled");
+        $("#prefix").removeAttr("disabled");
+        $("#btnRandomArticle").removeClass("disabled");
+        $("#searchArticles").removeClass("disabled");
+        $("#searchImages").removeClass("disabled");
+    }
+
     function showInfo(text, disappear){
         if (text){
-            //$("#bar1").hide();
-            //$("#prefix").hide();
-            //$("#bar3").hide();
             $("#infomsgb").fadeTo(0,1);
             $("#infomsgb").css('padding',6);
             $("#infomsgb").html("<strong>"+text+"</strong>");
-            // if ( disappear ){
-            //     window.setTimeout(function(){$("#infomsgb").fadeTo(500,0,function(){
-            //         $("#bar1").show();
-            //         $("#prefix").show();
-            //         $("#bar3").show();
-            //         $(this).text("");
-            //         $(this).css('padding',0);
-            //     })},700);
-            // }else{
-            //     console.log(text);
-            // }
         }
     }
 
@@ -189,6 +205,7 @@ define(['jquery'], function($) {
                 var name = selectedArchive._file._files[0].name;
                 //if(name && name !=="undefined")
                 statusUpdate("LOADED: "+selectedArchive._file._files[0].name, "bg-success");
+                enableUI();
             }else
                 statusUpdate("Archive Not Set!!", "alert alert-danger"); 
         }catch (e){
@@ -379,6 +396,8 @@ define(['jquery'], function($) {
         isElementInView: isElementInView,
         checkVisibleImages: checkVisibleImages,
         reset: resetUI,
+        enableUI: enableUI,
+        disableUI: disableUI,
         archiveStatusUpdate: archiveStatusUpdate,
         status: statusUpdate,
         statusHTML: statusUpdateHTML,

@@ -47,10 +47,10 @@
                         <form id="formArticleSearchnew">
                             <span class="input-group" >
                                 <span class="input-group-btn" id='bar1'>
-                                    <button id="btnHome" type="button" class="btn btn-default">
-                                    <img src="./img/icons/kiwix-19.png"/>
+                                    <button id="btnHome" type="button" class="btn btn-default" disabled>
+                                    <span class="glyphicon glyphicon-home"></span>
                                     </button>
-                                    <button id="filterDropDown" type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <button id="filterDropDown" type="button" style="margin-top=-1px;" class="btn btn-default btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" disabled>
                                         <span class="glyphicon glyphicon-filter small"></span>
                                         <span class="caret small"></span>
                                     </button>
@@ -79,12 +79,12 @@
                                       <input type="submit" form="filters" style="display:none;" />
                                     </ul>    
                                 </span>
-                                <input type="search" id="prefix" placeholder="Search..." 
+                                <input type="search" id="prefix" disabled placeholder="Search..." 
                                 class="form-control" />
                                 <span class="input-group-btn" id='bar3'>
-                                    <a class="btn btn-primary btn-default" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
-                                    <a class="btn btn-default" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
-                                    <a class="btn btn-default" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
+                                    <a class="btn btn-primary btn-default disabled" title="Article Search" id="searchArticles"><span class="glyphicon glyphicon-search"></span></a>
+                                    <a class="btn btn-default disabled" title="Image Search" id="searchImages"><span class="glyphicon glyphicon-camera"></span></a>
+                                    <a class="btn btn-default disabled" title="Random Article" id="btnRandomArticle"><span class="glyphicon glyphicon-random"></span></a>
                                 </span>
                                 <span class="input-group-btn" id='bar4'>
                                     <a class="btn btn-default" title="Settings" id="btnConfigure"><span class="glyphicon glyphicon-wrench"></span></a>

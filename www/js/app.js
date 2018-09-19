@@ -285,6 +285,8 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             READ_MODE = "file";
             require({'baseUrl':'js/lib'},['util'], (u) => {u.readSlice = u.readFileSlice;});
         }
+        var files = $("#articleContent").find("#archiveFiles");
+        console.log(files);
         setLocalArchiveFromFileList(document.getElementById('archiveFiles').files);
     }
 
@@ -366,7 +368,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         
         // If incremental UI update of results is not desired move this inside onAllResults
         $('#articleList').show();
-        if (selectedArchive !== null && selectedArchive.isReady()) {
+        // if (selectedArchive !== null && selectedArchive.isReady()) {
             if (settings.includeSnippet)
                 snippetController = new control.asyncJobQueue(settings.maxAsyncSnippetReads, fillSnippet);
             // if searchContext.caseSensitive = false setting the onAllResults callback is unnecessary
@@ -377,14 +379,14 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                               },
                               onAllWorkersCompletion: titleSearchDone 
                             }, selectedArchive, READ_MODE);
-        } else {
-            // We have to remove the focus from the search field,
-            // so that the keyboard does not stay above the message
-            $("#searchArticles").focus();
-            //alert("Archive not set : please select an archive");
-            //ui.status("Archive not set!");
-            $("#btnConfigure").click();
-        }
+        // } else {
+        //     // We have to remove the focus from the search field,
+        //     // so that the keyboard does not stay above the message
+        //     $("#searchArticles").focus();
+        //     //alert("Archive not set : please select an archive");
+        //     //ui.status("Archive not set!");
+        //     $("#btnConfigure").click();
+        // }
     }
     
     window.getSearchResults = function getSearchResults(){
@@ -473,7 +475,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         /* TODO Show Progress */
         ui.status("Searching...", "btn-warning")
         //var keyword = decodeURIComponent(prefix); 
-        if (selectedArchive !== null && selectedArchive.isReady()) {
+        //if (selectedArchive !== null && selectedArchive.isReady()) {
             // used in processArticleForImages TODO refactor
             articleReadController = new control.asyncJobQueue(settings.maxAsyncArticleReads, fillImages);
             var f = new finder.titleSearch(searchContext, {
@@ -482,13 +484,13 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                 onAllResults: singleVariantDone
                 // onAllWorkerTODO: use to improve searchDone detection promise.all( all dislayinFrame resolved promises)
             }, selectedArchive, READ_MODE);
-        } else {
-            // We have to remove the focus from the search field,
-            // so that the keyboard does not stay above the message
-            $("#searchArticles").focus();
-            //ui.status("Archive not set!");
-            $("#btnConfigure").click();
-        }
+        // } else {
+        //     // We have to remove the focus from the search field,
+        //     // so that the keyboard does not stay above the message
+        //     $("#searchArticles").focus();
+        //     //ui.status("Archive not set!");
+        //     $("#btnConfigure").click();
+        // }
     }
 
     // TODO: Handle multiple results resolving to the same snip_id
@@ -1132,7 +1134,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     }
     
     function goToRandomArticle() {
-        if (selectedArchive !== null && selectedArchive.isReady()) {    
+        //if (selectedArchive !== null && selectedArchive.isReady()) {    
             selectedArchive.getRandomDirEntry(function(dirEntry) {
                 if (dirEntry === null || dirEntry === undefined) {
                     ui.status("Error Finding Random Article.");
@@ -1149,19 +1151,19 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     }
                 }
             });            
-        } else {
-            //$('#searchingForArticles').hide();
-            // We have to remove the focus from the search field,
-            // so that the keyboard does not stay above the message
-            $("#searchArticles").focus();
-            ui.status("Archive Not Set!");
-            $("#btnConfigure").click();
-        }
+        // } else {
+        //     //$('#searchingForArticles').hide();
+        //     // We have to remove the focus from the search field,
+        //     // so that the keyboard does not stay above the message
+        //     $("#searchArticles").focus();
+        //     ui.status("Archive Not Set!");
+        //     $("#btnConfigure").click();
+        // }
     }
 
     function goToMainArticle() {
         //ui.reset();
-        if (selectedArchive && selectedArchive.isReady()){
+        //if (selectedArchive && selectedArchive.isReady()){
             selectedArchive.getMainPageDirEntry(function(dirEntry) {
                 if (dirEntry === null || dirEntry === undefined) {
                     ui.status("Error finding main article.");
@@ -1178,9 +1180,9 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     }
                 }
             });            
-        }else{
-            ui.status("Archive Not Set!", 'bg-danger');
-        }
+        //}else{
+        //    ui.status("Archive Not Set!", 'bg-danger');
+        //}
     }
 
     // Converts selectedArchive object to string. The string can be saved and used later to recreate the object  
