@@ -27,7 +27,13 @@
                         <!-- <li role="presentation" class="disabled">
                             <a href="#loadArchive" role="tab" id="loadArchive-tab" data-toggle="tab" aria-controls="profile">Load</a>
                         </li> -->
-                        <li role="presentation" class="dropdown"> <a href="#" class="dropdown-toggle" id="myTabDrop1" data-toggle="dropdown" aria-controls="myTabDrop1-contents">Settings <span class="caret"></span></a> <ul class="dropdown-menu" aria-labelledby="myTabDrop1" id="myTabDrop1-contents"> <li><a href="#dropdown1" role="tab" id="dropdown1-tab" data-toggle="tab" aria-controls="dropdown1">General</a></li> <li><a href="#dropdown2" role="tab" id="dropdown2-tab" data-toggle="tab" aria-controls="dropdown2">Search</a></li> </ul>
+                        <li role="presentation" class="dropdown"> <a href="#" class="dropdown-toggle" id="myTabDrop1" data-toggle="dropdown" aria-controls="myTabDrop1-contents">Settings <span class="caret"></span></a> 
+                            <ul class="dropdown-menu" aria-labelledby="myTabDrop1" id="myTabDrop1-contents"> 
+                                <li><a href="#dropdown1" role="tab" id="dropdown1-tab" data-toggle="tab" aria-controls="dropdown1">General</a></li> 
+                                <li><a href="#dropdown2" role="tab" id="dropdown2-tab" data-toggle="tab" aria-controls="dropdown2">Search</a></li>
+                                <li><a href="#dropdown3" role="tab" id="dropdown3-tab" data-toggle="tab" aria-controls="dropdown3">Aliases</a></li>
+                                <li><a href="#dropdown4" role="tab" id="dropdown4-tab" data-toggle="tab" aria-controls="dropdown4">Redirects</a></li> 
+                            </ul>
                         </li>
                     </ul>
                     <div class="tab-content" id="myTabContent">
@@ -95,6 +101,10 @@
                                 <td>2</td><td>In above the fold mode/"quick" mode workerCount+1 workers will run</td>
                             </tr>
                             <tr>
+                                <th scope='row'>Default Subtitle Language</th>
+                                <td>English</td><td>Change track[srclang="en"] in app.js</td>
+                            </tr>
+                            <tr>
                                 <th scope='row'>Max Async Article Reads</th>
                                 <td>2</td><td>Image search loads images in artilces from article titles matching search phrase </td>
                             </tr>
@@ -103,57 +113,144 @@
                         </div>
                         <div class="tab-pane fade" role="tabpanel" id="dropdown2" aria-labelledby="dropdown2-tab">
                             <table class='table table-condensed small'>
-                            <caption>Table lists default values which can be changed in www/js/init.js</caption>
-                            <thead>
+                                <caption>Table lists default values which can be changed in www/js/init.js</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope='col'>Setting</th>
+                                        <th scope='col'>Value</th>
+                                        <th scope='col'>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                 <tr>
-                                    <th scope='col'>Setting</th>
-                                    <th scope='col'>Value</th>
-                                    <th scope='col'>Description</th>
+                                    <th scope='row'>Auto Complete</th>
+                                    <td>True</td><td>if false user has to hit enter or press the search button after typing</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-                                <th scope='row'>Auto Complete</th>
-                                <td>True</td><td>if false user has to hit enter or press the search button after typing</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>autoCompleteResubmitTimer</th>
-                                <td>700</td><td></td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>Include Snippet</th>
-                                <td>False</td><td>First para of article is included in search result</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>maxAsyncSnippetReads</th>
-                                <td>5</td><td>search performance optimization</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>Include Thumbnail</th>
-                                <td>True</td><td></td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>Max Results</th>
-                                <td>10</td><td>use 'upto' param in titleSearch url (see about page)</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>From index location</th>
-                                <td>0</td><td>use 'from' param in titleSearch url (see about page)</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>Include Snippet</th>
-                                <td>False</td><td>First para of article is included in search result</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>Matching</th>
-                                <td>PrefixAndArticleMatch</td><td>By default, matching of search phrase is done against begining of article titles. This can be changed to SubstringMatch to match anywhere in the title</td>
-                            </tr>
-                            <tr>
-                                <th scope='row'>caseSensitive matching</th>
-                                <td>True</td><td>use 'case' param in titleSearch url (see about page)</td>
-                            </tr>
-                            </tbody>
-                        </table>
+                                <tr>
+                                    <th scope='row'>autoCompleteResubmitTimer</th>
+                                    <td>700</td><td></td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>Include Snippet</th>
+                                    <td>False</td><td>First para of article is included in search result</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>maxAsyncSnippetReads</th>
+                                    <td>5</td><td>search performance optimization</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>Include Thumbnail</th>
+                                    <td>True</td><td></td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>Max Results</th>
+                                    <td>10</td><td>use 'upto' param in titleSearch url (see about page)</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>From index location</th>
+                                    <td>0</td><td>use 'from' param in titleSearch url (see about page)</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>Include Snippet</th>
+                                    <td>False</td><td>First para of article is included in search result</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>Matching</th>
+                                    <td>PrefixAndArticleMatch</td><td>By default, matching of search phrase is done against begining of article titles. This can be changed to SubstringMatch to match anywhere in the title</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>caseSensitive matching</th>
+                                    <td>True</td><td>use 'case' param in titleSearch url (see about page)</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown3" aria-labelledby="dropdown3-tab">
+                            <table class='table table-condensed small'>
+                                <caption>Short names to simplify urls when ZIM filenames are too long eg: wikipedia_en_2018-10 -> wiki will allow ?archive=wiki to be used in url. To add a new entry or change an entry knownArchives.js needs to be manually updated currently.</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope='col'>Filename</th>
+                                        <th scope='col'>Alias</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <th scope='row'>test</th>
+                                    <td>wikipedia_en_ray_charles_2015-06.zim</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>wiki</th>
+                                    <td>wikipedia_en_all_2016-12.zim</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>so</th>
+                                    <td>stackoverflow.com_eng_all_2017-05.zim</td>
+                                </tr>                                
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown3" aria-labelledby="dropdown3-tab">
+                            <table class='table table-condensed small'>
+                                <caption>Short names to simplify urls when ZIM filenames are too long eg: wikipedia_en_2018-10 -> wiki will allow ?archive=wiki to be used in url. To add a new entry or change an entry knownArchives.js needs to be manually updated currently.</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope='col'>Filename</th>
+                                        <th scope='col'>Alias</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <th scope='row'>test</th>
+                                    <td>wikipedia_en_ray_charles_2015-06.zim</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>wiki</th>
+                                    <td>wikipedia_en_all_2016-12.zim</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>so</th>
+                                    <td>stackoverflow.com_eng_all_2017-05.zim</td>
+                                </tr>                                
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown4" aria-labelledby="dropdown4-tab">
+                            <table class='table table-condensed small'>
+                                <caption>Inter-archive links mapping. If a wikipedia article has a link pointing at wikivoyage and both ZIM files are available then updating this mapping table should allow all such link to work offline. Currently must be modification must be made manually in library.js URL2Archive object  </caption>
+                                <thead>
+                                    <tr>
+                                        <th scope='col'>URL</th>
+                                        <th scope='col'>Filename or Alias</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <th scope='row'>simple.wikipedia.org</th>
+                                    <td>wiki</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>en.wikipedia.org</th>
+                                    <td>wiki</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>en.wikipedia.org/wiki</th>
+                                    <td>wiki</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>en.wiktionary.org/wiki</th>
+                                    <td>wiktionary_en_simple_all_novid_2018-07.zim</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>stackoverflow.com</th>
+                                    <td>so</td>
+                                </tr>
+                                <tr>
+                                    <th scope='row'>www.stackoverflow.com</th>
+                                    <td>so</td>
+                                </tr>                               
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>               
