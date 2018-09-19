@@ -563,11 +563,25 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             $("title").html(dirEntry.title);
             ui.status("Reading...", "bg-warning");
             //$("#articleContent").contents().html("");
-            if (dirEntry.isRedirect()) {
-                selectedArchive.resolveRedirect(dirEntry, readArticle);
-            }
-            else {
-                readArticle(dirEntry);
+            
+            if(dirEntry.namespace == 'I'){
+                var $iframe = $('#articleContent').contents();
+                var $iframeBody = $iframe.find('body');
+                var imgnode = $("<img>");
+                $iframeBody.append(imgnode);
+                selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob)
+                        .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), imgnode, imageBlob))
+                        .catch((reason) => {
+                            console.log(reason);
+                            console.error("Failed loading " + dirEntry.url );
+                        });
+            }else{
+                if (dirEntry.isRedirect()) {
+                    selectedArchive.resolveRedirect(dirEntry, readArticle);
+                }
+                else {
+                    readArticle(dirEntry);
+                }
             }
         }
         else {
