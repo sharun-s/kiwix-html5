@@ -75,6 +75,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     ui.onHome(goToMainArticle);
     ui.onRandom(goToRandomArticle);
     ui.onConfig(() => ui.archiveStatusUpdate(selectedArchive));
+    ui.onAdvSearch(() => {return selectedArchive._file._files[0].name;});
     uiSearch.setupHandlers(searchContext, settings.autoComplete);
     if(settings.autoComplete)
         $('#prefix').on('keyup', function(e) {
@@ -105,6 +106,22 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         var params={};
         location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
         if(params["archive"]){
+            if(params["phrase"]){
+                // url has been set by adv search page so reset searchContext
+                searchContext = {
+                    from:params["from"], 
+                    upto:params["upto"], 
+                    match:params["match"]?params["match"]:searchContext.match, 
+                    caseSensitive:params["case"]?params["case"]:searchContext.caseSensitive,
+                    dups:params["dups"]?params["dups"]:false,
+                    redirects:params["redirects"],
+                    ns:params["ns"],
+                    idx:params["idx"]
+                };
+                if(params['idx'] == "Title"){
+                    params['titleSearch']=params['phrase'];
+                }
+            }        
             setLocalArchiveFromURL(params);
         }else{
 	        
@@ -177,7 +194,7 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     function setLocalArchiveFromURL(params){
         ui.reset();    
         selectedArchive = zimArchiveLoader.loadArchiveFromURL(params["archive"]);
-        ui.archiveStatusUpdate(selectedArchive);                
+        ui.archiveStatusUpdate(selectedArchive);
         if(params["c"] && params["b"]){
             let tmptitle = params['title'].replace(/_/,' ').slice(0,-5);
             // This is for direct access to a particular cluster+blob via a url.
@@ -192,8 +209,6 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
                     $('#articleContent').contents().find('body').html('<img src='+url+'></img>');                    
                 });
             }
-                //selectedArchive._file.blob(dirEntry.cluster, dirEntry.blob)
-                //        .then((imageBlob) => checkTypeAndInject(dirEntry.url.toLowerCase(), $("articleContent"), imageBlob);
             else
                 findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
         }else if(params["title"]){

@@ -164,7 +164,7 @@ define(['jquery'], function($) {
     // should run if selectedarchive is not set
     function disableUI(){
         $("#btnHome").prop("disabled","true");
-        $("#filterDropDown").prop("disabled","true");
+        $("#btnAdvSearch").prop("disabled","true");
         $("#prefix").prop("disabled","true");
         $("#btnRandomArticle").addClass("disabled");
         $("#searchArticles").addClass("disabled");
@@ -184,7 +184,7 @@ define(['jquery'], function($) {
     // should run if selectedarchive is set
     function enableUI(){
         $("#btnHome").removeAttr("disabled");
-        $("#filterDropDown").removeAttr("disabled");
+        $("#btnAdvSearch").removeAttr("disabled");
         $("#prefix").removeAttr("disabled");
         $("#btnRandomArticle").removeClass("disabled");
         $("#searchArticles").removeClass("disabled");
@@ -299,6 +299,18 @@ define(['jquery'], function($) {
             resizeIFrame();
             return false;
         });
+    }
+
+    function onAdvSearch(fnGetSelectedArchive){
+        $('#btnAdvSearch').on('click', function(e) {
+            //$("title").html("Kiwix - Advanced Search");
+            //resetUI();
+            //showInfo("- Advanced Search -", false);
+            //document.getElementById('articleContent').src = 'search.html?archive=' + fnGetSelectedArchive();
+            //resizeIFrame();
+            location.href = location.href.replace( /index\.html[\?#].*/,'search.html?archive=' + fnGetSelectedArchive());
+            return false;
+        });
     } 
 
     // @page is a DOM document or element, 
@@ -407,6 +419,7 @@ define(['jquery'], function($) {
         onHome: onHome,
         onConfig: onConfig,
         onRandom: onRandom,
+        onAdvSearch: onAdvSearch,
         populateListOfArchives: populateListOfArchives 
     };
 });

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Kiwix</title>
+        <link rel="icon" href="img/icons/kiwix-32.png" sizes="32x32" />
+        <meta name="description" content="Offline Wikipedia reader">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="css/bootstrap.css" rel="stylesheet" media="screen"/>
+        <link href="css/bootstrap-theme.css" rel="stylesheet" media="screen"/>
+        <link href="css/nearby.css" rel="stylesheet" media="screen"/>
+        <script type="text/javascript" src="js/lib/require.js"></script>
+    </head>
+    <body role="application">
+        <section id="search-article" role="region">
+            <article class="view-content">
+                <div id="configuration" class="container">
+                    <h4>Search Options</h4>
+                    <p class='text-muted'>For help on using the app, in the menu above click <span class="glyphicon glyphicon-question-sign" style="border:1px black"></span></p>
+                    <ul class="nav nav-tabs">
+                        <li role="presentation" class="active">
+                            <a href="#home" id="home-tab" role="tab" data-toggle="tab" aria-controls="home" aria-expanded="true">In-Built</a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#profile" role="tab" id="profile-tab" data-toggle="tab" aria-controls="profile">External</a>
+                        </li>
+                        <li role="presentation" class="dropdown"> 
+                            <a href="#" class="dropdown-toggle" id="myTabDrop1" data-toggle="dropdown" aria-controls="myTabDrop1-contents">Geo <span class="caret"></span></a> 
+                            <ul class="dropdown-menu" aria-labelledby="myTabDrop1" id="myTabDrop1-contents"> 
+                                <li><a href="#dropdown1" role="tab" id="dropdown1-tab" data-toggle="tab" aria-controls="dropdown1">Search Nearby</a></li> 
+                                <li><a href="#dropdown2" role="tab" id="dropdown2-tab" data-toggle="tab" aria-controls="dropdown2">Near Title</a></li> 
+                            </ul>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade active in" role="tabpanel" id="home" aria-labelledby="home-tab">
+                            <form id="filters" class="form-horizontal" action="index.html" style="">
+                                <input type="hidden" name="archive" id="archive"/>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="phrase" id="phrase-addon">Phrase</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" name="phrase" placeholder="Enter a keyword or phrase" aria-describedby="phrase-addon"></input>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="indexGroup">Index</label>
+                                    <div class="btn-group" data-toggle="buttons" id="indexGroup">
+                                      <label class="btn btn-primary active">
+                                        <input class="form-control" type="radio" name="idx" autocomplete="off" value="Title" checked>Title
+                                      </label>
+                                      <label class="btn btn-primary">
+                                        <input class="form-control" type="radio" name="idx" autocomplete="off" value="URL">URL
+                                      </label>
+                                      <label class="btn btn-primary">
+                                        <input class="form-control" type="radio" name="idx" value="ft" autocomplete="off">Full Text
+                                      </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="typeGroup">Type</label>
+                                    <div class="btn-group" data-toggle="buttons" id="typeGroup">
+                                      <label class="btn btn-default active">
+                                        <input class="form-control" type="radio" name="ns" value="A" autocomplete="off" checked>Articles
+                                      </label>
+                                      <label class="btn btn-default">
+                                        <input class="form-control" type="radio" name="ns" value="I" autocomplete="off">Media
+                                      </label>
+                                      <label class="btn btn-default">
+                                        <input class="form-control" type="radio" name="ns" value="meta" autocomplete="off">Misc
+                                      </label>
+                                    </div>
+                                </div>
+                                <!-- values of the "match" group below should be the same as values in dirEntryFinder.js matcherTable until better impl in place. Anything added there should be added here-->
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="matchGroup">Matching</label>
+                                    <div class="btn-group" data-toggle="buttons" id="matchGroup">
+                                        <label class="btn btn-default active">
+                                            <input value="PrefixAndArticleMatch" type="radio" name="match" checked>PrefixMatch</input></label>
+                                        <label class="btn btn-default">
+                                            <input value="SubstringMatch" type="radio" name="match">SubstringMatch</input></label>
+                                        <label class="btn btn-default">
+                                            <input value="All" type="radio" name="match">All</input></label>
+                                        <label class="btn btn-default">
+                                            <input value="NoMatch" type="radio" name="match">None</input></label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="case">Case Sensitive</label>
+                                    <input type="checkbox" name="case" checked></input>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="redirects">Resolve Redirects</label>
+                                    <input name="redirects" type="checkbox" class="btn btn-primary" data-toggle="button" aria-pressed="false" autocomplete="off"></input>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="dups">Remove Duplicates</label>
+                                    <input name="dups" type="checkbox" class="btn btn-primary" data-toggle="button" aria-pressed="false" autocomplete="off"></input>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="from" id="fromindex-addon">Start From Index</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" name="from" form="filters" aria-describedby="fromindex-addon"></input>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="upto" id="traverse-addon">Traverse Upto Index</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" name="upto" aria-describedby="traverse-addon"></input>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="col-sm-offset-2 col-sm-10">
+                                        <button type="submit" class="btn btn-primary">Submit</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="profile" aria-labelledby="profile-tab">
+                            <form id="efilters" class="form-horizontal" action="index.html" style="">
+                                <input type="hidden" name="archive" id="arch"></input>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">Server</label>
+                                    <div class="col-sm-10">
+                                      <p class="form-control-static">localhost:9200</p>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="phrase" id="phrase-addon">Query</label>
+                                    <div class="col-sm-10">
+                                        <textarea class="form-control" name="query" placeholder='Enter an elasticsearch query 
+                                        eg:{
+                                        "query" : {
+                                        "match" : { "user": "kimchy" }
+                                    }
+                                }' aria-describedby="phrase-addon" rows=5></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="eidx" id="eidx-addon">Index</label>
+                                    <div class="col-sm-2">
+                                        <input type="text" class="form-control" name="eidx" aria-describedby="eidx-addon"></input>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label" for="prop" id="prop-addon">Output</label>
+                                    <div class="col-sm-10">
+                                        <select name="prop" class="form-control">
+                                          <option>Title</option>
+                                          <option>Category</option>
+                                          <option>Opening-text</option>
+                                          <option>Text</option>
+                                          <option>Outgoing-link</option>
+                                          <option>Template</option>
+                                      </select>
+                                   </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="col-sm-offset-2 col-sm-10">
+                                        <button type="submit" class="btn btn-primary">Submit</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" role="tabpanel" id="dropdown1" aria-labelledby="dropdown1-tab">
+                            <div class="pre-content heading-holder">
+                                <h1 id="section_0">Nearby</h1>
+                                <div class="tagline"></div>
+                            </div>
+                            <div id="mw-content-text">
+                                <div id="mf-nearby-info-holder">
+                                    <div class="mw-ui-icon mw-ui-icon-element mw-ui-mf-nearby-image-info mw-ui-icon-large icon"></div>
+                                    <h3>Places around you</h3>
+                                    <div class="desc">You can read about interesting Wikipedia articles about places around you</div>
+                                    <div class="jsonly">
+                                        <a id="showArticles" class="mw-ui-progressive mw-ui-button">Show nearby articles</a>
+                                    </div>
+                                </div>
+                                <ul class="page-list thumbs"></ul>
+                                <div class="content-unstyled" id="mw-mf-nearby">
+                                    <div class="content noscript">
+                                        <div class="errorbox">
+                                            <h2>Sorry! Your web browser doesn't support Wikipedia Nearby.</h2>
+                                            <p>Try a different browser or enable JavaScript if you've disabled it.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <noscript>
+                                    <img src="//en.wikipedia.org/wiki/Special:CentralAutoLogin/start?type=1x1&amp;mobile=1" alt="" title="" width="1" height="1" style="border: none; position: absolute;" />
+                                </noscript>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>               
+			</article>
+        </section>
+    </body>
+    <script>
+        require({
+            baseUrl: 'js/lib',
+            paths: {
+                'jquery': 'jquery-2.1.4',
+                'bootstrap': 'bootstrap'
+            },
+            shim: {
+                'jquery' : {
+                    exports : '$'
+                },
+                'bootstrap': {
+                    deps: ['jquery']
+                }
+            }
+        }, function(){
+        require(['bootstrap']);
+        require(['jquery'], function($){
+                function locAvailable(){
+                    return 'geolocation' in navigator;
+                };
+                function refresh(options){
+                    $( '.page-list' ).addClass( 'hidden' );
+                    // Run it once for loader etc
+                    var _isLoading = true;
+                    if ( ( options.latitude && options.longitude ) || options.pageTitle ) {
+                        // Flush any existing list of pages
+                        options.pages = [];
+
+                        // Get some new pages
+                        return _find( options ).then( function ( options ) {
+                            _super.call( self, options );
+                        }, function ( errorType ) {
+                            options.errorOptions = self._errorOptions( errorType );
+                            self._isLoading = false;
+                            _super.call( self, options );
+                        } );
+                    } else {
+                        throw new Error( 'No title or longitude, latitude options have been passed' );
+                    }
+                }
+                function getCurrentPosition() {
+                    return Promise(resolve, reject)
+                    {
+                        if (locAvailable() ) {
+                            navigator.geolocation.getCurrentPosition(
+                                function ( geo ) {
+                                    resolve( {
+                                        latitude: geo.coords.latitude,
+                                        longitude: geo.coords.longitude
+                                    } );
+                                },
+                                function ( err ) {
+                                    var error;
+                                    switch ( err.code ) {
+                                        case err.PERMISSION_DENIED:
+                                            error = 'permission';
+                                            break;
+                                        case err.TIMEOUT:
+                                            error = 'timeout';
+                                            break;
+                                        case err.POSITION_UNAVAILABLE:
+                                            error = 'location';
+                                            break;
+                                        default:
+                                            error = 'unknown';
+                                    }
+                                    reject( error );
+                                },
+                                {
+                                    timeout: 10000,
+                                    enableHighAccuracy: true
+                                });
+                        } else {
+                            reject( 'incompatible' );
+                        }
+                    };
+                }
+            $(document).ready(function(){
+                $( '#showArticles' ).on( 'click', function () {
+                    //overlay.show();
+                    getCurrentPosition().then( function ( geo ) {
+                        refresh( {latitude:geo.latitude, longitude:geo.longitude} );
+                    } ).catch( function ( error ) {
+                        //overlay.hide();
+                        // We want to show the Alert dialog to make sure user sees it
+                        switch ( error ) {
+                            case 'permission':
+                                alert( msg( "You have denied access to Location Services. To change this please visit your browser or device settings") );
+                                break;
+                            case 'location':
+                                alert( msg( 'Cannot determine your location. Please try again with a better signal.' ) );
+                                break;
+                            default:
+                                // timeout or undefined, do nothing for now
+                        }
+                    } );
+                } );
+            }); 
+        });
+    });
+        var params={};
+        location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi,function(s,k,v){params[k]=v});
+        if(params["archive"]){
+            document.getElementById('archive').value = params["archive"];
+        }else{
+            throw "Should never get here! This page should be accessible only after archive has been set."
+        }
+    </script>
+</html>
