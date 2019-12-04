@@ -26,8 +26,8 @@
 // This uses require.js to structure javascript:
 // http://requirejs.org/docs/api.html#define
 
-define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', 'cookies', 'module', 'control', 'finder', 'utf8'],
- function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, module, control, finder, utf8) {
+define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', 'cookies', 'module', 'control', 'finder', 'utf8', 'geo', 'elasticsearch.min'],
+ function($, zimArchiveLoader, library, util, ui, uiSearch, cookies, module, control, finder, utf8, g, elastic) {
 
     var settings  = module.config().settings;
     // Determines if Archives are read via FileReader or XHR Range Requests
@@ -88,7 +88,20 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
     $('#searchImages').on('click', function(e) {
         searchContext.loadmore = false;
         startImageSearch($('#prefix').val());
-    });    
+    });
+    // settings.useElasticSearch
+    var client = new elasticsearch.Client({
+                                    host: 'http://localhost:9200',
+                                    log: 'trace'
+                                });
+    client.ping({requestTimeout: 30000,
+                }, function (error) {
+                  if (error) {
+                    console.error('elasticsearch cluster is down!');
+                  } else {
+                    console.log('All is well');
+                  }
+                });    
 /*TODO: Has to be rewritten to support new iframe
     if (zimArchiveLoader.storageExists()) {
         zimArchiveLoader.findArchives(ui.populateListOfArchives);
@@ -211,9 +224,23 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             }
             else
                 findDirEntryFromDirEntryIdAndLaunchArticleRead(destring);
+        }else if(params["fileurl"]){
+            var u = decodeURIComponent(params["fileurl"])
+            selectedArchive.getDirEntryByURL(u).then(function(dirEntry) {
+            if (dirEntry === null || dirEntry === undefined) {
+                //alert("Article with url " + url + " not found in the archive");
+                ui.status("Article Not Found:"+ u);
+            }
+            else {
+                injectContent(dirEntry);
+            }
+            }).catch(function() { 
+                //alert("Error reading article with title " + url);
+                ui.status("Error Reading " + u); 
+            });
         }else if(params["title"]){
             pushBrowserHistoryState(params["title"]);
-            goToArticle(params["title"]);
+            goToArticle(decodeURIComponent(params["title"]));
         }
         else if(params.hasOwnProperty("titleSearch")){
             startSearch(decodeURIComponent(removeURIScheme(params["titleSearch"]), false, true));
@@ -223,8 +250,11 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
             goToMainArticle();
         }else if("random" in params){
             goToRandomArticle();
-        }
-        else{
+        }else if("geo" in params){
+            g.refresh( client, {latitude:params["lat"], longitude:params["long"]} ).then(function(o){
+                console.log(o.pages);// fillResult
+            });
+        }else{
             selectedArchive.getDirEntryByURL("M/Counter").then(function(dirEntry) {
                 selectedArchive.readArticle(dirEntry, 
                     (de,content) => $('#articleContent').contents().find('body').html("Loaded Archive: <strong class='label-primary'>"+selectedArchive._file._files[0].name+"</strong>. It contains:<br>"+

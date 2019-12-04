@@ -171,7 +171,7 @@
                                     <div class="mw-ui-icon mw-ui-icon-element mw-ui-mf-nearby-image-info mw-ui-icon-large icon"></div>
                                     <h3>Places around you</h3>
                                     <div class="desc">You can read about interesting Wikipedia articles about places around you</div>
-                                    <div class="jsonly">
+                                    <div class="">
                                         <a id="showArticles" class="mw-ui-progressive mw-ui-button">Show nearby articles</a>
                                     </div>
                                 </div>
@@ -185,7 +185,7 @@
                                     </div>
                                 </div>
                                 <noscript>
-                                    <img src="//en.wikipedia.org/wiki/Special:CentralAutoLogin/start?type=1x1&amp;mobile=1" alt="" title="" width="1" height="1" style="border: none; position: absolute;" />
+                                    <img src="" alt="" title="" width="1" height="1" style="border: none; position: absolute;" />
                                 </noscript>
                             </div>
                         </div>
@@ -212,87 +212,17 @@
             }
         }, function(){
         require(['bootstrap']);
-        require(['jquery'], function($){
-                function locAvailable(){
-                    return 'geolocation' in navigator;
-                };
-                function refresh(options){
-                    $( '.page-list' ).addClass( 'hidden' );
-                    // Run it once for loader etc
-                    var _isLoading = true;
-                    if ( ( options.latitude && options.longitude ) || options.pageTitle ) {
-                        // Flush any existing list of pages
-                        options.pages = [];
+        require(['jquery','geo'], function($, g){
 
-                        // Get some new pages
-                        return _find( options ).then( function ( options ) {
-                            _super.call( self, options );
-                        }, function ( errorType ) {
-                            options.errorOptions = self._errorOptions( errorType );
-                            self._isLoading = false;
-                            _super.call( self, options );
-                        } );
-                    } else {
-                        throw new Error( 'No title or longitude, latitude options have been passed' );
-                    }
-                }
-                function getCurrentPosition() {
-                    return Promise(resolve, reject)
-                    {
-                        if (locAvailable() ) {
-                            navigator.geolocation.getCurrentPosition(
-                                function ( geo ) {
-                                    resolve( {
-                                        latitude: geo.coords.latitude,
-                                        longitude: geo.coords.longitude
-                                    } );
-                                },
-                                function ( err ) {
-                                    var error;
-                                    switch ( err.code ) {
-                                        case err.PERMISSION_DENIED:
-                                            error = 'permission';
-                                            break;
-                                        case err.TIMEOUT:
-                                            error = 'timeout';
-                                            break;
-                                        case err.POSITION_UNAVAILABLE:
-                                            error = 'location';
-                                            break;
-                                        default:
-                                            error = 'unknown';
-                                    }
-                                    reject( error );
-                                },
-                                {
-                                    timeout: 10000,
-                                    enableHighAccuracy: true
-                                });
-                        } else {
-                            reject( 'incompatible' );
-                        }
-                    };
-                }
             $(document).ready(function(){
-                $( '#showArticles' ).on( 'click', function () {
-                    //overlay.show();
-                    getCurrentPosition().then( function ( geo ) {
-                        refresh( {latitude:geo.latitude, longitude:geo.longitude} );
-                    } ).catch( function ( error ) {
-                        //overlay.hide();
-                        // We want to show the Alert dialog to make sure user sees it
-                        switch ( error ) {
-                            case 'permission':
-                                alert( msg( "You have denied access to Location Services. To change this please visit your browser or device settings") );
-                                break;
-                            case 'location':
-                                alert( msg( 'Cannot determine your location. Please try again with a better signal.' ) );
-                                break;
-                            default:
-                                // timeout or undefined, do nothing for now
-                        }
-                    } );
-                } );
+                $( '#showArticles' ).on( 'click', function () {                    
+                    g.getCurrentPosition().then( function ( geo ) {
+                        console.log(geo);
+                        location.href = "index.html?archive="+params["archive"]+"&geo=&lat="+geo.latitude+"&long="+geo.longitude;
+                    }).catch(()=>{
+                        location.href = "index.html?archive="+params["archive"]+"&geo=&lat=13.083889&long=80.270001";
+                    });
+                });
             }); 
         });
     });
