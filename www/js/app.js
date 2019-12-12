@@ -538,6 +538,34 @@ define(['jquery', 'zimArchiveLoader', 'library', 'util', 'uiUtil', 'uiSearch', '
         // }
     }
 
+    /* Used to dump the TED index of speakers in console as the index 
+       in zim is foobar and actual index is just a small portion of it 
+       Same code can be reused as fillSnippet to show more informative 
+       search result snippets - replace console.log with $("#"+snip_id).html(snippet + "...");*/
+    const parse = Range.prototype.createContextualFragment.bind(document.createRange());
+    function dumpTEDDetails2Console(dirEntry){
+        var docfrag=parse(data)
+        function exists(elementId) {
+            var element = docfrag.getElementById(elementId);
+            if (typeof(element) != 'undefined' && element != null)
+            {
+                return element.innerText.trim();
+            }else{
+               return '';
+            }
+        }   
+        if(dirEntry.url.endsWith('index.html')){
+            var snippet = exists( "description");  
+            var profession = exists("speaker_info_profession");
+            var spkdesc = exists("speaker_desc");
+            var date = exists("date");
+            var spk = exists('speaker_info_box');
+            setTimeout (console.log.bind (console, spk+'|'+profession+"|"+date+"|"+spkdesc+"|"+snippet+' '));
+        }else{
+            console.info(dirEntry.url);
+        }        
+    }
+
     // TODO: Handle multiple results resolving to the same snip_id
     // Overlaps with how image search handles dups and resolves - can be generalized
     // NOTE: fillSnippet had to be move into this fn because controller is used within it.
